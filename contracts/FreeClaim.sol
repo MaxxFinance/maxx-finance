@@ -32,9 +32,18 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         MAX_CLAIM_AMOUNT = _maxClaimAmount;
     }
 
+    struct Claim {
+        address user;
+        uint256 amount;
+    }
+
+    mapping (address => uint256) public userToClaim;
+    Claim[] public claims;
+
     /// @param _amount The amount of MAXX whitelisted for the sender
     /// @param _proof The merkle proof of the whitelist
-    function freeClaim(uint256 _amount, bytes32[] memory _proof) public nonReentrant {
+    function freeClaim(uint256 _amount, bytes32[] memory _proof, address _referrer) public nonReentrant {
+        require(!hasClaimed[msg.sender], "User has already claimed");
         require(
             _verifyMerkleLeaf(_generateMerkleLeaf(msg.sender, _amount), _proof),
             "Invalid proof, not on whitelist"
@@ -46,13 +55,29 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             _amount = contractBalance;
         }
 
+        if (_referrer != address(0)) {
+            _amount = ((_amount * 11) / 10); // Should be moved after the following if statement if referral bonus can exceed max claim amount
+        }
+
         if (_amount > MAX_CLAIM_AMOUNT) {
             _amount = MAX_CLAIM_AMOUNT; // cannot claim more than the MAX_CLAIM_AMOUNT
         }
 
         hasClaimed[msg.sender] = true;
-        MAXX.safeApprove(address(stake), _amount); // approve the staking contract to spend the tokens
-        stake.stake(365, _amount); // free claimed tokens are staked for 1 year
+
+        if (userToClaim[msg.sender] == 0) {
+            claims.push(Claim(msg.sender, _amount));
+        } else {
+            claims[userToClaim[msg.sender]].amount += _amount;
+        }
+
+        if (_referrer != address(0)) {
+            if (userToClaim[_referrer] == 0) {
+            claims.push(Claim(_referrer, _amount));
+            } else {
+                claims[userToClaim[_referrer]].amount += _amount;
+            }
+        }
     }
 
     /// @param _account The account presumed to be in the merkle tree
