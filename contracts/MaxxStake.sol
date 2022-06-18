@@ -42,9 +42,10 @@ contract MaxxStake is Ownable {
 
     struct StakeData {
         address owner;
-        bytes32 name;
+        bytes32 name; // 32 letters max
+        uint256 amount;
         uint256 shares;
-        uint256 time;
+        uint256 duration;
         uint256 startDate;
     }
 
@@ -63,12 +64,10 @@ contract MaxxStake is Ownable {
         maxx.burnFrom(msg.sender, _amount); // burn the tokens
 
         uint256 shares = _calcShares(_days, _amount);
-        uint256 time = _days * 1 days;
+        uint256 duration = _days * 1 days;
 
-        stakes[idCounter] = StakeData(msg.sender, _name, shares, time, block.timestamp);
+        stakes[idCounter] = StakeData(msg.sender, _name, _amount, shares, duration, block.timestamp);
         idCounter++;
-
-        // TODO: potentially emit an ERC 721 NFT to track stake and easily transfer ownership
     }
 
     /// @notice Function to unstake MAXX
@@ -96,6 +95,7 @@ contract MaxxStake is Ownable {
     }
 
     /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
+    /// @return shares The number of shares for the full-term stake
     function _calcShares(uint16 duration, uint256 _amount) internal view returns (uint256 shares) {
         uint256 SF = _getShareFactor();
         shares = (_amount / (2 - SF)) + (((_amount / (2 - SF)) * (duration - 1)) / magicNumber);

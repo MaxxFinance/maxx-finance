@@ -12,14 +12,16 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     uint256 public GLOBAL_DAILY_SELL_LIMIT;
     uint256 public WHALE_LIMIT;
 
+    uint256 public burnedAmount;
+
     // --- { Start Axion variable section } ---
 
     /// @dev addresses blacklist if attempt to buy and sell in same block or consecutive blocks
     mapping(address => bool) public blacklist;
     mapping(address => bool) public whitelist;
-     mapping(address => uint256) public timeOfLastTransfer;
+    mapping(address => uint256) public timeOfLastTransfer;
     bool public timeLimited;
-    mapping(address => bool) public pairs;
+    mapping(address => bool) public isPool;
     mapping(address => bool) public routers;
     uint256 public timeBetweenTransfers;
 
@@ -44,39 +46,26 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
         _mint(to, amount);
     }
 
-    /// @dev Overrides the transfer() function and implements a transfer tax
+    /// @dev Overrides the transfer() function and implements a transfer tax on lp pools
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
     function transfer(address _to, uint256 _amount) public override returns (bool) {
-        _amount = ((_amount * TRANSFER_TAX) / 10000);
+        if (isPool[_to]) {
+            _amount = ((_amount * TRANSFER_TAX) / 10000);
+        }
         return super.transfer(_to, _amount);
     }
 
-    /// @dev Overrides the transferFrom() function and implements a transfer tax
+    /// @dev Overrides the transferFrom() function and implements a transfer tax on lp pools
     /// @param _from The address to transfer from
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
     function transferFrom(address _from, address _to, uint256 _amount) public override returns (bool) {
-        _amount = ((_amount * TRANSFER_TAX) / 10000);
-        return super.transferFrom(_from, _to, _amount);
-    }
-
-    /// @notice Should be called by users to avoid the transfer tax
-    /// @param _to The address to transfer to
-    /// @param _amount The amount to transfer
-    /// @return Whether the transfer was successful
-    function freeTransfer(address _to, uint256 _amount) public returns (bool) {
-        return super.transfer(_to, _amount);
-    }
-
-    /// @notice Should be called by users to avoid the transfer tax
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _amount The amount to transfer
-    /// @return Whether the transfer was successful
-    function freeTransferFrom(address _from, address _to, uint256 _amount) public returns (bool) {
+        if (isPool[_from] || isPool[_to]) {
+            _amount = ((_amount * TRANSFER_TAX) / 10000);
+        }
         return super.transferFrom(_from, _to, _amount);
     }
 
@@ -89,14 +78,14 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
             whitelist[sender] == false
         ) {
             address toDisable = sender;
-            if (pairs[sender] == true) {
+            if (isPool[sender] == true) {
                 toDisable = recipient;
-            } else if (pairs[recipient] == true) {
+            } else if (isPool[recipient] == true) {
                 toDisable = sender;
             }
 
             if (
-                pairs[toDisable] == true ||
+                isPool[toDisable] == true ||
                 routers[toDisable] == true ||
                 toDisable == address(0)
             ) return; // Do nothing as we don't want to disable router
