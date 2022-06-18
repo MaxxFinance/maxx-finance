@@ -24,10 +24,14 @@ contract LiquidityAmplifier is Ownable {
     mapping (address => mapping (uint8 => uint256)) public dailyDeposits;
     uint256[60] private maxxDailyAllocation;
     uint256[60] private ftmDailyDeposits;
+
+    /// @notice Liquidity amplifier start date
     uint256 public startDate;
 
-    /// @notice Address of the MAXX staking contract
+    /// @notice Address of the Maxx Finance staking contract
     Stake public stake;
+
+    /// @notice Address of the MAXX token contract
     IERC20 public MAXX;
 
     bool private allocationInitialized = false;
