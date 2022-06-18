@@ -23,6 +23,7 @@ contract MaxxStake is Ownable {
     event Unstake(address indexed user, uint16 numDays, uint256 amount);
 
     MaxxFinance public maxx;
+    // TODO: add NFT contract address
     uint16 constant MIN_STAKE_DAYS = 7;
     uint16 constant MAX_STAKE_DAYS = 3333;
     uint256 immutable launchDate;
@@ -94,9 +95,10 @@ contract MaxxStake is Ownable {
 
     }
 
-    function _calcShares(uint16 _days, uint256 _amount) internal pure returns (uint256) {
-        // TODO: calculate shares using formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
-        uint256 shares = _amount * _days;
+    /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
+    function _calcShares(uint16 duration, uint256 _amount) internal view returns (uint256 shares) {
+        uint256 SF = _getShareFactor();
+        shares = (_amount / (2 - SF)) + (((_amount / (2 - SF)) * (duration - 1)) / magicNumber);
         return shares;
     }
 
