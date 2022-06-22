@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-import { MaxxStake as Stake } from './Stake.sol';
+import { MaxxStake as Stake } from './MaxxStake.sol';
 
 /// @author Alta Web3 Labs
 contract FreeClaim is Ownable, ReentrancyGuard {
@@ -16,7 +16,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     bytes32 public merkleRoot;
 
     /// @notice Max number of MAXX tokens that can be claimed by a user
-    uint256 immutable public MAX_CLAIM_AMOUNT;
+    uint256 constant public MAX_CLAIM_AMOUNT = 5000000 * (10 ** 8); // 5 million MAXX
 
     /// @notice Address of the MAXX staking contract
     Stake public stake;
@@ -27,9 +27,8 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @notice True if user has already claimed MAXX
     mapping (address => bool) public hasClaimed;
 
-    constructor(bytes32 _merkleRoot, uint256 _maxClaimAmount) {
+    constructor(bytes32 _merkleRoot) {
         merkleRoot = _merkleRoot;
-        MAX_CLAIM_AMOUNT = _maxClaimAmount;
     }
 
     struct Claim {

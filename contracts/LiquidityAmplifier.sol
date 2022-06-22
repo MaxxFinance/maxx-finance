@@ -4,7 +4,7 @@ pragma solidity ^0.8.14;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import { MaxxStake as Stake } from './Stake.sol';
+import { MaxxStake as Stake } from './MaxxStake.sol';
 
 /// @author Alta Web3 Labs
 contract LiquidityAmplifier is Ownable {
