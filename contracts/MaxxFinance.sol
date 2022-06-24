@@ -9,8 +9,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
 
     /// @notice Tax rate when calling transfer() or transferFrom()
     uint256 public transferTax;
-    uint256 public GLOBAL_DAILY_SELL_LIMIT;
-    uint256 public WHALE_LIMIT;
+    uint256 public globalDailySellLimit; // TODO: global daily sell limit or transfer limit?
+    uint256 public whaleLimit;
 
     uint256 public burnedAmount;
 
@@ -25,6 +25,11 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
 
     /// @notice Whether the address is a Maxx token pool or not
     mapping(address => bool) public isPool;
+
+    /// @notice The amount of tokens sold each day
+    mapping(uint32 => uint256) public dailyAmountSold; // TODO: can be circumvented if new pool is created.
+
+    uint256 public immutable initialTimestamp;
 
     /// @notice block limited or not
     bool public blockLimited;
@@ -44,6 +49,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     constructor(address maxxFinanceTreasury, uint256 _transferTax) ERC20("Maxx Finance", "MAXX") {
         _mint(maxxFinanceTreasury, 500000000000 * 10 ** decimals());
         transferTax = _transferTax;
+        initialTimestamp = block.timestamp;
     }
 
     /// @param to The address to mint to
@@ -52,24 +58,24 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
         _mint(to, amount);
     }
 
-    // /// @dev Overrides the decimals() function to return 18
-    // /// @return The number of decimals
-    // function decimals() public pure override returns (uint8) {
-    //     return 8; // 8 decimals
-    // }
-
     /// @dev Overrides the transfer() function and implements a transfer tax on lp pools
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
     function transfer(address _to, uint256 _amount) public override blacklist(msg.sender) returns (bool) {
+        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
+
+        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
         // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
         if (blockLimited && isPool[_to] && !isWhitelisted[msg.sender] && lastPurchase[msg.sender] >= block.number - blocksBetweenTransfers) {
             isBlacklisted[msg.sender] = true;
             return false;
         }
-        if (isPool[msg.sender]) {
+        if (isPool[msg.sender]) { // Also occurs if user is withdrawing their liquidity tokens.
             lastPurchase[_to] = block.number;
+        } else if (isPool[_to]) {
+            dailyAmountSold[day] += _amount;
         }
         if (isPool[_to] || isPool[msg.sender]) {
             _amount = ((_amount * transferTax) / 10000);
@@ -83,6 +89,10 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
     function transferFrom(address _from, address _to, uint256 _amount) public override blacklist(_from) returns (bool) {
+        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
+
+        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
         // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
         if (blockLimited && isPool[_to] && !isWhitelisted[_from] && lastPurchase[_from] >= block.number - blocksBetweenTransfers) {
             isBlacklisted[_from] = true;
@@ -90,6 +100,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
         }
         if (isPool[_from]) {
             lastPurchase[_to] = block.number;
+        } else if (isPool[_to]) {
+            dailyAmountSold[day] += _amount;
         }
         if (isPool[_from] || isPool[_to]) {
             _amount = ((_amount * transferTax) / 10000);
@@ -97,11 +109,35 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
         return super.transferFrom(_from, _to, _amount);
     }
 
+    /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
+    function getNextDayTimestamp() public view returns (uint256 timestamp) {
+        uint256 day = ((block.timestamp - initialTimestamp) / 24 / 60 / 60) + 1;
+        timestamp = initialTimestamp + (day * 1 days);
+    }
+
     /// @notice add an address to the whitelist
     /// @param _address The pool address
     function addPool(address _address) public onlyOwner {
         isPool[_address] = true;
         isWhitelisted[_address] = true;
+    }
+
+    /// @param _transferTax The transfer tax to set
+    function setTransferTax(uint256 _transferTax) public onlyOwner {
+        require(_transferTax <= 20, "ERC20: Transfer tax must be less than or equal to 20%");
+        transferTax = _transferTax;
+    }
+
+    /// @param _globalDailySellLimit The new global daily sell limit
+    function setGlobalDailySaleLimit(uint256 _globalDailySellLimit) public onlyOwner {
+        require(_globalDailySellLimit >= 1000000000 * 10 ** decimals(), "Global daily sell limit must be greater than or equal to 1,000,000,000 tokens");
+        globalDailySellLimit = _globalDailySellLimit;
+    }
+
+    /// @param _whaleLimit The new whale limit
+    function setWhaleLimit(uint256 _whaleLimit) public onlyOwner {
+        require(_whaleLimit >= 1000000 * 10 ** decimals(), "Whale limit must be greater than or equal to 1,000,000"); // TODO: confirm whale limit minimum
+        whaleLimit = _whaleLimit;
     }
 
     /// @notice add or remove an address from the whitelist
@@ -121,7 +157,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     /// @notice Update the blocks required between transfers
     /// @param _blocksBetweenTransfers The number of blocks required between transfers
     function updateBlocksBetweenTransfers(uint256 _blocksBetweenTransfers) public onlyOwner {
-        require(_blocksBetweenTransfers <= 5, "Blocks between transfers too high");
+        require(_blocksBetweenTransfers <= 5, "Blocks between transfers must be less than or equal to 5");
         blocksBetweenTransfers = _blocksBetweenTransfers;
     }
 
