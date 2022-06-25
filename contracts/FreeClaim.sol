@@ -35,9 +35,11 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @notice True if user has already claimed MAXX
     mapping (address => bool) public hasClaimed;
 
-    constructor(uint256 _startDate, bytes32 _merkleRoot) {
+    constructor(uint256 _startDate, bytes32 _merkleRoot, address _stake, address _MAXX) {
         startDate = _startDate;
         merkleRoot = _merkleRoot;
+        stake = Stake(_stake);
+        MAXX = IERC20(_MAXX);
     }
 
     struct Claim {
@@ -51,7 +53,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @notice Function to retrive free claim
     /// @param _amount The amount of MAXX whitelisted for the sender
     /// @param _proof The merkle proof of the whitelist
-    function freeClaim(uint256 _amount, bytes32[] memory _proof, address _referrer) public nonReentrant {
+    function freeClaim(uint256 _amount, bytes32[] memory _proof, address _referrer) external nonReentrant {
         require(!hasClaimed[msg.sender], "User has already claimed");
         require(
             _verifyMerkleLeaf(_generateMerkleLeaf(msg.sender, _amount), _proof),
@@ -91,7 +93,8 @@ contract FreeClaim is Ownable, ReentrancyGuard {
                 claims[userToClaim[_referrer]].amount += _amount;
             }
         }
-
+        
+        userToClaim[msg.sender] = uint256(claims.length - 1);
         stake.freeClaimStake(_amount);
         emit UserClaim(msg.sender, _amount);
     }
@@ -101,7 +104,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @param _proof The merkle proof of the account
     /// @return Whether the account is in the merkle tree
     function verifyMerkleLeaf(address _account, uint256 _amount, bytes32[] memory _proof)
-        public
+        external
         view
         returns (bool)
     {
