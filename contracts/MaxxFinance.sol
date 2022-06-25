@@ -41,7 +41,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
     // blacklisted addresses can receive tokens, but cannot send tokens
     modifier blacklist(address sender) {
         require(
-            isBlacklisted[sender] == false,
+            !isBlacklisted[sender],
             "ERC20: Account is blacklisted from transferring"
         );
         _;
