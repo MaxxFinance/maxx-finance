@@ -55,7 +55,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
 
     /// @param to The address to mint to
     /// @param amount The amount to mint
-    function mint(address to, uint256 amount) public onlyOwner whenNotPaused {
+    function mint(address to, uint256 amount) external onlyOwner whenNotPaused {
         _mint(to, amount);
     }
 
@@ -111,32 +111,32 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
     }
 
     /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
-    function getNextDayTimestamp() public view returns (uint256 timestamp) {
+    function getNextDayTimestamp() external view returns (uint256 timestamp) {
         uint256 day = ((block.timestamp - initialTimestamp) / 24 / 60 / 60) + 1;
         timestamp = initialTimestamp + (day * 1 days);
     }
 
     /// @notice add an address to the whitelist
     /// @param _address The pool address
-    function addPool(address _address) public onlyOwner {
+    function addPool(address _address) external onlyOwner {
         isPool[_address] = true;
         isWhitelisted[_address] = true;
     }
 
     /// @param _transferTax The transfer tax to set
-    function setTransferTax(uint256 _transferTax) public onlyOwner {
+    function setTransferTax(uint256 _transferTax) external onlyOwner {
         require(_transferTax <= 20, "ERC20: Transfer tax must be less than or equal to 20%");
         transferTax = _transferTax;
     }
 
     /// @param _globalDailySellLimit The new global daily sell limit
-    function setGlobalDailySaleLimit(uint256 _globalDailySellLimit) public onlyOwner {
+    function setGlobalDailySaleLimit(uint256 _globalDailySellLimit) external onlyOwner {
         require(_globalDailySellLimit >= 1000000000 * 10 ** decimals(), "Global daily sell limit must be greater than or equal to 1,000,000,000 tokens");
         globalDailySellLimit = _globalDailySellLimit;
     }
 
     /// @param _whaleLimit The new whale limit
-    function setWhaleLimit(uint256 _whaleLimit) public onlyOwner {
+    function setWhaleLimit(uint256 _whaleLimit) external onlyOwner {
         require(_whaleLimit >= 1000000 * 10 ** decimals(), "Whale limit must be greater than or equal to 1,000,000"); // TODO: confirm whale limit minimum
         whaleLimit = _whaleLimit;
     }
@@ -144,27 +144,27 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
     /// @notice add or remove an address from the whitelist
     /// @param _address The address to add or remove
     /// @param _isWhitelisted Whether to add (true) or remove (false) the address
-    function updateWhitelist(address _address, bool _isWhitelisted) public onlyOwner {
+    function updateWhitelist(address _address, bool _isWhitelisted) external onlyOwner {
         isWhitelisted[_address] = _isWhitelisted;
     }
 
     /// @notice add or remove an address from the blacklist
     /// @param _address The address to add or remove
     /// @param _isBlacklisted Whether to add (true) or remove (false) the address
-    function updateBlacklist(address _address, bool _isBlacklisted) public onlyOwner {
+    function updateBlacklist(address _address, bool _isBlacklisted) external onlyOwner {
         isBlacklisted[_address] = _isBlacklisted;
     }
 
     /// @notice Update the blocks required between transfers
     /// @param _blocksBetweenTransfers The number of blocks required between transfers
-    function updateBlocksBetweenTransfers(uint256 _blocksBetweenTransfers) public onlyOwner {
+    function updateBlocksBetweenTransfers(uint256 _blocksBetweenTransfers) external onlyOwner {
         require(_blocksBetweenTransfers <= 5, "Blocks between transfers must be less than or equal to 5");
         blocksBetweenTransfers = _blocksBetweenTransfers;
     }
 
     /// @notice Update blockLimited
     /// @param _blockLimited Whether to block limit or not
-    function updateBlockLimited(bool _blockLimited) public onlyOwner {
+    function updateBlockLimited(bool _blockLimited) external onlyOwner {
         blockLimited = _blockLimited;
     }
 }
