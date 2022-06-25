@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
+contract MaxxFinanceTest is ERC20, ERC20Burnable, Ownable, Pausable {
 
     /// @notice Tax rate when calling transfer() or transferFrom()
     uint256 public transferTax;
