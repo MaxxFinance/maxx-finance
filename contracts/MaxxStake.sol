@@ -72,20 +72,21 @@ contract MaxxStake is Ownable {
         uint256 startDate;
     }
 
-    constructor(address _maxx, uint256 _launchDate) {
+    constructor(address _maxx, uint256 _launchDate, address _nft) {
         maxx = MaxxFinance(_maxx);
         launchDate = _launchDate;
+        nft = IERC721(_nft);
     }
 
     /// @notice Function to stake MAXX
     /// @dev User must approve MAXX before staking
     /// @param _days The number of days to stake (min 5, max 3333)
     /// @param _amount The amount of MAXX to stake
-    function stake(uint16 _days, uint256 _amount) public {
+    function stake(uint16 _days, uint256 _amount) external {
         require(_days >= MIN_STAKE_DAYS, "Stake too short");
         require(_days <= MAX_STAKE_DAYS, "Stake too long");
 
-        maxx.burnFrom(msg.sender, _amount); // burn the tokens
+        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract
 
         uint256 shares = _calcShares(_days, _amount);
 
@@ -105,7 +106,7 @@ contract MaxxStake is Ownable {
     }
 
     /// @notice Function to unstake MAXX
-    function unstake(uint256 _stakeId) public {
+    function unstake(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
         require(tStake.owner == msg.sender, "You are not the owner of this stake");
         total_stakes_withdrawn++;
@@ -147,7 +148,7 @@ contract MaxxStake is Ownable {
         uint256 maturation = tStake.startDate + tStake.duration;
         require(block.timestamp > maturation, "You cannot restake a stake that is not matured");
         require(_topUpAmount <= maxx.balanceOf(msg.sender), "You cannot top up with more MAXX than you have");
-        maxx.transferFrom(msg.sender, address(this), _topUpAmount); // burn the tokens
+        require(maxx.transferFrom(msg.sender, address(this), _topUpAmount)); // transfer tokens to this contract
         tStake.amount += _topUpAmount;
         uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
         total_shares -= tStake.shares;
@@ -176,8 +177,8 @@ contract MaxxStake is Ownable {
         require(msg.value == sellPrice[_stakeId]);
         market[_stakeId] = false;
         sellPrice[_stakeId] = 0;
-        _transfer(payable(tStake.owner), msg.value);
         _transferStake(_stakeId, msg.sender);
+        _transfer(payable(tStake.owner), msg.value);
     }
 
     /// @notice Function to transfer stake ownership
@@ -218,7 +219,7 @@ contract MaxxStake is Ownable {
     /// @dev Must approve MAXX before staking
     /// @param _amount The amount of MAXX to stake
     function amplifierStake(uint16 _days, uint256 _amount) external {
-        maxx.burnFrom(msg.sender, _amount); // burn the tokens
+        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to the contract
 
         uint256 shares = _calcShares(_days, _amount);
         if (_days >= 365) {
@@ -240,8 +241,8 @@ contract MaxxStake is Ownable {
     /// @notice Function to stake MAXX
     /// @dev User must approve MAXX before staking
     /// @param _amount The amount of MAXX to stake
-    function freeClaimStake(uint256 _amount) public {
-        maxx.burnFrom(msg.sender, _amount); // burn the tokens
+    function freeClaimStake(uint256 _amount) external {
+        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract
 
         uint256 shares = _calcShares(365, _amount);
         total_shares += shares;
@@ -280,6 +281,7 @@ contract MaxxStake is Ownable {
     /// @return shareFactor The current share factor
     function _getShareFactor() internal view returns (uint256 shareFactor) {
         shareFactor = 1 - (getDaysSinceLaunch() / 3333);
+        assert(shareFactor <= 1);
         return shareFactor;
     }
 
@@ -287,9 +289,9 @@ contract MaxxStake is Ownable {
     /// @return interestToDate The interest accrued to date
     function _calcInterestToDate(uint256 _stakeTotalShares, uint256 _daysServed, uint256 _duration) internal pure returns (uint256 interestToDate) {
         uint256 stakeDuration = _duration / 1 days;
-        uint256 fullDurationInterest = _stakeTotalShares * (stakeDuration / 365) * BASE_INFLATION / BASE_INFLATION_FACTOR;
+        uint256 fullDurationInterest = _stakeTotalShares * BASE_INFLATION * stakeDuration / 365 / BASE_INFLATION_FACTOR;
 
-        uint256 currentDurationInterest = _daysServed * _stakeTotalShares * (_daysServed / stakeDuration) * BASE_INFLATION / BASE_INFLATION_FACTOR / stakeDuration;
+        uint256 currentDurationInterest = _daysServed * _stakeTotalShares * _daysServed * BASE_INFLATION / stakeDuration  / BASE_INFLATION_FACTOR / stakeDuration;
 
         if (currentDurationInterest > fullDurationInterest) {
             interestToDate = fullDurationInterest;
