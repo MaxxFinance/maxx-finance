@@ -1,125 +1,170 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract MaxxFinanceTest is ERC20, ERC20Burnable, Ownable {
+contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
 
     /// @notice Tax rate when calling transfer() or transferFrom()
-    uint256 public TRANSFER_TAX;
-    uint256 public GLOBAL_DAILY_SELL_LIMIT;
-    uint256 public WHALE_LIMIT;
+    uint256 public transferTax;
+    uint256 public globalDailySellLimit; // TODO: global daily sell limit or transfer limit?
+    uint256 public whaleLimit;
 
-    // --- { Start Axion variable section } ---
+    uint256 public burnedAmount;
 
-    /// @dev addresses blacklist if attempt to buy and sell in same block or consecutive blocks
-    mapping(address => bool) public blacklist;
-    mapping(address => bool) public whitelist;
-     mapping(address => uint256) public timeOfLastTransfer;
-    bool public timeLimited;
-    mapping(address => bool) public pairs;
-    mapping(address => bool) public routers;
-    uint256 public timeBetweenTransfers;
+    /// @notice blacklisted addresses
+    mapping(address => bool) public isBlacklisted;
 
-    // --- { End Axion variable section } ---
+    /// @notice whitelisted addresses
+    mapping(address => bool) public isWhitelisted;
 
-    mapping(address => bool) public hasClaimed;
+    /// @notice The block number of the address's last purchase from a pool
+    mapping(address => uint256) public lastPurchase;
 
-    // Black list for bots */
-    modifier isBlackedListed(address sender, address recipient) {
+    /// @notice Whether the address is a Maxx token pool or not
+    mapping(address => bool) public isPool;
+
+    /// @notice The amount of tokens sold each day
+    mapping(uint32 => uint256) public dailyAmountSold; // TODO: can be circumvented if new pool is created.
+
+    uint256 public immutable initialTimestamp;
+
+    /// @notice block limited or not
+    bool public blockLimited;
+
+    /// @notice The number of blocks required 
+    uint256 public blocksBetweenTransfers;
+
+    // blacklisted addresses can receive tokens, but cannot send tokens
+    modifier blacklist(address sender) {
         require(
-            blacklist[sender] == false,
-            'ERC20: Account is blacklisted from transferring'
+            isBlacklisted[sender] == false,
+            "ERC20: Account is blacklisted from transferring"
         );
         _;
     }
 
-    constructor(address maxxFinanceTreasury) ERC20("Maxx Finance", "MAXX") {
+    constructor(address maxxFinanceTreasury, uint256 _transferTax) ERC20("Maxx Finance", "MAXX") {
         _mint(maxxFinanceTreasury, 500000000000 * 10 ** decimals());
-    }
-
-    /// @notice Claim 5,000,000 tokens for the testnet
-    function freeClaim() public {
-        require(hasClaimed[msg.sender] == false, "You have already claimed your free tokens");
-        _mint(msg.sender, 5000000 * 10 ** decimals()); // Claim 5,000,000 Maxx Finance
-        hasClaimed[msg.sender] = true;
+        transferTax = _transferTax;
+        initialTimestamp = block.timestamp;
     }
 
     /// @param to The address to mint to
     /// @param amount The amount to mint
-    function mint(address to, uint256 amount) public onlyOwner {
+    function mint(address to, uint256 amount) external onlyOwner whenNotPaused {
         _mint(to, amount);
     }
 
-    /// @dev Overrides the transfer() function and implements a transfer tax
+    /// @dev Overrides the transfer() function and implements a transfer tax on lp pools
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
-    function transfer(address _to, uint256 _amount) public override returns (bool) {
-        _amount = ((_amount * TRANSFER_TAX) / 10000);
-        return super.transfer(_to, _amount);
-    }
+    function transfer(address _to, uint256 _amount) public override blacklist(msg.sender) whenNotPaused returns (bool) {
+        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
 
-    /// @dev Overrides the transferFrom() function and implements a transfer tax
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _amount The amount to transfer
-    /// @return Whether the transfer was successful
-    function transferFrom(address _from, address _to, uint256 _amount) public override returns (bool) {
-        _amount = ((_amount * TRANSFER_TAX) / 10000);
-        return super.transferFrom(_from, _to, _amount);
-    }
-
-    /// @notice Should be called by users to avoid the transfer tax
-    /// @param _to The address to transfer to
-    /// @param _amount The amount to transfer
-    /// @return Whether the transfer was successful
-    function freeTransfer(address _to, uint256 _amount) public returns (bool) {
-        return super.transfer(_to, _amount);
-    }
-
-    /// @notice Should be called by users to avoid the transfer tax
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _amount The amount to transfer
-    /// @return Whether the transfer was successful
-    function freeTransferFrom(address _from, address _to, uint256 _amount) public returns (bool) {
-        return super.transferFrom(_from, _to, _amount);
-    }
-
-    // protection
-    // comes from Axion
-    function isTimeLimited(address sender, address recipient) internal {
-        if (
-            timeLimited &&
-            whitelist[recipient] == false &&
-            whitelist[sender] == false
-        ) {
-            address toDisable = sender;
-            if (pairs[sender] == true) {
-                toDisable = recipient;
-            } else if (pairs[recipient] == true) {
-                toDisable = sender;
-            }
-
-            if (
-                pairs[toDisable] == true ||
-                routers[toDisable] == true ||
-                toDisable == address(0)
-            ) return; // Do nothing as we don't want to disable router
-
-            if (timeOfLastTransfer[toDisable] == 0) {
-                timeOfLastTransfer[toDisable] = block.timestamp;
-            } else {
-                require(
-                    block.timestamp - timeOfLastTransfer[toDisable] >
-                        timeBetweenTransfers,
-                    'ERC20: Time since last transfer must be greater then time to transfer'
-                );
-                timeOfLastTransfer[toDisable] = block.timestamp;
-            }
+        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
+        // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
+        if (blockLimited && isPool[_to] && !isWhitelisted[msg.sender] && lastPurchase[msg.sender] >= block.number - blocksBetweenTransfers) {
+            isBlacklisted[msg.sender] = true;
+            return false;
         }
+        if (isPool[msg.sender]) { // Also occurs if user is withdrawing their liquidity tokens.
+            lastPurchase[_to] = block.number;
+        } else if (isPool[_to]) {
+            dailyAmountSold[day] += _amount;
+        }
+        if (isPool[_to] || isPool[msg.sender]) {
+            _amount = ((_amount * transferTax) / 10000);
+        }
+        return super.transfer(_to, _amount);
+    }
+
+    /// @dev Overrides the transferFrom() function and implements a transfer tax on lp pools
+    /// @param _from The address to transfer from
+    /// @param _to The address to transfer to
+    /// @param _amount The amount to transfer
+    /// @return Whether the transfer was successful
+    function transferFrom(address _from, address _to, uint256 _amount) public override blacklist(_from) whenNotPaused returns (bool) {
+        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit"); 
+
+        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
+        // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
+        if (blockLimited && isPool[_to] && !isWhitelisted[_from] && lastPurchase[_from] >= block.number - blocksBetweenTransfers) {
+            isBlacklisted[_from] = true;
+            return false;
+        }
+        if (isPool[_from]) {
+            lastPurchase[_to] = block.number;
+        } else if (isPool[_to]) {
+            dailyAmountSold[day] += _amount;
+        }
+        if (isPool[_from] || isPool[_to]) {
+            _amount = ((_amount * transferTax) / 10000);
+        }
+        return super.transferFrom(_from, _to, _amount);
+    }
+
+    /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
+    function getNextDayTimestamp() external view returns (uint256 timestamp) {
+        uint256 day = ((block.timestamp - initialTimestamp) / 24 / 60 / 60) + 1;
+        timestamp = initialTimestamp + (day * 1 days);
+    }
+
+    /// @notice add an address to the whitelist
+    /// @param _address The pool address
+    function addPool(address _address) external onlyOwner {
+        isPool[_address] = true;
+        isWhitelisted[_address] = true;
+    }
+
+    /// @param _transferTax The transfer tax to set
+    function setTransferTax(uint256 _transferTax) external onlyOwner {
+        require(_transferTax <= 20, "ERC20: Transfer tax must be less than or equal to 20%");
+        transferTax = _transferTax;
+    }
+
+    /// @param _globalDailySellLimit The new global daily sell limit
+    function setGlobalDailySaleLimit(uint256 _globalDailySellLimit) external onlyOwner {
+        require(_globalDailySellLimit >= 1000000000 * 10 ** decimals(), "Global daily sell limit must be greater than or equal to 1,000,000,000 tokens");
+        globalDailySellLimit = _globalDailySellLimit;
+    }
+
+    /// @param _whaleLimit The new whale limit
+    function setWhaleLimit(uint256 _whaleLimit) external onlyOwner {
+        require(_whaleLimit >= 1000000 * 10 ** decimals(), "Whale limit must be greater than or equal to 1,000,000"); // TODO: confirm whale limit minimum
+        whaleLimit = _whaleLimit;
+    }
+
+    /// @notice add or remove an address from the whitelist
+    /// @param _address The address to add or remove
+    /// @param _isWhitelisted Whether to add (true) or remove (false) the address
+    function updateWhitelist(address _address, bool _isWhitelisted) external onlyOwner {
+        isWhitelisted[_address] = _isWhitelisted;
+    }
+
+    /// @notice add or remove an address from the blacklist
+    /// @param _address The address to add or remove
+    /// @param _isBlacklisted Whether to add (true) or remove (false) the address
+    function updateBlacklist(address _address, bool _isBlacklisted) external onlyOwner {
+        isBlacklisted[_address] = _isBlacklisted;
+    }
+
+    /// @notice Update the blocks required between transfers
+    /// @param _blocksBetweenTransfers The number of blocks required between transfers
+    function updateBlocksBetweenTransfers(uint256 _blocksBetweenTransfers) external onlyOwner {
+        require(_blocksBetweenTransfers <= 5, "Blocks between transfers must be less than or equal to 5");
+        blocksBetweenTransfers = _blocksBetweenTransfers;
+    }
+
+    /// @notice Update blockLimited
+    /// @param _blockLimited Whether to block limit or not
+    function updateBlockLimited(bool _blockLimited) external onlyOwner {
+        blockLimited = _blockLimited;
     }
 }
