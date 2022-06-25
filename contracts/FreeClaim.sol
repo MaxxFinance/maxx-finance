@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -12,8 +12,16 @@ import { MaxxStake as Stake } from './MaxxStake.sol';
 contract FreeClaim is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    /// @notice Emitted when free claim is claimed
+    /// @param user The user claiming free claim
+    /// @param amount The amount of free claim claimed
+    event UserClaim(address indexed user, uint256 amount);
+
     /// @notice Merkle root for the free claim whitelist
     bytes32 public merkleRoot;
+
+    uint256 public immutable startDate;
+    uint256 constant FREE_CLAIM_DURATION = 365 days;
 
     /// @notice Max number of MAXX tokens that can be claimed by a user
     uint256 constant public MAX_CLAIM_AMOUNT = 5000000 * (10 ** 8); // 5 million MAXX
@@ -27,7 +35,8 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @notice True if user has already claimed MAXX
     mapping (address => bool) public hasClaimed;
 
-    constructor(bytes32 _merkleRoot) {
+    constructor(uint256 _startDate, bytes32 _merkleRoot) {
+        startDate = _startDate;
         merkleRoot = _merkleRoot;
     }
 
@@ -39,6 +48,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     mapping (address => uint256) public userToClaim;
     Claim[] public claims;
 
+    /// @notice Function to retrive free claim
     /// @param _amount The amount of MAXX whitelisted for the sender
     /// @param _proof The merkle proof of the whitelist
     function freeClaim(uint256 _amount, bytes32[] memory _proof, address _referrer) public nonReentrant {
@@ -50,6 +60,8 @@ contract FreeClaim is Ownable, ReentrancyGuard {
 
         uint256 contractBalance = MAXX.balanceOf(address(this));
         require(contractBalance > 0, "No MAXX tokens to claim");
+        uint256 timePassed = block.timestamp - startDate;
+
         if (_amount > contractBalance) {
             _amount = contractBalance;
         }
@@ -61,6 +73,8 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         if (_amount > MAX_CLAIM_AMOUNT) {
             _amount = MAX_CLAIM_AMOUNT; // cannot claim more than the MAX_CLAIM_AMOUNT
         }
+
+        _amount = _amount * (FREE_CLAIM_DURATION - timePassed) / FREE_CLAIM_DURATION; // adjust amount for the speed penalty
 
         hasClaimed[msg.sender] = true;
 
@@ -77,6 +91,9 @@ contract FreeClaim is Ownable, ReentrancyGuard {
                 claims[userToClaim[_referrer]].amount += _amount;
             }
         }
+
+        stake.freeClaimStake(_amount);
+        emit UserClaim(msg.sender, _amount);
     }
 
     /// @param _account The account presumed to be in the merkle tree
@@ -111,4 +128,4 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     {
         return MerkleProof.verify(_proof, merkleRoot, _leafNode);
     }
-}
+} 

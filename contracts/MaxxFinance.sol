@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
+contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
 
     /// @notice Tax rate when calling transfer() or transferFrom()
     uint256 public transferTax;
@@ -54,7 +55,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
 
     /// @param to The address to mint to
     /// @param amount The amount to mint
-    function mint(address to, uint256 amount) public onlyOwner {
+    function mint(address to, uint256 amount) public onlyOwner whenNotPaused {
         _mint(to, amount);
     }
 
@@ -62,7 +63,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
-    function transfer(address _to, uint256 _amount) public override blacklist(msg.sender) returns (bool) {
+    function transfer(address _to, uint256 _amount) public override blacklist(msg.sender) whenNotPaused returns (bool) {
         require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
 
         uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
@@ -88,8 +89,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
-    function transferFrom(address _from, address _to, uint256 _amount) public override blacklist(_from) returns (bool) {
-        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
+    function transferFrom(address _from, address _to, uint256 _amount) public override blacklist(_from) whenNotPaused returns (bool) {
+        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit"); 
 
         uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
         require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
