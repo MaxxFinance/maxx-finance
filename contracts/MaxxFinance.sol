@@ -1,48 +1,61 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
+contract MaxxFinance is ERC20, ERC20Burnable, Ownable, Pausable {
 
     /// @notice Tax rate when calling transfer() or transferFrom()
-    uint256 public TRANSFER_TAX;
-    uint256 public GLOBAL_DAILY_SELL_LIMIT;
-    uint256 public WHALE_LIMIT;
+    uint256 public transferTax;
+    uint256 public globalDailySellLimit; // TODO: global daily sell limit or transfer limit?
+    uint256 public whaleLimit;
 
     uint256 public burnedAmount;
 
-    // --- { Start Axion variable section } ---
+    /// @notice blacklisted addresses
+    mapping(address => bool) public isBlacklisted;
 
-    /// @dev addresses blacklist if attempt to buy and sell in same block or consecutive blocks
-    mapping(address => bool) public blacklist;
-    mapping(address => bool) public whitelist;
-    mapping(address => uint256) public timeOfLastTransfer;
-    bool public timeLimited;
+    /// @notice whitelisted addresses
+    mapping(address => bool) public isWhitelisted;
+
+    /// @notice The block number of the address's last purchase from a pool
+    mapping(address => uint256) public lastPurchase;
+
+    /// @notice Whether the address is a Maxx token pool or not
     mapping(address => bool) public isPool;
-    mapping(address => bool) public routers;
-    uint256 public timeBetweenTransfers;
 
-    // --- { End Axion variable section } ---
+    /// @notice The amount of tokens sold each day
+    mapping(uint32 => uint256) public dailyAmountSold; // TODO: can be circumvented if new pool is created.
 
-    // Black list for bots */
-    modifier isBlackedListed(address sender, address recipient) {
+    uint256 public immutable initialTimestamp;
+
+    /// @notice block limited or not
+    bool public blockLimited;
+
+    /// @notice The number of blocks required 
+    uint256 public blocksBetweenTransfers;
+
+    // blacklisted addresses can receive tokens, but cannot send tokens
+    modifier blacklist(address sender) {
         require(
-            blacklist[sender] == false,
-            'ERC20: Account is blacklisted from transferring'
+            isBlacklisted[sender] == false,
+            "ERC20: Account is blacklisted from transferring"
         );
         _;
     }
 
-    constructor(address maxxFinanceTreasury) ERC20("Maxx Finance", "MAXX") {
+    constructor(address maxxFinanceTreasury, uint256 _transferTax) ERC20("Maxx Finance", "MAXX") {
         _mint(maxxFinanceTreasury, 500000000000 * 10 ** decimals());
+        transferTax = _transferTax;
+        initialTimestamp = block.timestamp;
     }
 
     /// @param to The address to mint to
     /// @param amount The amount to mint
-    function mint(address to, uint256 amount) public onlyOwner {
+    function mint(address to, uint256 amount) public onlyOwner whenNotPaused {
         _mint(to, amount);
     }
 
@@ -50,9 +63,23 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
-    function transfer(address _to, uint256 _amount) public override returns (bool) {
-        if (isPool[_to]) {
-            _amount = ((_amount * TRANSFER_TAX) / 10000);
+    function transfer(address _to, uint256 _amount) public override blacklist(msg.sender) whenNotPaused returns (bool) {
+        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
+
+        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
+        // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
+        if (blockLimited && isPool[_to] && !isWhitelisted[msg.sender] && lastPurchase[msg.sender] >= block.number - blocksBetweenTransfers) {
+            isBlacklisted[msg.sender] = true;
+            return false;
+        }
+        if (isPool[msg.sender]) { // Also occurs if user is withdrawing their liquidity tokens.
+            lastPurchase[_to] = block.number;
+        } else if (isPool[_to]) {
+            dailyAmountSold[day] += _amount;
+        }
+        if (isPool[_to] || isPool[msg.sender]) {
+            _amount = ((_amount * transferTax) / 10000);
         }
         return super.transfer(_to, _amount);
     }
@@ -62,44 +89,82 @@ contract MaxxFinance is ERC20, ERC20Burnable, Ownable {
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
-    function transferFrom(address _from, address _to, uint256 _amount) public override returns (bool) {
+    function transferFrom(address _from, address _to, uint256 _amount) public override blacklist(_from) whenNotPaused returns (bool) {
+        require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit"); 
+
+        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
+        // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
+        if (blockLimited && isPool[_to] && !isWhitelisted[_from] && lastPurchase[_from] >= block.number - blocksBetweenTransfers) {
+            isBlacklisted[_from] = true;
+            return false;
+        }
+        if (isPool[_from]) {
+            lastPurchase[_to] = block.number;
+        } else if (isPool[_to]) {
+            dailyAmountSold[day] += _amount;
+        }
         if (isPool[_from] || isPool[_to]) {
-            _amount = ((_amount * TRANSFER_TAX) / 10000);
+            _amount = ((_amount * transferTax) / 10000);
         }
         return super.transferFrom(_from, _to, _amount);
     }
 
-    // protection
-    // comes from Axion
-    function isTimeLimited(address sender, address recipient) internal {
-        if (
-            timeLimited &&
-            whitelist[recipient] == false &&
-            whitelist[sender] == false
-        ) {
-            address toDisable = sender;
-            if (isPool[sender] == true) {
-                toDisable = recipient;
-            } else if (isPool[recipient] == true) {
-                toDisable = sender;
-            }
+    /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
+    function getNextDayTimestamp() public view returns (uint256 timestamp) {
+        uint256 day = ((block.timestamp - initialTimestamp) / 24 / 60 / 60) + 1;
+        timestamp = initialTimestamp + (day * 1 days);
+    }
 
-            if (
-                isPool[toDisable] == true ||
-                routers[toDisable] == true ||
-                toDisable == address(0)
-            ) return; // Do nothing as we don't want to disable router
+    /// @notice add an address to the whitelist
+    /// @param _address The pool address
+    function addPool(address _address) public onlyOwner {
+        isPool[_address] = true;
+        isWhitelisted[_address] = true;
+    }
 
-            if (timeOfLastTransfer[toDisable] == 0) {
-                timeOfLastTransfer[toDisable] = block.timestamp;
-            } else {
-                require(
-                    block.timestamp - timeOfLastTransfer[toDisable] >
-                        timeBetweenTransfers,
-                    'ERC20: Time since last transfer must be greater then time to transfer'
-                );
-                timeOfLastTransfer[toDisable] = block.timestamp;
-            }
-        }
+    /// @param _transferTax The transfer tax to set
+    function setTransferTax(uint256 _transferTax) public onlyOwner {
+        require(_transferTax <= 20, "ERC20: Transfer tax must be less than or equal to 20%");
+        transferTax = _transferTax;
+    }
+
+    /// @param _globalDailySellLimit The new global daily sell limit
+    function setGlobalDailySaleLimit(uint256 _globalDailySellLimit) public onlyOwner {
+        require(_globalDailySellLimit >= 1000000000 * 10 ** decimals(), "Global daily sell limit must be greater than or equal to 1,000,000,000 tokens");
+        globalDailySellLimit = _globalDailySellLimit;
+    }
+
+    /// @param _whaleLimit The new whale limit
+    function setWhaleLimit(uint256 _whaleLimit) public onlyOwner {
+        require(_whaleLimit >= 1000000 * 10 ** decimals(), "Whale limit must be greater than or equal to 1,000,000"); // TODO: confirm whale limit minimum
+        whaleLimit = _whaleLimit;
+    }
+
+    /// @notice add or remove an address from the whitelist
+    /// @param _address The address to add or remove
+    /// @param _isWhitelisted Whether to add (true) or remove (false) the address
+    function updateWhitelist(address _address, bool _isWhitelisted) public onlyOwner {
+        isWhitelisted[_address] = _isWhitelisted;
+    }
+
+    /// @notice add or remove an address from the blacklist
+    /// @param _address The address to add or remove
+    /// @param _isBlacklisted Whether to add (true) or remove (false) the address
+    function updateBlacklist(address _address, bool _isBlacklisted) public onlyOwner {
+        isBlacklisted[_address] = _isBlacklisted;
+    }
+
+    /// @notice Update the blocks required between transfers
+    /// @param _blocksBetweenTransfers The number of blocks required between transfers
+    function updateBlocksBetweenTransfers(uint256 _blocksBetweenTransfers) public onlyOwner {
+        require(_blocksBetweenTransfers <= 5, "Blocks between transfers must be less than or equal to 5");
+        blocksBetweenTransfers = _blocksBetweenTransfers;
+    }
+
+    /// @notice Update blockLimited
+    /// @param _blockLimited Whether to block limit or not
+    function updateBlockLimited(bool _blockLimited) public onlyOwner {
+        blockLimited = _blockLimited;
     }
 }
