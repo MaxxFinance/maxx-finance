@@ -143,9 +143,9 @@ contract MaxxStake is Ownable {
 
         if (maxxBalance < withdrawableAmount) {
             maxx.mint(msg.sender, withdrawableAmount - maxxBalance); // mint additional tokens to the user
-            maxx.transfer(msg.sender, maxxBalance); // transfer the rest of this contract's tokens to the user
+            require(maxx.transfer(msg.sender, maxxBalance)); // transfer the rest of this contract's tokens to the user
         } else {
-            maxx.transfer(msg.sender, withdrawableAmount); // transfer the tokens from this contract to the stake owner
+            require(maxx.transfer(msg.sender, withdrawableAmount)); // transfer the tokens from this contract to the stake owner
         }
         
         emit Unstake(msg.sender, withdrawableAmount);
@@ -240,7 +240,7 @@ contract MaxxStake is Ownable {
         // TODO: add penalties for early withdrawal
         uint256 withdrawableAmount;
         withdrawnAmounts[_stakeId] = withdrawableAmount;
-        maxx.transfer(msg.sender, withdrawableAmount);
+        require(maxx.transfer(msg.sender, withdrawableAmount));
         emit ScrapeInterest(msg.sender, interestToDate);
     }
 
