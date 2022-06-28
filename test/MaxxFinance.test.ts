@@ -39,11 +39,32 @@ describe("Maxx Token", () => {
   describe("burn", () => {
     it("should burn tokens from msg.sender", async () => {});
     it("should burn tokens from an authorized wallet", async () => {});
+    it("should update burnedAmount", async () => {});
     it("should not burn more tokens than user's balance", async () => {});
+    it("should decrease totalSupply", async () => {});
   });
 
   describe("mint", () => {
     it("should mint tokens", async () => {});
     it("should mint tokens without minter role", async () => {});
+    it("should increase totalSupply", async () => {});
+  });
+
+  describe("bot protection", () => {
+    it("should not allow transfers greater than the whale limit", async () => {});
+    it("should not allow transfers greater than the global daily sell limit", async () => {});
+    it("should not allow transfers when the contract is paused", async () => {});
+    describe("allowlist/blocklist", () => {
+      it("should block addresses that attempt to buy and sell in consecutive blocks", async () => {});
+      it("should transfer tokens for allowlist addresses", async () => {});
+    });
+  });
+
+  describe("variable updates", () => {
+    it("should add pool", async () => {});
+    it("should set transfer tax", async () => {});
+    it("should set global daily sell limit", async () => {});
+    it("should set whale limit", async () => {});
+    it("should update blocks between transfers", async () => {});
   });
 });
