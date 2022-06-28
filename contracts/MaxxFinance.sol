@@ -173,7 +173,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     }
 
     /// @param _globalDailySellLimit The new global daily sell limit
-    function setGlobalDailySaleLimit(uint256 _globalDailySellLimit) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setGlobalDailySellLimit(uint256 _globalDailySellLimit) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_globalDailySellLimit >= GLOBAL_DAILY_SELL_LIMIT_MINIMUM , "Global daily sell limit must be greater than or equal to 1,000,000,000 tokens");
         globalDailySellLimit = _globalDailySellLimit * 10 ** decimals();
     }
