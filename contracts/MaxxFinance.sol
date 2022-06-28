@@ -79,6 +79,21 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         _mint(to, amount);
     }
 
+    /// @notice Overrides the burn() function and incrememnts the burnedAmount
+    /// @param _amount The amount to burn
+    function burn(uint256 _amount) public override {
+        burnedAmount += _amount;
+        return super.burn(_amount);
+    }
+
+    /// @notice Overrides the burnFrom() function and increments the burnedAmount
+    /// @param _from The address to burn from
+    /// @param _amount The amount to burn
+    function burnFrom(address _from, uint256 _amount) public override {
+        burnedAmount += _amount;
+        return super.burnFrom(_from, _amount);
+    }
+
     /// @dev Overrides the transfer() function and implements a transfer tax on lp pools
     /// @param _to The address to transfer to
     /// @param _amount The amount to transfer
