@@ -15,7 +15,7 @@ describe("Maxx Token", () => {
     Maxx = (await ethers.getContractFactory(
       "MaxxFinance"
     )) as MaxxFinance__factory;
-    maxx = await Maxx.deploy(deployer.address);
+    maxx = await Maxx.deploy(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
   });
 
   describe("deploy", () => {

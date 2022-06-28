@@ -21,6 +21,7 @@ describe("Liquidity Amplifier", () => {
   let Maxx: MaxxFinance__factory;
   let maxx: MaxxFinance;
   let deployer: any;
+  const nft: any = "0xac7a698a85102f7b1dc7345e7f17ebca74e5a9e7"; // Default Artion Collection
 
   before(async () => {
     const signers = await ethers.getSigners();
@@ -29,7 +30,7 @@ describe("Liquidity Amplifier", () => {
     Maxx = (await ethers.getContractFactory(
       "MaxxFinance"
     )) as MaxxFinance__factory;
-    maxx = await Maxx.deploy(deployer.address);
+    maxx = await Maxx.deploy(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
 
     const blockNumBefore = await ethers.provider.getBlockNumber();
     const blockBefore = await ethers.provider.getBlock(blockNumBefore);
@@ -39,7 +40,7 @@ describe("Liquidity Amplifier", () => {
     Stake = (await ethers.getContractFactory(
       "MaxxStake"
     )) as MaxxStake__factory;
-    stake = await Stake.deploy(maxx.address, timestamp);
+    stake = await Stake.deploy(maxx.address, timestamp, nft);
 
     timestamp = timestamp + 1;
 
