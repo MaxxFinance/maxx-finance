@@ -24,14 +24,26 @@ describe("Maxx Token", () => {
     });
   });
 
-  //   describe("stake", () => {
-  //     it("should stake", async () => {
-  //       const balanceBefore = await maxx.balanceOf(stake.address);
-  //       const tx = await stake.stake(30, ethers.utils.parseEther("1"));
-  //       const balanceAfter = await maxx.balanceOf(stake.address);
-  //       expect(balanceAfter.sub(balanceBefore).toString()).to.equal(
-  //         ethers.utils.parseEther("1").toString()
-  //       );
-  //     });
-  //   });
+  describe("access control", () => {
+    it("should grant a new address the minter role", async () => {});
+    it("should revoke the minter role", async () => {});
+  });
+
+  describe("transfer", () => {
+    it("should transfer peer to peer without a transfer tax", async () => {});
+    it("should collect a transfer tax when buy or sell from a DEX pool", async () => {});
+    it("should transfer tokens from an authorized wallet", async () => {});
+    it("should not transfer more tokens than user's balance", async () => {});
+  });
+
+  describe("burn", () => {
+    it("should burn tokens from msg.sender", async () => {});
+    it("should burn tokens from an authorized wallet", async () => {});
+    it("should not burn more tokens than user's balance", async () => {});
+  });
+
+  describe("mint", () => {
+    it("should mint tokens", async () => {});
+    it("should mint tokens without minter role", async () => {});
+  });
 });
