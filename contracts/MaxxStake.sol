@@ -252,6 +252,7 @@ contract MaxxStake is Ownable {
     /// @notice Function to transfer stake ownership
     /// @param _stakeId The id of the stake
     function transferStake(uint256 _stakeId, address _to) external {
+        require(msg.sender == stakes[_stakeId].owner, "You are not the owner of this stake");
         require(!market[_stakeId], "Stake is on the market");
         _transferStake(_stakeId, _to);
     }
