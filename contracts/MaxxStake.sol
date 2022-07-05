@@ -380,7 +380,12 @@ contract MaxxStake is Ownable {
         uint256 stakeDuration = _duration / 1 days;
         uint256 fullDurationInterest = _stakeTotalShares * BASE_INFLATION * stakeDuration / 365 / BASE_INFLATION_FACTOR;
 
-        uint256 currentDurationInterest = _daysServed * _stakeTotalShares * _daysServed * BASE_INFLATION / stakeDuration  / BASE_INFLATION_FACTOR / stakeDuration;
+        // daily interest => (stake_total_shares * (stake_duration/365)) * base_inflation / stake_duration
+        // current interest => daily interest * days served
+
+        uint256 currentDurationInterest = _daysServed * _stakeTotalShares * stakeDuration * BASE_INFLATION / stakeDuration  / BASE_INFLATION_FACTOR / 365;
+
+        // uint256 currentDurationInterest = _daysServed * _stakeTotalShares * _daysServed * BASE_INFLATION / stakeDuration  / BASE_INFLATION_FACTOR / stakeDuration;
 
         if (currentDurationInterest > fullDurationInterest) {
             interestToDate = fullDurationInterest;
