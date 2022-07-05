@@ -43,7 +43,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     address public maxxFinanceTreasury;
 
     /// @notice block limited or not
-    bool public blockLimited;
+    bool public isBlockLimited;
 
     /// @notice The number of blocks required 
     uint256 public blocksBetweenTransfers;
@@ -64,7 +64,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         _mint(maxxFinanceTreasury, 500000000000 * 10 ** decimals());
         setTransferTax(_transferTax);
         setWhaleLimit(_whaleLimit);
-        setGlobalDailySaleLimit(_globalSellLimit);
+        setGlobalDailySellLimit(_globalSellLimit);
         initialTimestamp = block.timestamp;
     }
 
@@ -72,9 +72,6 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @param amount The amount to mint
     function mint(address to, uint256 amount) external whenNotPaused {
         // Check that the calling account has the minter role
-        console.log("enter mint function");
-        console.log("msg.sender");
-        console.log(msg.sender);
         require(hasRole(MINTER_ROLE, msg.sender), "Caller is not a minter");
         _mint(to, amount);
     }
@@ -99,14 +96,15 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
     function transfer(address _to, uint256 _amount) public override notBlocked(msg.sender) whenNotPaused returns (bool) {
+        console.log("enter transfer");
         require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
 
-        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        uint32 day = getCurrentDay();
         require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
         // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
-        if (blockLimited && isPool[_to] && !isAllowed[msg.sender] && lastPurchase[msg.sender] >= block.number - blocksBetweenTransfers) {
+        if (isBlockLimited && isPool[_to] && !isAllowed[msg.sender] && lastPurchase[msg.sender] >= block.number - blocksBetweenTransfers) {
             isBlocked[msg.sender] = true;
-            return false;
+            revert("ERC20: Address is on blocklist");
         }
         if (isPool[msg.sender]) { // Also occurs if user is withdrawing their liquidity tokens.
             lastPurchase[_to] = block.number;
@@ -131,12 +129,12 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     function transferFrom(address _from, address _to, uint256 _amount) public override notBlocked(_from) whenNotPaused returns (bool) {
         require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit"); 
 
-        uint32 day = uint32(block.timestamp - initialTimestamp / 24 / 60 / 60);
+        uint32 day = getCurrentDay();
         require(dailyAmountSold[day] + _amount <= globalDailySellLimit, "ERC20: Daily sell limit exceeded");
         // Wallet is blacklisted if they attempt to buy and then sell in the same block or consecutive blocks
-        if (blockLimited && isPool[_to] && !isAllowed[_from] && lastPurchase[_from] >= block.number - blocksBetweenTransfers) {
+        if (isBlockLimited && isPool[_to] && !isAllowed[_from] && lastPurchase[_from] >= block.number - blocksBetweenTransfers) {
             isBlocked[_from] = true;
-            return false;
+            revert("ERC20: Address is on blocklist");
         }
         if (isPool[_from]) {
             lastPurchase[_to] = block.number;
@@ -153,9 +151,15 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         return super.transferFrom(_from, _to, _amount);
     }
 
+    /// @notice This functions gets the current day since the initial timestamp
+    function getCurrentDay() public view returns (uint32 day) {
+        day = uint32((block.timestamp - initialTimestamp) / 24 / 60 / 60);
+        return day;
+    }
+
     /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
     function getNextDayTimestamp() external view returns (uint256 timestamp) {
-        uint256 day = ((block.timestamp - initialTimestamp) / 24 / 60 / 60) + 1;
+        uint256 day = uint256(getCurrentDay() + 1);
         timestamp = initialTimestamp + (day * 1 days);
     }
 
@@ -208,6 +212,16 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice Update blockLimited
     /// @param _blockLimited Whether to block limit or not
     function updateBlockLimited(bool _blockLimited) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        blockLimited = _blockLimited;
+        isBlockLimited = _blockLimited;
+    }
+
+    /// @notice Pause the contract
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    /// @notice Unpause the contract
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 }
