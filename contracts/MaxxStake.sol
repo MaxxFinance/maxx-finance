@@ -46,6 +46,7 @@ contract MaxxStake is Ownable {
     /// @param amount The purchase amount
     event Purchase(address indexed user, uint256 indexed stakeId, uint256 amount);
 
+    /// Maxx Finance token
     MaxxFinance public maxx;
     uint256 immutable launchDate;
     uint8 constant LATE_DAYS = 14;
@@ -56,21 +57,48 @@ contract MaxxStake is Ownable {
     uint256 constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
     uint256 constant MAGIC_NUMBER = 1111;
 
+    /// stake id for next created stake
     uint256 public idCounter;
-    uint256 public total_shares;
-    uint256 public total_stakes_alltime;
-    uint256 public total_stakes_active;
-    uint256 public total_stakes_withdrawn;
-    uint256 public total_stakes_matured; // who is going to pay for the transaction to update this?
-    uint256 public total_staked_outstanding_interest; // who is going to pay for the transaction to update this?
 
+    /// amount of shares all time
+    uint256 public totalShares;
+
+    /// alltime stakes
+    uint256 public totalStakesAlltime;
+
+    /// all active stakes
+    uint256 public totalStakesActive;
+
+    /// number of withdraw stakes
+    uint256 public totalStakesWithdrawn;
+
+    /// number of matured stakes
+    uint256 public totalStakesMatured; // who is going to pay for the transaction to update this?
+
+    /// amount of accrued interest
+    uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?
+
+    uint8 public nftBonusPercentage;
+
+    /// bonus nft
     IERC721 public nft; // import nft contract or generic ERC721 interface for balanceOf()
+
+    /// address of the freeClaim contract
     address public freeClaim;
+
+    /// address of the liquidityAmplifier contract
     address public liquidityAmplifier;
 
+    /// mapping of stake id to stake
     mapping(uint256 => StakeData) public stakes;
+
+    /// mapping of stake id to withdrawn amounts
     mapping(uint256 => uint256) public withdrawnAmounts;
+
+    /// mapping of stakes on the market
     mapping(uint256 => bool) public market;
+
+    /// mapping of stake id to their desired sellPrice
     mapping(uint256 => uint256) public sellPrice;
 
     struct StakeData {
@@ -101,12 +129,12 @@ contract MaxxStake is Ownable {
         uint256 shares = _calcShares(_days, _amount);
 
         if (nft.balanceOf(msg.sender) > 0) {
-            // TODO: calculate bonus shares
+            shares = shares * (100 + nftBonusPercentage) / 100;
         }
 
-        total_shares += shares;
-        total_stakes_alltime++;
-        total_stakes_active++;
+        totalShares += shares;
+        totalStakesAlltime++;
+        totalStakesActive++;
 
         uint256 duration = _days * 1 days;
 
@@ -119,8 +147,8 @@ contract MaxxStake is Ownable {
     function unstake(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
         require(tStake.owner == msg.sender, "You are not the owner of this stake");
-        total_stakes_withdrawn++;
-        total_stakes_active--;
+        totalStakesWithdrawn++;
+        totalStakesActive--;
 
         uint256 withdrawableAmount;
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
@@ -161,14 +189,14 @@ contract MaxxStake is Ownable {
         interestToDate = interestToDate - withdrawnAmounts[_stakeId];
         tStake.duration = uint256(MAX_STAKE_DAYS) * 1 days;
         uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
-        total_shares -= tStake.shares;
+        totalShares -= tStake.shares;
 
         tStake.amount += interestToDate;
         tStake.shares = _calcShares(durationInDays, tStake.amount);
         tStake.startDate = block.timestamp;
         
 
-        total_shares += tStake.shares;
+        totalShares += tStake.shares;
         stakes[_stakeId] = tStake; // Update the stake in storage
         emit Stake(msg.sender, durationInDays, tStake.amount);
     }
@@ -189,10 +217,10 @@ contract MaxxStake is Ownable {
         tStake.amount += _topUpAmount + interestToDate;
         tStake.startDate = block.timestamp;
         uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
-        total_shares -= tStake.shares;
+        totalShares -= tStake.shares;
         tStake.shares = _calcShares(durationInDays, tStake.amount);
         tStake.startDate = block.timestamp;
-        total_shares += tStake.shares;
+        totalShares += tStake.shares;
         stakes[_stakeId] = tStake;
         emit Stake(msg.sender, durationInDays, tStake.amount);
     }
@@ -268,9 +296,9 @@ contract MaxxStake is Ownable {
             // e.g. shares = shares * 10%
         }
         
-        total_shares += shares;
-        total_stakes_alltime++;
-        total_stakes_active++;
+        totalShares += shares;
+        totalStakesAlltime++;
+        totalStakesActive++;
 
         uint256 duration = _days * 1 days;
 
@@ -281,20 +309,20 @@ contract MaxxStake is Ownable {
 
     /// @notice Function to stake MAXX
     /// @dev User must approve MAXX before staking
+    /// @param _owner The owner of the stake
     /// @param _amount The amount of MAXX to stake
-    function freeClaimStake(uint256 _amount) external {
+    function freeClaimStake(address _owner, uint256 _amount) external {
         // require (msg.sender == address(freeClaim), "Can only be called by freeClaim contract");
         require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract
 
         uint256 shares = _calcShares(365, _amount);
-        total_shares += shares;
-        total_stakes_alltime++;
-        total_stakes_active++;
+        totalShares += shares;
+        totalStakesAlltime++;
+        totalStakesActive++;
 
         uint256 duration = 365 days;
 
-        // Uses tx.origin as the owner of the stake -> owner must be an external account
-        stakes[idCounter] = StakeData(tx.origin, "", _amount, shares, duration, block.timestamp);
+        stakes[idCounter] = StakeData(_owner, "", _amount, shares, duration, block.timestamp);
         idCounter++;
     }
 
@@ -308,6 +336,12 @@ contract MaxxStake is Ownable {
     /// @param _freeClaim The address of the freeClaim contract
     function setFreeClaim(address _freeClaim) external onlyOwner {
         freeClaim = _freeClaim;
+    }
+
+    /// @notice Function to set the NFT bonus percentage
+    /// @param _nftBonusPercentage The percentage of NFT bonus (e.g. 20 = 20%)
+    function setNftBonusPercentage(uint8 _nftBonusPercentage) external onlyOwner {
+        nftBonusPercentage = _nftBonusPercentage;
     }
 
     /// @notice This function will return day `day` out of 60 days
