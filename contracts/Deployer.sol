@@ -8,7 +8,7 @@ contract Deployer {
     /// @notice Deploys a contract using the create2 method
     /// @param code The bytecode of the contract to deploy
     /// @param salt The salt to use for the create2 method
-    function deploy(bytes memory code, uint256 salt) public {
+    function deploy(bytes memory code, uint256 salt) external {
         address addr;
         assembly {
             addr := create2(0, add(code, 0x20), mload(code), salt)
