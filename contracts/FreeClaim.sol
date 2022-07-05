@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-import { MaxxStake as Stake } from './MaxxStake.sol';
+import { IStake } from "./interfaces/IStake.sol";
 
 /// @author Alta Web3 Labs
 contract FreeClaim is Ownable, ReentrancyGuard {
@@ -27,7 +27,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     uint256 constant public MAX_CLAIM_AMOUNT = 5000000 * (10 ** 8); // 5 million MAXX
 
     /// @notice Address of the MAXX staking contract
-    Stake public stake;
+    IStake public stake;
 
     /// @notice Address of the MAXX token contract
     IERC20 public MAXX;
@@ -38,7 +38,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     constructor(uint256 _startDate, bytes32 _merkleRoot, address _stake, address _MAXX) {
         startDate = _startDate;
         merkleRoot = _merkleRoot;
-        stake = Stake(_stake);
+        stake = IStake(_stake);
         MAXX = IERC20(_MAXX);
     }
 
@@ -47,7 +47,6 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         uint256 amount;
     }
 
-    mapping (address => uint256) public userToClaim;
     Claim[] public claims;
 
     /// @notice Function to retrive free claim
@@ -68,34 +67,22 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             _amount = contractBalance;
         }
 
-        if (_referrer != address(0)) {
-            _amount = ((_amount * 11) / 10); // Should be moved after the following if statement if referral bonus can exceed max claim amount
-        }
-
         if (_amount > MAX_CLAIM_AMOUNT) {
             _amount = MAX_CLAIM_AMOUNT; // cannot claim more than the MAX_CLAIM_AMOUNT
         }
 
-        _amount = _amount * (FREE_CLAIM_DURATION - timePassed) / FREE_CLAIM_DURATION; // adjust amount for the speed penalty
-
-        hasClaimed[msg.sender] = true;
-
-        if (userToClaim[msg.sender] == 0) {
-            claims.push(Claim(msg.sender, _amount));
-        } else {
-            claims[userToClaim[msg.sender]].amount += _amount;
-        }
+         _amount = _amount * (FREE_CLAIM_DURATION - timePassed) / FREE_CLAIM_DURATION; // adjust amount for the speed penalty
 
         if (_referrer != address(0)) {
-            if (userToClaim[_referrer] == 0) {
-            claims.push(Claim(_referrer, _amount));
-            } else {
-                claims[userToClaim[_referrer]].amount += _amount;
-            }
+            uint256 referralAmount = _amount / 10;
+            _amount += referralAmount;
+            stake.freeClaimStake(_referrer, referralAmount); // give the referrer 10% of the free claim amount
+            emit UserClaim(_referrer, referralAmount);
         }
-        
-        userToClaim[msg.sender] = uint256(claims.length - 1);
-        stake.freeClaimStake(_amount);
+       
+        hasClaimed[msg.sender] = true;
+
+        stake.freeClaimStake(msg.sender, _amount);
         emit UserClaim(msg.sender, _amount);
     }
 
