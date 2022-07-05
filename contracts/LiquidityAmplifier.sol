@@ -4,7 +4,7 @@ pragma solidity ^0.8.15;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import { MaxxStake as Stake } from './MaxxStake.sol';
+import { IStake } from "./interfaces/IStake.sol";
 
 /// @author Alta Web3 Labs
 contract LiquidityAmplifier is Ownable {
@@ -25,11 +25,14 @@ contract LiquidityAmplifier is Ownable {
     uint256[60] private maxxDailyAllocation;
     uint256[60] private ftmDailyDeposits;
 
+    mapping (address => bool) public participated;
+    address[] public participants;
+
     /// @notice Liquidity amplifier start date
     uint256 public startDate;
 
     /// @notice Address of the Maxx Finance staking contract
-    Stake public stake;
+    IStake public stake;
 
     /// @notice Address of the MAXX token contract
     IERC20 public MAXX;
@@ -38,7 +41,7 @@ contract LiquidityAmplifier is Ownable {
 
     constructor(uint256 _startDate, address _stake, address _MAXX) {
         startDate = _startDate;
-        stake = Stake(_stake);
+        stake = IStake(_stake);
         MAXX = IERC20(_MAXX);
     }
  
@@ -47,6 +50,10 @@ contract LiquidityAmplifier is Ownable {
         require(block.timestamp < startDate +  60 days, "Liquidity Amplifier is completed");
         uint256 amount = msg.value;
         uint8 day = getDay();
+        if (!participated[msg.sender]) {
+            participated[msg.sender] = true;
+            participants.push(msg.sender);
+        }
         userDailyDeposits[msg.sender][day] += amount;
         ftmDailyDeposits[day] += amount;
         emit Deposit(msg.sender, amount);
@@ -92,6 +99,12 @@ contract LiquidityAmplifier is Ownable {
     function getDay() public view returns (uint8 day) {
         day = uint8(block.timestamp - startDate / 60 / 60 / 24);
         return day;
+    }
+
+    /// @notice This function will return all liquidity amplifier participants
+    /// @return participants Array of addresses that have participated in the Liquidity Amplifier
+    function getParticipants() external view returns (address[] memory) {
+        return participants;
     }
 
     /// @notice Function to transfer Fantom from this contract to address from input
