@@ -323,7 +323,12 @@ contract MaxxStake is Ownable {
 
         uint256 duration = 365 days;
 
-        stakes[idCounter] = StakeData(_owner, "", _amount, shares, duration, block.timestamp);
+        if (block.timestamp < launchDate) {
+            stakes[idCounter] = StakeData(_owner, "", _amount, shares, duration, launchDate);
+        } else {
+            stakes[idCounter] = StakeData(_owner, "", _amount, shares, duration, block.timestamp);
+        }
+        
         idCounter++;
     }
 
