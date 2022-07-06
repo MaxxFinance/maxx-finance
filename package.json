@@ -1,5 +1,5 @@
 {
-  "name": "hardhat-project",
+  "name": "maxxfinance-contracts",
   "version": "1.0.0",
   "description": "Hardhat repository for Maxx Finance Smart Contracts",
   "main": "index.js",
