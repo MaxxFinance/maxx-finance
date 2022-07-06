@@ -225,6 +225,7 @@ contract MaxxStake is Ownable {
         emit Stake(msg.sender, durationInDays, tStake.amount);
     }
 
+    // TODO: may get moved to the marketplace contract
     /// @notice Function to list stake on the market
     /// @param _stakeId The id of the stake to list
     /// @param _amount The price of the stake in the native coin
@@ -236,6 +237,7 @@ contract MaxxStake is Ownable {
         emit List(msg.sender, _stakeId, _amount);
     }
 
+    /// TODO: may get moved to the marketplace contract
     /// @notice Function to buy a stake from the market
     /// @param _stakeId The id of the stake to buy
     function buyStake(uint256 _stakeId) external payable {
@@ -367,8 +369,16 @@ contract MaxxStake is Ownable {
     /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
     /// @return shares The number of shares for the full-term stake
     function _calcShares(uint16 duration, uint256 _amount) internal view returns (uint256 shares) {
-        uint256 SF = _getShareFactor();
-        shares = (_amount / (2 - SF)) + (((_amount / (2 - SF)) * (duration - 1)) / MAGIC_NUMBER);
+        uint256 shareFactor = _getShareFactor();
+
+        uint256 basicShares = _amount / (2 - shareFactor);
+        uint256 bpbBonus = _amount / 10000000;
+        if (bpbBonus > 10) {
+            bpbBonus = 10;
+        }
+        uint256 bpbShares = basicShares * bpbBonus / 100; // bigger pays better
+        uint256 lpbShares = (basicShares + bpbShares) * (duration - 1) / MAGIC_NUMBER; // longer pays better
+        shares = basicShares + bpbShares + lpbShares;
         return shares;
     }
 
