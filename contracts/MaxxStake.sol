@@ -3,14 +3,15 @@ pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol"; // TODO change Ownable to AccessControl
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "hardhat/console.sol";
 
 import { MaxxFinance } from "./MaxxFinance.sol";
 
 /// @author Alta Web3 Labs
-contract MaxxStake is Ownable {
+contract MaxxStake is Ownable, AccessControl {
     using SafeERC20 for IERC20;
 
     /// @notice Emitted when MAXX is staked
@@ -34,17 +35,7 @@ contract MaxxStake is Ownable {
     /// @param amount The amount of interest scraped
     event ScrapeInterest(address indexed user, uint256 amount);
 
-    /// @notice Emitted when stake is listed to the market
-    /// @param user The user who listed the stake
-    /// @param stakeId The id of the stake
-    /// @param amount The amount asked for the stake
-    event List(address indexed user, uint256 indexed stakeId, uint256 amount);
-
-    /// @notice Emitted when stake is purhased off the market
-    /// @param user The user who purchased the stake
-    /// @param stakeId The id of the stake
-    /// @param amount The purchase amount
-    event Purchase(address indexed user, uint256 indexed stakeId, uint256 amount);
+    bytes32 public constant MARKETPLACE = keccak256("MARKETPLACE");
 
     /// Maxx Finance token
     MaxxFinance public maxx;
@@ -78,6 +69,7 @@ contract MaxxStake is Ownable {
     /// amount of accrued interest
     uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?
 
+    /// percentage of nft bonus
     uint8 public nftBonusPercentage;
 
     /// bonus nft
@@ -95,11 +87,10 @@ contract MaxxStake is Ownable {
     /// mapping of stake id to withdrawn amounts
     mapping(uint256 => uint256) public withdrawnAmounts;
 
-    /// mapping of stakes on the market
-    mapping(uint256 => bool) public market;
+    // mapping of stake allowances
+    mapping(uint256 => mapping(address => bool)) public allowances;
 
-    /// mapping of stake id to their desired sellPrice
-    mapping(uint256 => uint256) public sellPrice;
+    mapping(uint256 => address) public stakeOwner;
 
     struct StakeData {
         address owner;
@@ -111,6 +102,7 @@ contract MaxxStake is Ownable {
     }
 
     constructor(address _maxx, uint256 _launchDate, address _nft) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         maxx = MaxxFinance(_maxx);
         launchDate = _launchDate;
         nft = IERC721(_nft);
@@ -118,28 +110,41 @@ contract MaxxStake is Ownable {
 
     /// @notice Function to stake MAXX
     /// @dev User must approve MAXX before staking
-    /// @param _days The number of days to stake (min 5, max 3333)
+    /// @param _days The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
     function stake(uint16 _days, uint256 _amount) external {
+        console.log("enter stake");
         require(_days >= MIN_STAKE_DAYS, "Stake too short");
         require(_days <= MAX_STAKE_DAYS, "Stake too long");
 
         require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract
+        console.log("maxx transferred");
 
         uint256 shares = _calcShares(_days, _amount);
+        console.log("shares calculated");
+        console.log(shares);
 
         if (nft.balanceOf(msg.sender) > 0) {
             shares = shares * (100 + nftBonusPercentage) / 100;
         }
+        console.log("shares after nft bonus");
 
         totalShares += shares;
         totalStakesAlltime++;
         totalStakesActive++;
+        console.log("counters incremented");
 
-        uint256 duration = _days * 1 days;
+        console.log("days:");
+        console.log(_days);
+        uint256 duration = uint256(_days) * 1 days;
+        console.log("duration calculated"); 
+        console.log(duration);
 
         stakes[idCounter] = StakeData(msg.sender, "", _amount, shares, duration, block.timestamp);
+        stakeOwner[idCounter] = msg.sender;
+        console.log("stake data created");
         idCounter++;
+        console.log("idCounter incremented");
         emit Stake(msg.sender, _days, _amount);
     }
 
@@ -157,7 +162,7 @@ contract MaxxStake is Ownable {
 
         if (daysServed < (tStake.duration / 1 days)) { // unstaking early
             // fee assessed
-            withdrawableAmount = (tStake.amount + interestToDate) * daysServed / (tStake.duration / 1 days);
+            withdrawableAmount = (tStake.amount + interestToDate) * daysServed / tStake.duration / 1 days;
         } else if (daysServed > (tStake.duration / 1 days) + LATE_DAYS) { // unstaking late
             // fee assessed
             uint256 daysLate = daysServed - (tStake.duration / 1 days) - LATE_DAYS;
@@ -166,6 +171,7 @@ contract MaxxStake is Ownable {
         } else { // unstaking on time
             withdrawableAmount = tStake.amount + interestToDate;
         }
+
         withdrawnAmounts[_stakeId] = withdrawableAmount;
         uint256 maxxBalance = maxx.balanceOf(address(this));
 
@@ -225,37 +231,10 @@ contract MaxxStake is Ownable {
         emit Stake(msg.sender, durationInDays, tStake.amount);
     }
 
-    // TODO: may get moved to the marketplace contract
-    /// @notice Function to list stake on the market
-    /// @param _stakeId The id of the stake to list
-    /// @param _amount The price of the stake in the native coin
-    function listStake(uint256 _stakeId, uint256 _amount) external {
-        StakeData memory tStake = stakes[_stakeId];
-        require(tStake.owner == msg.sender, "You are not the owner of this stake");
-        market[_stakeId] = true;
-        sellPrice[_stakeId] = _amount;
-        emit List(msg.sender, _stakeId, _amount);
-    }
-
-    /// TODO: may get moved to the marketplace contract
-    /// @notice Function to buy a stake from the market
-    /// @param _stakeId The id of the stake to buy
-    function buyStake(uint256 _stakeId) external payable {
-        StakeData memory tStake = stakes[_stakeId];
-        require(market[_stakeId], "This stake is not for sale");
-        require(msg.value >= sellPrice[_stakeId], "Must send at least the asking price");
-        market[_stakeId] = false;
-        sellPrice[_stakeId] = 0;
-        _transferStake(_stakeId, msg.sender);
-        _transfer(payable(tStake.owner), msg.value);
-        emit Purchase(msg.sender, _stakeId, msg.value);
-    }
-
     /// @notice Function to transfer stake ownership
     /// @param _stakeId The id of the stake
     function transferStake(uint256 _stakeId, address _to) external {
-        require(msg.sender == stakes[_stakeId].owner, "You are not the owner of this stake");
-        require(!market[_stakeId], "Stake is on the market");
+        require(msg.sender == stakes[_stakeId].owner || hasRole(MARKETPLACE, msg.sender), "Not authorized to transfer stake");
         _transferStake(_stakeId, _to);
     }
 
@@ -264,7 +243,6 @@ contract MaxxStake is Ownable {
     function scrapeInterest(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
         require(tStake.owner == msg.sender, "You are not the owner of this stake");
-        require(!market[_stakeId], "Stake is on the market");
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
         uint256 interestToDate = _calcInterestToDate(tStake.shares, daysServed, tStake.duration);
 
@@ -357,6 +335,10 @@ contract MaxxStake is Ownable {
     function getDaysSinceLaunch() public view returns (uint256 day) {
         day = (block.timestamp - launchDate) / 60 / 60 / 24;
         return day;
+    }
+
+    function allowance(address _spender, uint256 _stakeId) public view returns (bool) {
+        return allowances[_stakeId][_spender];
     }
 
     function _transferStake(uint256 _stakeId, address _to) internal {
