@@ -112,7 +112,7 @@ describe("Stake", () => {
       expect(userStake.owner.toString()).to.equal(deployer.address);
 
       const shares = userStake.shares;
-      const fullInterest = (Number(shares) * 30) / 365 / 10;
+      const fullInterest = shares.mul(30).mul(10).div(365).div(100);
       const fullPrincipalInterest = ethers.utils
         .parseEther("1")
         .add(fullInterest.toString());
@@ -120,7 +120,7 @@ describe("Stake", () => {
       await stake.unstake(0);
       const balanceAfter = await maxx.balanceOf(deployer.address);
       const balanceDifference = balanceAfter.sub(balanceBefore);
-      expect(balanceDifference.gt(amount.toString())).to.be.true;
+      expect(Number(balanceDifference)).to.be.gt(Number(amount));
       expect(balanceDifference.toString()).to.be.equal(
         fullPrincipalInterest.toString()
       );
@@ -395,66 +395,66 @@ describe("Stake", () => {
     });
   });
 
-  describe("MarketPlace", () => {
-    it("should list the stake on the marketplace", async () => {
-      await maxx.approve(stake.address, amount);
-      await stake.stake(120, amount);
-      stakeCounter++;
+  // describe("MarketPlace", () => {
+  //   it("should list the stake on the marketplace", async () => {
+  //     await maxx.approve(stake.address, amount);
+  //     await stake.stake(120, amount);
+  //     stakeCounter++;
 
-      expect(await stake.market(stakeCounter)).to.be.false;
-      await stake.listStake(stakeCounter, amount);
-      expect(await stake.market(stakeCounter)).to.be.true;
-      expect(await stake.sellPrice(stakeCounter)).to.be.equal(amount);
-    });
+  //     expect(await stake.market(stakeCounter)).to.be.false;
+  //     await stake.listStake(stakeCounter, amount);
+  //     expect(await stake.market(stakeCounter)).to.be.true;
+  //     expect(await stake.sellPrice(stakeCounter)).to.be.equal(amount);
+  //   });
 
-    it("should emit a list event", async () => {
-      await maxx.approve(stake.address, amount);
-      await stake.stake(120, amount);
-      stakeCounter++;
+  //   it("should emit a list event", async () => {
+  //     await maxx.approve(stake.address, amount);
+  //     await stake.stake(120, amount);
+  //     stakeCounter++;
 
-      expect(await stake.listStake(stakeCounter, amount))
-        .to.emit(stake, "List")
-        .withArgs(deployer.address, stakeCounter, amount);
-    });
+  //     expect(await stake.listStake(stakeCounter, amount))
+  //       .to.emit(stake, "List")
+  //       .withArgs(deployer.address, stakeCounter, amount);
+  //   });
 
-    it("should buy the stake", async () => {
-      await maxx.approve(stake.address, amount);
-      await stake.stake(120, amount);
-      stakeCounter++;
+  //   it("should buy the stake", async () => {
+  //     await maxx.approve(stake.address, amount);
+  //     await stake.stake(120, amount);
+  //     stakeCounter++;
 
-      let userStake = await stake.stakes(stakeCounter);
-      const ownerBefore = userStake.owner;
+  //     let userStake = await stake.stakes(stakeCounter);
+  //     const ownerBefore = userStake.owner;
 
-      expect(await stake.market(stakeCounter)).to.be.false;
-      await stake.listStake(stakeCounter, amount);
-      expect(await stake.market(stakeCounter)).to.be.true;
-      expect(await stake.sellPrice(stakeCounter)).to.be.equal(amount);
+  //     expect(await stake.market(stakeCounter)).to.be.false;
+  //     await stake.listStake(stakeCounter, amount);
+  //     expect(await stake.market(stakeCounter)).to.be.true;
+  //     expect(await stake.sellPrice(stakeCounter)).to.be.equal(amount);
 
-      await maxx.connect(otherAddress).approve(stake.address, amount);
-      await stake.connect(otherAddress).buyStake(stakeCounter, {
-        value: amount,
-      });
-      userStake = await stake.stakes(stakeCounter);
-      const ownerAfter = userStake.owner;
+  //     await maxx.connect(otherAddress).approve(stake.address, amount);
+  //     await stake.connect(otherAddress).buyStake(stakeCounter, {
+  //       value: amount,
+  //     });
+  //     userStake = await stake.stakes(stakeCounter);
+  //     const ownerAfter = userStake.owner;
 
-      expect(ownerAfter).to.be.equal(otherAddress.address);
-      expect(ownerBefore).to.be.equal(deployer.address);
-      expect(ownerAfter).to.be.not.equal(ownerBefore);
-    });
+  //     expect(ownerAfter).to.be.equal(otherAddress.address);
+  //     expect(ownerBefore).to.be.equal(deployer.address);
+  //     expect(ownerAfter).to.be.not.equal(ownerBefore);
+  //   });
 
-    it("should not buy the stake if ETH isn't sent", async () => {
-      await maxx.approve(stake.address, amount);
-      await stake.stake(120, amount);
-      stakeCounter++;
+  //   it("should not buy the stake if ETH isn't sent", async () => {
+  //     await maxx.approve(stake.address, amount);
+  //     await stake.stake(120, amount);
+  //     stakeCounter++;
 
-      await stake.listStake(stakeCounter, amount);
+  //     await stake.listStake(stakeCounter, amount);
 
-      await maxx.connect(otherAddress).approve(stake.address, amount);
-      await expect(
-        stake.connect(otherAddress).buyStake(stakeCounter)
-      ).to.be.revertedWith("Must send at least the asking price");
-    });
-  });
+  //     await maxx.connect(otherAddress).approve(stake.address, amount);
+  //     await expect(
+  //       stake.connect(otherAddress).buyStake(stakeCounter)
+  //     ).to.be.revertedWith("Must send at least the asking price");
+  //   });
+  // });
 
   describe("Transfer", () => {
     it("should transfer the stake to a new wallet", async () => {
@@ -495,5 +495,9 @@ describe("Stake", () => {
       expect(nameAfter).to.not.be.equal(nameBefore);
       expect(nameAfter).to.be.equal(newName);
     });
+  });
+
+  describe("NFT Bonus", () => {
+    it("should give an NFT bonus on share amount", async () => {});
   });
 });
