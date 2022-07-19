@@ -96,7 +96,6 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @param _amount The amount to transfer
     /// @return Whether the transfer was successful
     function transfer(address _to, uint256 _amount) public override notBlocked(msg.sender) whenNotPaused returns (bool) {
-        console.log("enter transfer");
         require(_amount < whaleLimit, "ERC20: Transfer amount exceeds whale limit");
 
         uint32 day = getCurrentDay();
