@@ -8,7 +8,11 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import { IStake } from "./interfaces/IStake.sol";
 
-/// @author Alta Web3 Labs
+error AlreadyClaimed();
+error InvalidProof();
+error FreeClaimEnded();
+
+/// @author Alta Web3 Labs - SonOfMosiah
 contract FreeClaim is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -17,6 +21,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @param amount The amount of free claim claimed
     event UserClaim(address indexed user, uint256 amount);
 
+    // TODO: may need to create multiple merkle roots depending on Merkle Tree size.
     /// @notice Merkle root for the free claim whitelist
     bytes32 public merkleRoot;
 
@@ -53,14 +58,18 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @param _amount The amount of MAXX whitelisted for the sender
     /// @param _proof The merkle proof of the whitelist
     function freeClaim(uint256 _amount, bytes32[] memory _proof, address _referrer) external nonReentrant {
-        require(!hasClaimed[msg.sender], "User has already claimed");
-        require(
-            _verifyMerkleLeaf(_generateMerkleLeaf(msg.sender, _amount), _proof),
-            "Invalid proof, not on whitelist"
-        );
+        if (hasClaimed[_referrer]) {
+            revert AlreadyClaimed();
+        }
+        if (!_verifyMerkleLeaf(_generateMerkleLeaf(msg.sender, _amount), _proof)) {
+            revert InvalidProof();
+        }
 
         uint256 contractBalance = MAXX.balanceOf(address(this));
-        require(contractBalance > 0, "No MAXX tokens to claim");
+        if (contractBalance == 0) {
+            revert FreeClaimEnded();
+        }
+        
         uint256 timePassed = block.timestamp - startDate;
 
         if (_amount > contractBalance) {
@@ -101,6 +110,12 @@ contract FreeClaim is Ownable, ReentrancyGuard {
                 merkleRoot,
                 _generateMerkleLeaf(_account, _amount)
             );
+    }
+
+    /// @notice Update the merkle root
+    /// @param _merkleRoot new merkle root
+    function updateMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        merkleRoot = _merkleRoot;
     }
 
     function _generateMerkleLeaf(address _account, uint256 _amount)
