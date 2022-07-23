@@ -23,21 +23,29 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 // Go to https://hardhat.org/config/ to learn more
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.15",
+  solidity: {
+    version: "0.8.15",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
   networks: {
-    fantom: {
-      url: process.env.FANTOM_URL || "",
+    polygon: {
+      url: process.env.POLYGON_URL || "",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
-    testnet: {
-      url: process.env.TESTNET_URL || "",
+    mumbai: {
+      url: process.env.MUMBAI_URL || "",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     hardhat: {
       forking: {
-        url: process.env.FANTOM_URL || "",
+        url: process.env.POLYGON_URL || "",
       },
     },
   },
@@ -47,8 +55,8 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      fantom: process.env.FTMSCAN_API_KEY!,
-      fantomTestnet: process.env.FTMSCAN_API_KEY!,
+      polygon: process.env.POLYGONSCAN_API_KEY!,
+      polygonMumbai: process.env.POLYGONSCAN_API_KEY!,
     },
   },
 };
