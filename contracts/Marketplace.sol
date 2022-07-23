@@ -37,6 +37,11 @@ contract Marketplace is Ownable {
     /// @param amount The amount asked for the stake
     event List(address indexed user, uint256 indexed stakeId, uint256 amount);
 
+    /// @notice Emitted when stake is delisted from the market
+    /// @param user The user who listed the stake
+    /// @param stakeId The id of the stake
+    event Delist(address indexed user, uint256 indexed stakeId);
+
     /// @notice Emitted when stake is purhased off the market
     /// @param user The user who purchased the stake
     /// @param stakeId The id of the stake
@@ -70,7 +75,6 @@ contract Marketplace is Ownable {
     /// @param _stakeId The id of the stake to list
     /// @param _amount The price of the stake in the native coin
     function listStake(uint256 _stakeId, uint256 _amount, uint256 _duration) external {
-        // require approval
         address stakeOwner = maxxStake.stakeOwner(_stakeId);
         if (!maxxStake.allowance(stakeOwner, address(this), _stakeId)) {
             revert NotApproved();
@@ -81,6 +85,18 @@ contract Marketplace is Ownable {
         sellPrice[_stakeId] = _amount;
         listings[_stakeId] = Listing(msg.sender, _amount, block.timestamp + _duration);
         emit List(msg.sender, _stakeId, _amount);
+    }
+
+    /// @notice Function to delist stake from the market
+    /// @param _stakeId The id of the stake to delist
+    function delistStake(uint256 _stakeId) external {
+        address stakeOwner = maxxStake.stakeOwner(_stakeId);
+        if (msg.sender != stakeOwner) {
+            revert NotOwner();
+        }
+        sellPrice[_stakeId] = 0;
+        listings[_stakeId] = Listing(address(0), 0, 0);
+        emit Delist(msg.sender, _stakeId);
     }
 
     /// @notice Function to buy a stake from the market
