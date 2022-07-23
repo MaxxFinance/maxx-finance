@@ -29,7 +29,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     uint256 constant FREE_CLAIM_DURATION = 365 days;
 
     /// @notice Max number of MAXX tokens that can be claimed by a user
-    uint256 constant public MAX_CLAIM_AMOUNT = 5000000 * (10 ** 8); // 5 million MAXX
+    uint256 constant public MAX_CLAIM_AMOUNT = 1000000 * (10 ** 8); // 1 million MAXX
 
     /// @notice Address of the MAXX staking contract
     IStake public stake;
@@ -69,7 +69,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         if (contractBalance == 0) {
             revert FreeClaimEnded();
         }
-        
+
         uint256 timePassed = block.timestamp - startDate;
 
         if (_amount > contractBalance) {
