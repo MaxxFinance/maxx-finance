@@ -33,6 +33,8 @@ describe.only("Marketplace", () => {
     )) as MaxxFinance__factory;
     maxx = await Maxx.deploy(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
 
+    await maxx.transfer(signers[1].address, ethers.utils.parseEther("100000"));
+
     const blockNumBefore = await ethers.provider.getBlockNumber();
     const blockBefore = await ethers.provider.getBlock(blockNumBefore);
     const timestampBefore = blockBefore.timestamp;
@@ -50,7 +52,7 @@ describe.only("Marketplace", () => {
     Marketplace = (await ethers.getContractFactory(
       "Marketplace"
     )) as Marketplace__factory;
-    marketplace = await Marketplace.deploy(stake.address);
+    marketplace = await Marketplace.deploy(stake.address, maxx.address);
 
     log.yellow("marketplace.address: ", marketplace.address);
   });
@@ -94,8 +96,9 @@ describe.only("Marketplace", () => {
       expect(listing.amount).to.equal(listingAmount);
     });
 
-    it("should emit a list event", async () => {
+    it("should emit a List event", async () => {
       const stakeId = await stake.idCounter();
+      log.yellow("stakeId: ", stakeId);
       const stakeDays = 365;
       const stakeAmount = ethers.utils.parseEther("100");
       await maxx.approve(stake.address, stakeAmount);
@@ -108,5 +111,34 @@ describe.only("Marketplace", () => {
         .to.emit(marketplace, "List")
         .withArgs(signers[0].address, stakeId, listingAmount);
     });
+
+    it("should buy stake", async () => {
+      const stakeId = 0;
+      const amount = await marketplace.sellPrice(stakeId);
+      await maxx.connect(signers[1]).approve(marketplace.address, amount);
+      const maxxBefore = await maxx.balanceOf(signers[1].address);
+      const buyStake = await marketplace.connect(signers[1]).buyStake(stakeId);
+      log.green("stake bought");
+      const maxxAfter = await maxx.balanceOf(signers[1].address);
+      expect(maxxBefore.sub(maxxAfter)).to.equal(amount);
+    });
+
+    it("should emit a Purchase event", async () => {
+      const stakeId = 1;
+      const amount = await marketplace.sellPrice(stakeId);
+      await maxx.connect(signers[1]).approve(marketplace.address, amount);
+      const maxxBefore = await maxx.balanceOf(signers[1].address);
+      await expect(marketplace.connect(signers[1]).buyStake(stakeId)).to.emit(marketplace, "Purchase").withArgs(signers[1].address, stakeId, amount);
+    });
+
+    it("return all listings", async () => {
+      const listing0 = await marketplace.listings(0);
+      const listing1 = await marketplace.listings(1);
+      const expectedListings = [listing0, listing1]
+      const listings = await marketplace.getAllListings()
+      log.yellow("listings:", listings.toString());
+      expect(listings).to.eq(expectedListings)
+    });
   });
 });
+s
