@@ -8,10 +8,16 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import { IStake } from "./interfaces/IStake.sol";
 
+/// User has already claimed their allotment of MAXX
 error AlreadyClaimed();
+
+/// Merkle proof is invalid
 error InvalidProof();
+
+/// No more MAXX left to claim
 error FreeClaimEnded();
 
+/// @title Maxx Finance Free Claim
 /// @author Alta Web3 Labs - SonOfMosiah
 contract FreeClaim is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -22,22 +28,23 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     event UserClaim(address indexed user, uint256 amount);
 
     // TODO: may need to create multiple merkle roots depending on Merkle Tree size.
-    /// @notice Merkle root for the free claim whitelist
+    /// Merkle root for the free claim whitelist
     bytes32 public merkleRoot;
 
+    /// Free claim start date
     uint256 public immutable startDate;
     uint256 constant FREE_CLAIM_DURATION = 365 days;
 
-    /// @notice Max number of MAXX tokens that can be claimed by a user
+    /// Max number of MAXX tokens that can be claimed by a user
     uint256 constant public MAX_CLAIM_AMOUNT = 1000000 * (10 ** 8); // 1 million MAXX
 
-    /// @notice Address of the MAXX staking contract
+    /// Maxx Finance staking contract
     IStake public stake;
 
-    /// @notice Address of the MAXX token contract
+    /// MAXX token contract
     IERC20 public MAXX;
 
-    /// @notice True if user has already claimed MAXX
+    /// True if user has already claimed MAXX
     mapping (address => bool) public hasClaimed;
 
     constructor(uint256 _startDate, bytes32 _merkleRoot, address _stake, address _MAXX) {
@@ -52,6 +59,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         uint256 amount;
     }
 
+    /// Array of claims that have been made
     Claim[] public claims;
 
     /// @notice Function to retrive free claim
