@@ -10,7 +10,7 @@ import "hardhat/console.sol";
 
 import { MaxxFinance } from "./MaxxFinance.sol";
 
-/// @author Alta Web3 Labs
+/// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxStake is Ownable, AccessControl {
     using SafeERC20 for IERC20;
 
@@ -233,9 +233,10 @@ contract MaxxStake is Ownable, AccessControl {
 
     /// @notice Function to transfer stake ownership
     /// @param _stakeId The id of the stake
-    function transferStake(uint256 _stakeId, address _to) external {
+    function transferStake(uint256 _stakeId, address _to) external returns (bool) {
         require(msg.sender == stakes[_stakeId].owner || hasRole(MARKETPLACE, msg.sender), "Not authorized to transfer stake");
         _transferStake(_stakeId, _to);
+        return true;
     }
 
     /// @notice Function to withdraw interest early from a stake
