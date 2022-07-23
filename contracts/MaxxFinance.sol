@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "hardhat/console.sol";
 
+// TODO: change require statements to custom errors
+/// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -61,7 +63,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         maxxFinanceTreasury = _maxxFinanceTreasury;
-        _mint(maxxFinanceTreasury, 500000000000 * 10 ** decimals());
+        _mint(maxxFinanceTreasury, 100000000000 * 10 ** decimals()); // Initial supply: 100 billion MAXX
         setTransferTax(_transferTax);
         setWhaleLimit(_whaleLimit);
         setGlobalDailySellLimit(_globalSellLimit);
