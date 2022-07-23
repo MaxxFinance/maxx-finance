@@ -16,11 +16,13 @@ interface IStake {
     function stakes(uint256) external view returns (StakeData memory);
     function stakeOwner(uint256) external view returns (address);
 
-    function stake(uint16, uint256) external;
-    function unstake(uint256) external;
-    function freeClaimStake(address, uint256) external;
-    function amplifierStake(uint16, uint256) external;
+    function stake(uint16 numDays, uint256 amount) external;
+    function unstake(uint256 stakeId) external;
+    function freeClaimStake(address owner, uint256 amount) external;
+    function amplifierStake(uint16 numDays, uint256 amount) external;
 
-    function allowance(address, uint256) external view returns (bool);
-    function transferStake(uint256 stakeId, address to) external returns (bool);
+    function allowance(address owner, address spender, uint256 stakeId) external view returns (bool);
+    function approve(address spender, uint256 stakeId, bool approval) external returns (bool);
+    function transfer(address to, uint256 stakeId) external returns (bool);
+    function transferFrom(address from, address to, uint256 stakeId) external returns (bool);
 }
