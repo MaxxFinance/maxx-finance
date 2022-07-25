@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
-import "hardhat/console.sol";
+import {ILiquidityAmplifier} from "./interfaces/ILiquidityAmplifier.sol";
+import {IMaxxFinance} from "./interfaces/IMaxxFinance.sol";
 
-import { MaxxFinance } from "./MaxxFinance.sol";
-
-/// Not the owner the stake
-error NotOwner();
+/// Not authorized to control the stake
+error NotAuthorized();
 
 /// The stake is already approved
 error AlreadyApproved();
+
+/// Stake owner is attempting to approve themselves
+error SelfApproval();
 
 /// The spender is not approved to transfer the stake
 error UnauthorizedTransfer();
@@ -30,10 +33,20 @@ error InsufficientMaxx();
 /// Stake has not yet completed
 error StakeNotComplete();
 
+/// Stake has already matured
+error StakeMatured();
+
+/// Stake does not exist
+error StakeDoesNotExist();
+
+/// Cannot transfer stake to zero address
+error TransferToTheZeroAddress();
+
 /// @title Maxx Finance staking contract
 /// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxStake is Ownable {
-    using SafeERC20 for IERC20;
+    using ERC165Checker for address;
+    using Counters for Counters.Counter;
 
     /// @notice Emitted when MAXX is staked
     /// @param user The user staking MAXX
@@ -51,6 +64,20 @@ contract MaxxStake is Ownable {
     /// @param newOwner The user receiving the stake
     event Transfer(address indexed oldOwner, address indexed newOwner);
 
+    /// @dev Emitted when `owner` enables `approved` to manage the `stakeId` token.
+    event Approval(
+        address indexed owner,
+        address indexed approved,
+        uint256 stakeId
+    );
+
+    /// @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
+    event ApprovalForAll(
+        address indexed owner,
+        address indexed operator,
+        bool approved
+    );
+
     /// @notice Emitted when interest is scraped early
     /// @param user The user who scraped interest
     /// @param amount The amount of interest scraped
@@ -61,63 +88,77 @@ contract MaxxStake is Ownable {
     /// @param name The new name of the stake
     event StakeNameChange(uint256 stakeId, string name);
 
-    /// Maxx Finance token
-    MaxxFinance public maxx;
+    // Calculation variables
     uint256 immutable launchDate;
-    uint8 constant LATE_DAYS = 14;
-    uint16 constant MIN_STAKE_DAYS = 7;
-    uint16 constant MAX_STAKE_DAYS = 3333;
-    uint16 constant BASE_INFLATION = 10; // 10%
-    uint16 constant BASE_INFLATION_FACTOR = 100;
-    uint256 constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
-    uint256 constant MAGIC_NUMBER = 1111;
+    uint8 private constant LATE_DAYS = 14;
+    uint8 private constant MIN_STAKE_DAYS = 7;
+    uint16 private constant MAX_STAKE_DAYS = 3333;
+    uint8 private constant BASE_INFLATION = 10; // 10%
+    uint8 private constant BASE_INFLATION_FACTOR = 100;
+    uint16 private constant DAYS_IN_YEAR = 365;
+    uint256 private constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
+    uint256 private constant MAGIC_NUMBER = 1111;
 
-    /// stake id for next created stake
-    uint256 public idCounter;
+    /// @notice Maxx Finance Vault address
+    address public maxxVault;
 
-    /// amount of shares all time
+    /// @notice Maxx Finance token
+    IMaxxFinance public maxx;
+
+    Counters.Counter public idCounter;
+
+    /// @notice amount of shares all time
     uint256 public totalShares;
 
-    /// alltime stakes
-    uint256 public totalStakesAlltime;
+    /// @notice alltime stakes
+    Counters.Counter public totalStakesAlltime;
 
-    /// all active stakes
-    uint256 public totalStakesActive;
+    /// @notice all active stakes
+    Counters.Counter public totalStakesActive;
 
-    /// number of withdraw stakes
-    uint256 public totalStakesWithdrawn;
+    /// @notice number of withdrawn stakes
+    Counters.Counter public totalStakesWithdrawn;
 
-    /// number of matured stakes
-    uint256 public totalStakesMatured; // who is going to pay for the transaction to update this?
+    /// @notice number of stakes that have ended but are not yet withdrawn
+    uint256 public totalStakesMatured; // who is going to pay for the transaction to update this? // timed bot to update value?
 
-    /// amount of accrued interest
-    uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?
+    /// @notice amount of accrued interest
+    uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?  // timed bot to update value?
 
-    /// percentage of nft bonus
+    /// @notice percentage of nft bonus
     uint8 public nftBonusPercentage;
 
-    /// bonus nft
+    /// @notice bonus nft
     IERC721 public nft; // import nft contract or generic ERC721 interface for balanceOf()
 
-    /// address of the freeClaim contract
+    /// @notice address of the freeClaim contract
     address public freeClaim;
 
-    /// address of the liquidityAmplifier contract
+    /// @notice address of the liquidityAmplifier contract
     address public liquidityAmplifier;
 
-    /// mapping of stake id to stake
-    mapping(uint256 => StakeData) public stakes;
+    /// @notice mapping of stake id to stake
+    mapping(uint256 => StakeData) public stakes; // TODO: change to array to iterate over all stakes
+    /// mapping of stake end times
+    mapping(uint256 => uint256) public endTimes;
 
-    /// mapping of stake id to withdrawn amounts
+    // StakeData[] public stakes;
+    // StakeData[] public activeStakes;
+    // StakeData[] public withdrawnStakes;
+
+    /// @notice mapping of stake id to withdrawn amounts
     mapping(uint256 => uint256) public withdrawnAmounts;
 
-    /// @notice mapping of stake allowances
-    mapping(address => mapping(uint256 => mapping(address => bool))) public allowances;
+    // Mapping of stake to owner
+    mapping(uint256 => address) private _owners;
 
-    mapping(uint256 => address) public stakeOwner;
+    // Mapping from token ID to approved address
+    mapping(uint256 => address) private _stakeApprovals;
+
+    // Mapping from owner to operator approvals
+    mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     struct StakeData {
-        address owner;
         string name; // 32 letters max
         uint256 amount;
         uint256 shares;
@@ -125,9 +166,15 @@ contract MaxxStake is Ownable {
         uint256 startDate;
     }
 
-    constructor(address _maxx, uint256 _launchDate, address _nft) {
-        maxx = MaxxFinance(_maxx);
-        launchDate = _launchDate;
+    constructor(
+        address _maxxVault,
+        address _maxx,
+        uint256 _launchDate,
+        address _nft
+    ) {
+        maxxVault = _maxxVault;
+        maxx = IMaxxFinance(_maxx);
+        launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date
         nft = IERC721(_nft);
     }
 
@@ -136,70 +183,100 @@ contract MaxxStake is Ownable {
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
     function stake(uint16 _numDays, uint256 _amount) external {
-        console.log("enter stake");
-
         if (_numDays < MIN_STAKE_DAYS) {
             revert StakeTooShort();
         } else if (_numDays > MAX_STAKE_DAYS) {
             revert StakeTooLong();
         }
 
-        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract
+        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract -- removed from circulating supply
 
         uint256 shares = _calcShares(_numDays, _amount);
 
         if (nft.balanceOf(msg.sender) > 0) {
-            shares = shares * (100 + nftBonusPercentage) / 100;
+            shares = (shares * (100 + nftBonusPercentage)) / 100;
         }
 
         totalShares += shares;
-        totalStakesAlltime++;
-        totalStakesActive++;
+        totalStakesAlltime.increment();
+        totalStakesActive.increment();
 
         uint256 duration = uint256(_numDays) * 1 days;
 
-        stakes[idCounter] = StakeData(msg.sender, "", _amount, shares, duration, block.timestamp);
-        stakeOwner[idCounter] = msg.sender;
-        idCounter++;
+        stakes[idCounter.current()] = StakeData(
+            "",
+            _amount,
+            shares,
+            duration,
+            block.timestamp
+        );
+        endTimes[idCounter.current()] = block.timestamp + duration;
+        _owners[idCounter.current()] = msg.sender;
+        idCounter.increment();
         emit Stake(msg.sender, _numDays, _amount);
     }
 
+    // TODO: pay special attention to the calculations in this function
     /// @notice Function to unstake MAXX
+    /// @param _stakeId The id of the stake to unstake
     function unstake(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
-        if (msg.sender != tStake.owner) {
-            revert NotOwner();
+        address owner = ownerOf(_stakeId);
+        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+            revert NotAuthorized();
         }
-        totalStakesWithdrawn++;
-        totalStakesActive--;
+        totalStakesWithdrawn.increment();
+        totalStakesActive.decrement();
 
         uint256 withdrawableAmount;
+        uint256 penaltyAmount;
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
-        uint256 interestToDate = _calcInterestToDate(tStake.shares, daysServed, tStake.duration);
+        uint256 interestToDate = _calcInterestToDate(
+            tStake.shares,
+            daysServed,
+            tStake.duration
+        );
         interestToDate = interestToDate - withdrawnAmounts[_stakeId]; // TODO: check if this affects the ensuing math calculations
 
-        if (daysServed < (tStake.duration / 1 days)) { // unstaking early
+        uint256 fullAmount = tStake.amount + interestToDate;
+        if (daysServed < (tStake.duration / 1 days)) {
+            // unstaking early
             // fee assessed
-            withdrawableAmount = (tStake.amount + interestToDate) * daysServed / tStake.duration / 1 days;
-        } else if (daysServed > (tStake.duration / 1 days) + LATE_DAYS) { // unstaking late
+            withdrawableAmount =
+                ((tStake.amount + interestToDate) * daysServed) /
+                tStake.duration /
+                1 days;
+        } else if (daysServed > (tStake.duration / 1 days) + LATE_DAYS) {
+            // unstaking late
             // fee assessed
-            uint256 daysLate = daysServed - (tStake.duration / 1 days) - LATE_DAYS;
-            uint64 penaltyPercentage = uint64(PERCENT_FACTOR * daysLate / 365);
-            withdrawableAmount = (tStake.amount + interestToDate) * (PERCENT_FACTOR - penaltyPercentage) / PERCENT_FACTOR;
-        } else { // unstaking on time
+            uint256 daysLate = daysServed -
+                (tStake.duration / 1 days) -
+                LATE_DAYS;
+            uint64 penaltyPercentage = uint64(
+                (PERCENT_FACTOR * daysLate) / DAYS_IN_YEAR
+            );
+            withdrawableAmount =
+                ((tStake.amount + interestToDate) *
+                    (PERCENT_FACTOR - penaltyPercentage)) /
+                PERCENT_FACTOR;
+        } else {
+            // unstaking on time
             withdrawableAmount = tStake.amount + interestToDate;
         }
-
+        penaltyAmount = fullAmount - withdrawableAmount;
         withdrawnAmounts[_stakeId] = withdrawableAmount;
         uint256 maxxBalance = maxx.balanceOf(address(this));
 
-        if (maxxBalance < withdrawableAmount) {
-            maxx.mint(msg.sender, withdrawableAmount - maxxBalance); // mint additional tokens to the user
-            require(maxx.transfer(msg.sender, maxxBalance)); // transfer the rest of this contract's tokens to the user
-        } else {
-            require(maxx.transfer(msg.sender, withdrawableAmount)); // transfer the tokens from this contract to the stake owner
+        if (fullAmount > maxxBalance) {
+            maxx.mint(address(this), fullAmount - maxxBalance); // mint additional tokens to this contract
         }
-        
+
+        require(maxx.transfer(msg.sender, withdrawableAmount)); // transfer the withdrawable amount to the user
+        if (penaltyAmount > 0) {
+            require(maxx.transfer(maxxVault, penaltyAmount / 2)); // transfer half the penalty amount to the maxx vault
+            maxx.burn(penaltyAmount / 2); // burn the other half of the penalty amount
+        }
+
         emit Unstake(msg.sender, withdrawableAmount);
     }
 
@@ -207,11 +284,16 @@ contract MaxxStake is Ownable {
     /// @param _stakeId The id of the stake to change
     function maxShare(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
-        if (msg.sender != tStake.owner) {
-            revert NotOwner();
+        address owner = ownerOf(_stakeId);
+        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+            revert NotAuthorized();
         }
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
-        uint256 interestToDate = _calcInterestToDate(tStake.shares, daysServed, tStake.duration);
+        uint256 interestToDate = _calcInterestToDate(
+            tStake.shares,
+            daysServed,
+            tStake.duration
+        );
         interestToDate = interestToDate - withdrawnAmounts[_stakeId];
         tStake.duration = uint256(MAX_STAKE_DAYS) * 1 days;
         uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
@@ -220,7 +302,6 @@ contract MaxxStake is Ownable {
         tStake.amount += interestToDate;
         tStake.shares = _calcShares(durationInDays, tStake.amount);
         tStake.startDate = block.timestamp;
-        
 
         totalShares += tStake.shares;
         stakes[_stakeId] = tStake; // Update the stake in storage
@@ -232,8 +313,9 @@ contract MaxxStake is Ownable {
     /// @param _topUpAmount The amount of MAXX to top up the stake
     function restake(uint256 _stakeId, uint256 _topUpAmount) external {
         StakeData memory tStake = stakes[_stakeId];
-        if (msg.sender != tStake.owner) {
-            revert NotOwner();
+        address owner = ownerOf(_stakeId);
+        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+            revert NotAuthorized();
         }
         uint256 maturation = tStake.startDate + tStake.duration;
         if (block.timestamp < maturation) {
@@ -244,7 +326,11 @@ contract MaxxStake is Ownable {
         }
         require(maxx.transferFrom(msg.sender, address(this), _topUpAmount)); // transfer tokens to this contract
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
-        uint256 interestToDate = _calcInterestToDate(tStake.shares, daysServed, tStake.duration);
+        uint256 interestToDate = _calcInterestToDate(
+            tStake.shares,
+            daysServed,
+            tStake.duration
+        );
         interestToDate = interestToDate - withdrawnAmounts[_stakeId];
         tStake.amount += _topUpAmount + interestToDate;
         tStake.startDate = block.timestamp;
@@ -260,12 +346,11 @@ contract MaxxStake is Ownable {
     /// @notice Function to transfer stake ownership
     /// @param _to The new owner of the stake
     /// @param _stakeId The id of the stake
-    function transfer(address _to, uint256 _stakeId) external returns (bool) {
-        if (msg.sender != stakes[_stakeId].owner) {
-            revert NotOwner();
+    function transfer(address _to, uint256 _stakeId) external {
+        if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
+            revert NotAuthorized();
         }
         _transferStake(_stakeId, _to);
-        return true;
     }
 
     /// @notice Function for an external address to transfer stake ownership with an allowance
@@ -273,32 +358,59 @@ contract MaxxStake is Ownable {
     /// @param _from The address of the old owner of the stake
     /// @param _to The address to the new owner of the stake
     /// @param _stakeId The id of the stake
-    function transferFrom(address _from, address _to, uint256 _stakeId) external returns (bool) {
-        if (!allowances[_from][_stakeId][msg.sender]) {
-            revert UnauthorizedTransfer();
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _stakeId
+    ) external {
+        if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
+            revert NotAuthorized();
         }
-        allowances[_from][_stakeId][msg.sender] = false; // remove the allowance for the old owner
+        if (_from != ownerOf(_stakeId)) {
+            revert NotAuthorized();
+        }
         _transferStake(_stakeId, _to);
-        return true;
     }
 
     /// @notice Function to withdraw interest early from a stake
     /// @param _stakeId The id of the stake
     function scrapeInterest(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
-        if (msg.sender != tStake.owner) {
-            revert NotOwner();
+        address owner = ownerOf(_stakeId);
+        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+            revert NotAuthorized();
+        }
+
+        if (block.timestamp > endTimes[_stakeId]) {
+            revert StakeMatured();
         }
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
-        uint256 interestToDate = _calcInterestToDate(tStake.shares, daysServed, tStake.duration);
+        uint256 interestToDate = _calcInterestToDate(
+            tStake.shares,
+            daysServed,
+            tStake.duration
+        );
+
+        if (interestToDate > maxx.balanceOf(address(this))) {
+            maxx.mint(
+                address(this),
+                interestToDate - maxx.balanceOf(address(this))
+            ); // mint additional tokens to this contract
+        }
 
         uint256 durationInDays = tStake.duration / 1 days;
 
-        uint256 percentServed = daysServed * PERCENT_FACTOR / durationInDays; // TODO: confirm early withdrawal math
+        uint256 percentServed = (daysServed * PERCENT_FACTOR) / durationInDays;
 
-        uint256 withdrawableAmount = interestToDate * percentServed / PERCENT_FACTOR;
-        withdrawnAmounts[_stakeId] = withdrawableAmount;
+        uint256 withdrawableAmount = (interestToDate * percentServed) /
+            PERCENT_FACTOR;
+        uint256 penaltyAmount = interestToDate - withdrawableAmount;
+        withdrawnAmounts[_stakeId] = interestToDate;
         require(maxx.transfer(msg.sender, withdrawableAmount));
+
+        require(maxx.transfer(maxxVault, penaltyAmount / 2));
+        maxx.burn(penaltyAmount / 2);
+
         emit ScrapeInterest(msg.sender, interestToDate);
     }
 
@@ -306,67 +418,83 @@ contract MaxxStake is Ownable {
     /// @param _stakeId The id of the stake
     /// @param _name The new name of the stake
     function changeStakeName(uint256 _stakeId, string memory _name) external {
-        StakeData memory tStake = stakes[_stakeId];
-        if (msg.sender != tStake.owner) {
-            revert NotOwner();
+        address owner = ownerOf(_stakeId);
+        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+            revert NotAuthorized();
         }
 
-        tStake.name = _name; // update variables in memory
-        stakes[_stakeId] = tStake; // push data to storage
+        stakes[_stakeId].name = _name;
         emit StakeNameChange(_stakeId, _name);
     }
 
-    /// @notice Function to stake MAXX from amplifier contract
-    /// @dev Must approve MAXX before staking
+    /// @notice Function to stake MAXX from liquidity amplifier contract
+    /// @param _numDays The number of days to stake for
     /// @param _amount The amount of MAXX to stake
     function amplifierStake(uint16 _numDays, uint256 _amount) external {
-        // require (msg.sender == address(liquidityAmplifier), "Can only be called by amplifier contract");
+        if (msg.sender != liquidityAmplifier) {
+            revert NotAuthorized();
+        }
         require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to the contract
 
         uint256 shares = _calcShares(_numDays, _amount);
-        if (_numDays >= 365) {
+        if (_numDays >= DAYS_IN_YEAR) {
             // TODO: calculate the bonus amount of shares
             // e.g. shares = shares * 10%
         }
-        
+
         totalShares += shares;
-        totalStakesAlltime++;
-        totalStakesActive++;
+        totalStakesAlltime.increment();
+        totalStakesActive.increment();
 
         uint256 duration = _numDays * 1 days;
 
-        // Uses tx.origin as the owner of the stake -> owner must be an external account
-        stakes[idCounter] = StakeData(tx.origin, "", _amount, shares, duration, block.timestamp);
-        idCounter++;
+        stakes[idCounter.current()] = StakeData(
+            "",
+            _amount,
+            shares,
+            duration,
+            block.timestamp
+        );
+        endTimes[idCounter.current()] = block.timestamp + duration;
+        _owners[idCounter.current()] = tx.origin;
+        idCounter.increment();
     }
 
-    /// @notice Function to stake MAXX
-    /// @dev User must approve MAXX before staking
+    /// @notice Function to stake MAXX from FreeClaim contract
     /// @param _owner The owner of the stake
     /// @param _amount The amount of MAXX to stake
     function freeClaimStake(address _owner, uint256 _amount) external {
-        // require (msg.sender == address(freeClaim), "Can only be called by freeClaim contract");
+        if (msg.sender != freeClaim) {
+            revert NotAuthorized();
+        }
         require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract
 
-        uint256 shares = _calcShares(365, _amount);
+        uint256 shares = _calcShares(DAYS_IN_YEAR, _amount);
         totalShares += shares;
-        totalStakesAlltime++;
-        totalStakesActive++;
+        totalStakesAlltime.increment();
+        totalStakesActive.increment();
 
-        uint256 duration = 365 days;
+        uint256 duration = DAYS_IN_YEAR * 1 days;
 
-        if (block.timestamp < launchDate) {
-            stakes[idCounter] = StakeData(_owner, "", _amount, shares, duration, launchDate);
-        } else {
-            stakes[idCounter] = StakeData(_owner, "", _amount, shares, duration, block.timestamp);
-        }
-        
-        idCounter++;
+        stakes[idCounter.current()] = StakeData(
+            "",
+            _amount,
+            shares,
+            duration,
+            launchDate
+        );
+
+        endTimes[idCounter.current()] = block.timestamp + duration;
+        _owners[idCounter.current()] = _owner;
+        idCounter.increment();
     }
 
     /// @notice Funciton to set liquidityAmplifier contract address
     /// @param _liquidityAmplifier The address of the liquidityAmplifier contract
-    function setLiquidityAmplifier(address _liquidityAmplifier) external onlyOwner {
+    function setLiquidityAmplifier(address _liquidityAmplifier)
+        external
+        onlyOwner
+    {
         liquidityAmplifier = _liquidityAmplifier;
     }
 
@@ -378,54 +506,142 @@ contract MaxxStake is Ownable {
 
     /// @notice Function to set the NFT bonus percentage
     /// @param _nftBonusPercentage The percentage of NFT bonus (e.g. 20 = 20%)
-    function setNftBonusPercentage(uint8 _nftBonusPercentage) external onlyOwner {
+    function setNftBonusPercentage(uint8 _nftBonusPercentage)
+        external
+        onlyOwner
+    {
         nftBonusPercentage = _nftBonusPercentage;
     }
 
-    /// @notice This function will return day `day` out of 60 days
-    /// @return day How many days have passed since `launchDate`
+    /// @notice Function to set the NFT contract address
+    /// @param _nft Address of the NFT contract
+    function setNftAddress(address _nft) external onlyOwner {
+        require(IERC721(_nft).supportsInterface(type(IERC721).interfaceId)); // must support IERC721 interface
+        nft = IERC721(_nft); // TODO: get the name of the NFT contract
+    }
+
+    /// @notice This function will return day `day` since the launch date
+    /// @return day The number of days passed since `launchDate`
     function getDaysSinceLaunch() public view returns (uint256 day) {
-        day = (block.timestamp - launchDate) / 60 / 60 / 24;
+        day = (block.timestamp - launchDate) / 60 / 60 / 24; // divide by 60 seconds, 60 minutes, 24 hours
         return day;
     }
 
-    /// @notice This function will change the allowance of _spender to transfer _stakeId
-    /// @param _spender The address of the spender
-    /// @param _stakeId The id of the stake
-    /// @param _approval Whether to allow or disallow _spender to transfer _stakeId
-    function approve(address _spender, uint256 _stakeId, bool _approval) public returns (bool) {
-        if (msg.sender != stakes[_stakeId].owner) {
-            revert NotOwner();
+    /// @dev Returns the owner of the `_stakeId` token.
+    function ownerOf(uint256 _stakeId) public view returns (address) {
+        address owner = _owners[_stakeId];
+        if (owner == address(0)) {
+            revert StakeDoesNotExist();
         }
-        if (allowances[msg.sender][_stakeId][_spender]) {
-            revert AlreadyApproved();
-        }
-        _approve(msg.sender, _spender, _stakeId, _approval);
-        return true;
+        return owner;
     }
 
-    /// @notice This function will return if _spender is approved to transfer _stakeId
-    /// @param _spender The address of the spender
-    /// @param _stakeId The id of the stake
-    /// @return bool Whether _spender is approved to transfer _stakeId
-    function allowance(address _owner, address _spender, uint256 _stakeId) public view returns (bool) {
-        return allowances[_owner][_stakeId][_spender];
+    /// @dev Gives permission to `_to` to transfer `_stakeId` token to another account.
+    function approve(address _to, uint256 _stakeId) public {
+        address owner = ownerOf(_stakeId);
+        if (_to == owner) {
+            revert SelfApproval();
+        }
+        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+            revert NotAuthorized();
+        }
+
+        _approve(_to, _stakeId);
     }
 
-    function _approve(address _owner, address _spender, uint256 _stakeId, bool _approval) internal {
-        allowances[_owner][_stakeId][_spender] = _approval;
+    /// @notice Returns the account approved for `_stakeId` token.
+    /// @param _stakeId The id of the stake
+    /// @return operator The account approved for `_stakeId` token.
+    function getApproved(uint256 _stakeId)
+        public
+        view
+        returns (address operator)
+    {
+        _requireStaked(_stakeId);
+
+        return _stakeApprovals[_stakeId];
+    }
+
+    /// @notice Approve or remove `operator` as an operator for the caller.
+    /// @dev Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.
+    /// @param _operator The account that will be added or removed as an operator.
+    /// @param _approved Whether the account is added or removed as an operator.
+    function setApprovalForAll(address _operator, bool _approved) public {
+        _setApprovalForAll(msg.sender, _operator, _approved);
+    }
+
+    /// @notice Returns if the `operator` is allowed to manage all of the assets of `owner`.
+    /// @param _owner The account owning the stakes.
+    /// @param _operator The account to check for operating approval.
+    /// @return True if `operator` is allowed to manage all of the stakes of `owner`.
+    function isApprovedForAll(address _owner, address _operator)
+        public
+        view
+        returns (bool)
+    {
+        return _operatorApprovals[_owner][_operator];
+    }
+
+    function _approve(address _to, uint256 _stakeId) internal {
+        _stakeApprovals[_stakeId] = _to;
+        emit Approval(ownerOf(_stakeId), _to, _stakeId);
+    }
+
+    /// @dev Approve `_operator` to operate on all of `_owner` stakes
+    function _setApprovalForAll(
+        address _owner,
+        address _operator,
+        bool _approved
+    ) internal virtual {
+        if (_owner == _operator) {
+            revert SelfApproval();
+        }
+        _operatorApprovals[_owner][_operator] = _approved;
+        emit ApprovalForAll(_owner, _operator, _approved);
+    }
+
+    /// @dev Reverts if the `_stakeId` has not been minted yet.
+    function _requireStaked(uint256 _stakeId) internal view virtual {
+        if (!_exists(_stakeId)) {
+            revert StakeDoesNotExist();
+        }
+    }
+
+    /// @dev Returns whether `_stakeId` exists.
+    function _exists(uint256 _stakeId) internal view virtual returns (bool) {
+        return _owners[_stakeId] != address(0);
+    }
+
+    /// @dev Returns whether `_spender` is allowed to manage `_stakeId`.
+    function _isApprovedOrOwner(address _spender, uint256 _stakeId)
+        internal
+        view
+        returns (bool)
+    {
+        address owner = ownerOf(_stakeId);
+        return (_spender == owner ||
+            isApprovedForAll(owner, _spender) ||
+            getApproved(_stakeId) == _spender);
     }
 
     function _transferStake(uint256 _stakeId, address _to) internal {
-        StakeData memory tStake = stakes[_stakeId];
-        tStake.owner = _to; // update variables in memory
-        stakes[_stakeId] = tStake; // push data to storage
+        if (_to == address(0)) {
+            revert TransferToTheZeroAddress(); // TODO: allow this?
+        }
+
+        delete _stakeApprovals[_stakeId];
+
+        _owners[_stakeId] = _to;
         emit Transfer(msg.sender, _to);
     }
 
     /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
     /// @return shares The number of shares for the full-term stake
-    function _calcShares(uint16 duration, uint256 _amount) internal view returns (uint256 shares) {
+    function _calcShares(uint16 duration, uint256 _amount)
+        internal
+        view
+        returns (uint256 shares)
+    {
         uint256 shareFactor = _getShareFactor();
 
         uint256 basicShares = _amount / (2 - shareFactor);
@@ -433,8 +649,9 @@ contract MaxxStake is Ownable {
         if (bpbBonus > 10) {
             bpbBonus = 10;
         }
-        uint256 bpbShares = basicShares * bpbBonus / 100; // bigger pays better
-        uint256 lpbShares = (basicShares + bpbShares) * (duration - 1) / MAGIC_NUMBER; // longer pays better
+        uint256 bpbShares = (basicShares * bpbBonus) / 100; // bigger pays better
+        uint256 lpbShares = ((basicShares + bpbShares) * (duration - 1)) /
+            MAGIC_NUMBER; // longer pays better
         shares = basicShares + bpbShares + lpbShares;
         return shares;
     }
@@ -448,14 +665,28 @@ contract MaxxStake is Ownable {
 
     /// @dev Calculate interest for a given number of shares and duration
     /// @return interestToDate The interest accrued to date
-    function _calcInterestToDate(uint256 _stakeTotalShares, uint256 _daysServed, uint256 _duration) internal pure returns (uint256 interestToDate) {
+    function _calcInterestToDate(
+        uint256 _stakeTotalShares,
+        uint256 _daysServed,
+        uint256 _duration
+    ) internal pure returns (uint256 interestToDate) {
         uint256 stakeDuration = _duration / 1 days;
-        uint256 fullDurationInterest = _stakeTotalShares * BASE_INFLATION * stakeDuration / 365 / BASE_INFLATION_FACTOR;
+        uint256 fullDurationInterest = (_stakeTotalShares *
+            BASE_INFLATION *
+            stakeDuration) /
+            DAYS_IN_YEAR /
+            BASE_INFLATION_FACTOR;
 
-        // daily interest => (stake_total_shares * (stake_duration/365)) * base_inflation / stake_duration
+        // daily interest => (stake_total_shares * (stake_duration/DAYS_IN_YEAR)) * base_inflation / stake_duration
         // current interest => daily interest * days served
 
-        uint256 currentDurationInterest = _daysServed * _stakeTotalShares * stakeDuration * BASE_INFLATION / stakeDuration  / BASE_INFLATION_FACTOR / 365;
+        uint256 currentDurationInterest = (_daysServed *
+            _stakeTotalShares *
+            stakeDuration *
+            BASE_INFLATION) /
+            stakeDuration /
+            BASE_INFLATION_FACTOR /
+            DAYS_IN_YEAR;
 
         // uint256 currentDurationInterest = _daysServed * _stakeTotalShares * _daysServed * BASE_INFLATION / stakeDuration  / BASE_INFLATION_FACTOR / stakeDuration;
 
@@ -471,7 +702,7 @@ contract MaxxStake is Ownable {
     /// @param _to address of transfer recipient
     /// @param _amount amount of Fantom to be transferred
     function _transfer(address payable _to, uint256 _amount) internal {
-         // Note that "to" is declared as payable
+        // Note that "to" is declared as payable
         (bool success, ) = _to.call{value: _amount}("");
         require(success, "Failed to send Ether");
     }
