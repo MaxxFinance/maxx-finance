@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "hardhat/console.sol";
 
-import { IStake } from './interfaces/IStake.sol';
+import {IStake} from "./interfaces/IStake.sol";
 
 /// Stake not listed for sale on the marketplace
 error StakeNotListed();
@@ -30,7 +30,6 @@ error ListingExpired();
 /// @title Maxx Finance Stake Marketplace
 /// @author Alta Web3 Labs
 contract Marketplace is Ownable {
-
     /// @notice Emitted when stake is listed to the market
     /// @param user The user who listed the stake
     /// @param stakeId The id of the stake
@@ -46,7 +45,11 @@ contract Marketplace is Ownable {
     /// @param user The user who purchased the stake
     /// @param stakeId The id of the stake
     /// @param amount The purchase amount
-    event Purchase(address indexed user, uint256 indexed stakeId, uint256 amount);
+    event Purchase(
+        address indexed user,
+        uint256 indexed stakeId,
+        uint256 amount
+    );
 
     /// Maxx Finance staking contract
     IStake public maxxStake;
@@ -57,7 +60,7 @@ contract Marketplace is Ownable {
 
     /// mapping of stake id to their desired sellPrice
     mapping(uint256 => uint256) public sellPrice;
-    
+
     /// mapping of stake id to their listing
     mapping(uint256 => Listing) public listings;
 
@@ -74,7 +77,12 @@ contract Marketplace is Ownable {
     /// @notice Function to list stake on the market
     /// @param _stakeId The id of the stake to list
     /// @param _amount The price of the stake in the native coin
-    function listStake(uint256 _stakeId, uint256 _amount, uint256 _duration) external {
+    function listStake(
+        uint256 _stakeId,
+        uint256 _amount,
+        uint256 _duration
+    ) external {
+        console.log("enter listStake");
         address stakeOwner = maxxStake.stakeOwner(_stakeId);
         if (!maxxStake.allowance(stakeOwner, address(this), _stakeId)) {
             revert NotApproved();
@@ -83,13 +91,19 @@ contract Marketplace is Ownable {
             revert NotOwner();
         }
         sellPrice[_stakeId] = _amount;
-        listings[_stakeId] = Listing(msg.sender, _amount, block.timestamp + _duration);
+        listings[_stakeId] = Listing(
+            msg.sender,
+            _amount,
+            block.timestamp + _duration
+        );
+        console.log("listings[_stakeId].lister", listings[_stakeId].lister);
         emit List(msg.sender, _stakeId, _amount);
     }
 
     /// @notice Function to delist stake from the market
     /// @param _stakeId The id of the stake to delist
     function delistStake(uint256 _stakeId) external {
+        console.log("enter delistStake");
         address stakeOwner = maxxStake.stakeOwner(_stakeId);
         if (msg.sender != stakeOwner) {
             revert NotOwner();
@@ -102,12 +116,18 @@ contract Marketplace is Ownable {
     /// @notice Function to buy a stake from the market
     /// @param _stakeId The id of the stake to buy
     function buyStake(uint256 _stakeId) external payable {
+        console.log("enter buyStake");
         address stakeOwner = maxxStake.stakeOwner(_stakeId);
         if (!maxxStake.allowance(stakeOwner, address(this), _stakeId)) {
             revert NotApproved();
         }
 
+        console.log("_stakeId", _stakeId);
         Listing memory listing = listings[_stakeId];
+
+        console.log("listing.lister", listing.lister);
+        console.log("listings[_stakeId].lister", listings[_stakeId].lister);
+        console.log("stakeOwner:", stakeOwner);
 
         if (listing.lister != stakeOwner) {
             revert StakeNotListed();
@@ -117,11 +137,12 @@ contract Marketplace is Ownable {
             revert ListingExpired();
         }
 
-        if (msg.value < sellPrice[_stakeId]) { // TODO: send the extra to the seller or keep in contract? change following msg.value to sellPrice
+        if (msg.value < sellPrice[_stakeId]) {
+            // TODO: send the extra to the seller or keep in contract? change following msg.value to sellPrice
             revert InsufficientValue();
         }
 
-        uint256 transferFee = msg.value * feePercentage / FEE_FACTOR;
+        uint256 transferFee = (msg.value * feePercentage) / FEE_FACTOR;
         uint256 amount = msg.value - transferFee;
 
         payable(stakeOwner).transfer(amount);
@@ -144,7 +165,7 @@ contract Marketplace is Ownable {
     /// @param _to address of transfer recipient
     /// @param _amount amount of Matic to be transferred
     function withdraw(address payable _to, uint256 _amount) external onlyOwner {
-         // Note that "to" is declared as payable
+        // Note that "to" is declared as payable
         (bool success, ) = _to.call{value: _amount}("");
         require(success, "Failed to send Ether");
     }
