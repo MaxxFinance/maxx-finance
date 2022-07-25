@@ -2,19 +2,20 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import log from "ololog";
 
-import { MaxxStake } from "../typechain/MaxxStake";
-import { MaxxStake__factory } from "../typechain/factories/MaxxStake__factory";
+import { MaxxStake } from "../typechain-types/contracts/MaxxStake";
+import { MaxxStake__factory } from "../typechain-types/factories/contracts/MaxxStake__factory";
 
-import { MaxxFinance } from "../typechain/MaxxFinance";
-import { MaxxFinance__factory } from "../typechain/factories/MaxxFinance__factory";
+import { MaxxFinance } from "../typechain-types/contracts/MaxxFinance";
+import { MaxxFinance__factory } from "../typechain-types/factories/contracts/MaxxFinance__factory";
 
-import { Marketplace } from "../typechain/Marketplace";
-import { Marketplace__factory } from "../typechain/factories/Marketplace__factory";
+import { Marketplace } from "../typechain-types/contracts/Marketplace";
+import { Marketplace__factory } from "../typechain-types/factories/contracts/Marketplace__factory";
 
 describe.only("Marketplace", () => {
   let Stake: MaxxStake__factory;
   let stake: MaxxStake;
-  const nft: any = "0xac7a698a85102f7b1dc7345e7f17ebca74e5a9e7"; // Default Artion Collection
+  const nft: any = "0x8634666bA15AdA4bbC83B9DbF285F73D9e46e4C2"; // Polygon Chicken Derby Collection
+  const maxxVault = "0xBF7BF3d445aEc7B0c357163d5594DB8ca7C12D31";
 
   let Maxx: MaxxFinance__factory;
   let maxx: MaxxFinance;
@@ -23,6 +24,7 @@ describe.only("Marketplace", () => {
   let marketplace: Marketplace;
   let deployer: any;
   let signers: any[];
+  const duration = 5 * 24 * 60 * 60; // 5 days
 
   before(async () => {
     signers = await ethers.getSigners();
@@ -43,7 +45,7 @@ describe.only("Marketplace", () => {
     Stake = (await ethers.getContractFactory(
       "MaxxStake"
     )) as MaxxStake__factory;
-    stake = await Stake.deploy(maxx.address, timestamp, nft);
+    stake = await Stake.deploy(maxxVault, maxx.address, timestamp, nft);
 
     log.yellow("stake.address: ", stake.address);
 
@@ -52,7 +54,7 @@ describe.only("Marketplace", () => {
     Marketplace = (await ethers.getContractFactory(
       "Marketplace"
     )) as Marketplace__factory;
-    marketplace = await Marketplace.deploy(stake.address, maxx.address);
+    marketplace = await Marketplace.deploy(stake.address);
 
     log.yellow("marketplace.address: ", marketplace.address);
   });
@@ -62,15 +64,12 @@ describe.only("Marketplace", () => {
       expect(marketplace.address).to.exist;
       expect(stake.address).to.exist;
     });
-    it("should grant marketplace role", async () => {
-      const marketplaceRole = await stake.MARKETPLACE();
-      await stake.grantRole(marketplaceRole, marketplace.address);
-    });
   });
 
   describe("market", () => {
     it("should list stake", async () => {
       const stakeId = await stake.idCounter();
+      log.yellow("stakeId: ", stakeId.toString());
       const stakeDays = 365;
       const stakeAmount = ethers.utils.parseEther("100");
       log.green("test setup");
@@ -79,66 +78,106 @@ describe.only("Marketplace", () => {
       const userStake = await stake.stake(stakeDays, stakeAmount);
       log.green("stake created");
       const listingAmount = ethers.utils.parseEther("110");
-
+      await stake.approve(marketplace.address, stakeId, true);
       const listStake = await marketplace.listStake(
         stakeId,
         listingAmount,
-        5 * 24 * 60 * 60
+        duration
       );
       log.green("stake listed");
 
-      const listings = await marketplace.getAllListings();
-      log.green("listings: ", listings);
-      expect(listings.length).to.equal(1);
-
-      const listing = await marketplace.listings(0);
+      const listing = await marketplace.listings(stakeId);
       expect(listing.lister).to.equal(signers[0].address);
       expect(listing.amount).to.equal(listingAmount);
     });
 
-    it("should emit a List event", async () => {
+    it("should not list stake without approval", async () => {
       const stakeId = await stake.idCounter();
-      log.yellow("stakeId: ", stakeId);
+      log.yellow("stakeId: ", stakeId.toString());
       const stakeDays = 365;
       const stakeAmount = ethers.utils.parseEther("100");
       await maxx.approve(stake.address, stakeAmount);
       const userStake = await stake.stake(stakeDays, stakeAmount);
       const listingAmount = ethers.utils.parseEther("110");
-
       await expect(
-        marketplace.listStake(stakeId, listingAmount, 5 * 24 * 60 * 60)
-      )
+        marketplace.listStake(stakeId, listingAmount, duration)
+      ).to.be.revertedWithCustomError(marketplace, "NotApproved");
+    });
+
+    it("should emit a List event", async () => {
+      const stakeId = await stake.idCounter();
+      log.yellow("stakeId: ", stakeId.toString());
+      const stakeDays = 365;
+      const stakeAmount = ethers.utils.parseEther("100");
+      await maxx.approve(stake.address, stakeAmount);
+      const userStake = await stake.stake(stakeDays, stakeAmount);
+      const listingAmount = ethers.utils.parseEther("110");
+      await stake.approve(marketplace.address, stakeId, true);
+
+      await expect(marketplace.listStake(stakeId, listingAmount, duration))
         .to.emit(marketplace, "List")
         .withArgs(signers[0].address, stakeId, listingAmount);
     });
 
+    it("should delist stake from marketplace", async () => {
+      const stakeId = Number(await stake.idCounter()) - 3;
+      log.yellow("stakeId: ", stakeId.toString());
+      const userStake = await stake.stakes(stakeId);
+      log.yellow("stakeOwner:", userStake.owner);
+      const listingBefore = await marketplace.listings(stakeId);
+      log.yellow("listing.lister: ", listingBefore.lister);
+      log.yellow("listing.amount: ", listingBefore.amount.toString());
+      log.yellow("listing.endTime: ", listingBefore.endTime.toString());
+      expect(listingBefore.lister).to.equal(signers[0].address);
+      expect(listingBefore.amount).to.be.gt(0);
+      await marketplace.delistStake(stakeId);
+      const listingAfter = await marketplace.listings(stakeId);
+      expect(listingAfter.lister).to.equal(ethers.constants.AddressZero);
+      expect(listingAfter.amount).to.equal(0);
+      expect(listingAfter.endTime).to.equal(0);
+    });
+
+    it("should emit a Delist event", async () => {
+      const stakeId = Number(await stake.idCounter()) - 1;
+
+      await expect(marketplace.delistStake(stakeId))
+        .to.emit(marketplace, "Delist")
+        .withArgs(signers[0].address, stakeId);
+    });
+
     it("should buy stake", async () => {
       const stakeId = 0;
+      await marketplace.listStake(
+        stakeId,
+        ethers.utils.parseEther("100"),
+        duration
+      );
       const amount = await marketplace.sellPrice(stakeId);
-      await maxx.connect(signers[1]).approve(marketplace.address, amount);
-      const maxxBefore = await maxx.balanceOf(signers[1].address);
-      const buyStake = await marketplace.connect(signers[1]).buyStake(stakeId);
+      const maticBefore = await signers[0].getBalance();
+      await marketplace.connect(signers[1]).buyStake(stakeId, {
+        value: amount,
+      });
       log.green("stake bought");
-      const maxxAfter = await maxx.balanceOf(signers[1].address);
-      expect(maxxBefore.sub(maxxAfter)).to.equal(amount);
+      const maticAfter = await signers[0].getBalance();
+      expect(maticAfter.sub(maticBefore)).to.equal(amount);
     });
 
     it("should emit a Purchase event", async () => {
-      const stakeId = 1;
+      const stakeId = 2;
+      await marketplace.listStake(
+        stakeId,
+        ethers.utils.parseEther("100"),
+        duration
+      );
       const amount = await marketplace.sellPrice(stakeId);
       await maxx.connect(signers[1]).approve(marketplace.address, amount);
-      const maxxBefore = await maxx.balanceOf(signers[1].address);
-      await expect(marketplace.connect(signers[1]).buyStake(stakeId)).to.emit(marketplace, "Purchase").withArgs(signers[1].address, stakeId, amount);
-    });
-
-    it("return all listings", async () => {
-      const listing0 = await marketplace.listings(0);
-      const listing1 = await marketplace.listings(1);
-      const expectedListings = [listing0, listing1]
-      const listings = await marketplace.getAllListings()
-      log.yellow("listings:", listings.toString());
-      expect(listings).to.eq(expectedListings)
+      await expect(
+        marketplace.connect(signers[1]).buyStake(stakeId, {
+          value: amount,
+        })
+      )
+        .to.emit(marketplace, "Purchase")
+        .withArgs(signers[1].address, stakeId, amount);
     });
   });
 });
-s

@@ -2,16 +2,16 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import log from "ololog";
 
-import { MaxxFinance } from "../typechain/MaxxFinance";
-import { MaxxFinance__factory } from "../typechain/factories/MaxxFinance__factory";
+import { MaxxFinance } from "../typechain-types/contracts/MaxxFinance";
+import { MaxxFinance__factory } from "../typechain-types/factories/contracts/MaxxFinance__factory";
 
-import { MaxxStake } from "../typechain/MaxxStake";
-import { MaxxStake__factory } from "../typechain/factories/MaxxStake__factory";
+import { MaxxStake } from "../typechain-types/contracts/MaxxStake";
+import { MaxxStake__factory } from "../typechain-types/factories/contracts/MaxxStake__factory";
 
-import { FreeClaim } from "../typechain/FreeClaim";
-import { FreeClaim__factory } from "../typechain/factories/FreeClaim__factory";
+import { FreeClaim } from "../typechain-types/contracts/FreeClaim";
+import { FreeClaim__factory } from "../typechain-types/factories/contracts/FreeClaim__factory";
 
-describe.only("Free Claim", () => {
+describe("Free Claim", () => {
   let Maxx: MaxxFinance__factory;
   let maxx: MaxxFinance;
 
@@ -27,6 +27,8 @@ describe.only("Free Claim", () => {
   let startDate: any;
   const merkleRoot: any =
     "0xc7679223c0cf31f46222fcdd829c232851d4102b198f7b0ee30a218300a0ccbe"; // TODO add real merkle root
+
+  const maxxVault = "0xBF7BF3d445aEc7B0c357163d5594DB8ca7C12D31";
 
   let signers: any;
   let deployer: any;
@@ -47,19 +49,19 @@ describe.only("Free Claim", () => {
     Stake = (await ethers.getContractFactory(
       "MaxxStake"
     )) as MaxxStake__factory;
-    stake = await Stake.deploy(maxx.address, stakeLaunchDate, nftAddress);
+    stake = await Stake.deploy(
+      maxxVault,
+      maxx.address,
+      stakeLaunchDate,
+      nftAddress
+    );
 
     startDate = stakeLaunchDate + 1;
 
     FreeClaim = (await ethers.getContractFactory(
       "FreeClaim"
     )) as FreeClaim__factory;
-    freeClaim = await FreeClaim.deploy(
-      startDate,
-      merkleRoot,
-      stake.address,
-      maxx.address
-    );
+    freeClaim = await FreeClaim.deploy(startDate, merkleRoot, maxx.address);
   });
 
   describe("deploy", () => {
@@ -177,10 +179,10 @@ describe.only("Free Claim", () => {
         "0x7c6969261cddab75d971bc975a7fcc0bf38fb09039a8e93038262f8c5ad89467",
       ]; // TODO: add the real proof
 
+      const stakeId = await stake.idCounter();
       await freeClaim.freeClaim(amount, proof, noReferral);
-      const userStake = await stake.stakes(0);
-      expect(userStake.owner).to.be.eq(deployer.address);
-      await expect(stake.stakes(1)).to.be.reverted;
+      const owner = await stake.ownerOf(stakeId);
+      expect(owner).to.be.eq(deployer.address);
     });
 
     it("should make a free claim with a referral", async () => {
@@ -204,8 +206,10 @@ describe.only("Free Claim", () => {
         "0x7c6969261cddab75d971bc975a7fcc0bf38fb09039a8e93038262f8c5ad89467",
       ]; // TODO: add the real proof
 
+      const stakeId = await stake.idCounter();
       await freeClaim.freeClaim(amount, proof, signers[1].address);
-      const userStake = await stake.stakes(0);
+      await freeClaim.stakeClaim();
+      const userStake = await stake.stakes(stakeId);
       expect(userStake.owner).to.be.eq(deployer.address);
       const referralStake = await stake.stakes(1);
       expect(referralStake.owner).to.be.eq(signers[1].address);

@@ -2,10 +2,10 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import log from "ololog";
 
-import { MaxxFinance } from "../typechain/MaxxFinance";
-import { MaxxFinance__factory } from "../typechain/factories/MaxxFinance__factory";
+import { MaxxFinance } from "../typechain-types/contracts/MaxxFinance";
+import { MaxxFinance__factory } from "../typechain-types/factories/contracts/MaxxFinance__factory";
 
-describe.only("Maxx Token", () => {
+describe("Maxx Token", () => {
   let Maxx: MaxxFinance__factory;
   let maxx: MaxxFinance;
   let signers: any;
@@ -90,15 +90,13 @@ describe.only("Maxx Token", () => {
     it("should update blocks between transfers", async () => {
       const blocks = 2;
       expect(await maxx.blocksBetweenTransfers()).to.be.equal(0);
-      await maxx.updateBlocksBetweenTransfers(blocks);
+      await maxx.setBlocksBetweenTransfers(blocks);
       expect(await maxx.blocksBetweenTransfers()).to.be.equal(blocks);
     });
 
     it("should not update blocks between transfers greater than 5", async () => {
       const blocks = 20;
-      await expect(
-        maxx.updateBlocksBetweenTransfers(blocks)
-      ).to.be.revertedWith(
+      await expect(maxx.setBlocksBetweenTransfers(blocks)).to.be.revertedWith(
         "Blocks between transfers must be less than or equal to 5"
       );
     });
@@ -264,7 +262,7 @@ describe.only("Maxx Token", () => {
       it("should block addresses that attempt to buy and sell in consecutive blocks", async () => {
         await maxx.updateBlockLimited(true);
         expect(await maxx.isBlockLimited()).to.eq(true);
-        await maxx.updateBlocksBetweenTransfers(5);
+        await maxx.setBlocksBetweenTransfers(5);
         expect(await maxx.blocksBetweenTransfers()).to.eq(5);
         const to = signers[1].address;
         await maxx.addPool(to);
@@ -282,7 +280,7 @@ describe.only("Maxx Token", () => {
         ).to.be.revertedWith("ERC20: Address is on blocklist");
       });
       it("should transfer tokens for allowlist addresses", async () => {
-        await maxx.updateAllowlist(signers[0].address, true);
+        await maxx.allow(signers[0].address);
         expect(await maxx.isAllowed(signers[0].address)).to.eq(true);
         const to = signers[1].address;
         await maxx.addPool(to);

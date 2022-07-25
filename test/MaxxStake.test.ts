@@ -2,11 +2,11 @@ import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 import log from "ololog";
 
-import { MaxxStake } from "../typechain/MaxxStake";
-import { MaxxStake__factory } from "../typechain/factories/MaxxStake__factory";
+import { MaxxStake } from "../typechain-types/contracts/MaxxStake";
+import { MaxxStake__factory } from "../typechain-types/factories/contracts/MaxxStake__factory";
 
-import { MaxxFinance } from "../typechain/MaxxFinance";
-import { MaxxFinance__factory } from "../typechain/factories/MaxxFinance__factory";
+import { MaxxFinance } from "../typechain-types/contracts/MaxxFinance";
+import { MaxxFinance__factory } from "../typechain-types/factories/contracts/MaxxFinance__factory";
 
 describe("Stake", () => {
   let Stake: MaxxStake__factory;
@@ -16,13 +16,15 @@ describe("Stake", () => {
   let maxx: MaxxFinance;
   let deployer: any;
   let otherAddress: any;
-  const nft: any = "0xac7a698a85102f7b1dc7345e7f17ebca74e5a9e7"; // Default Artion Collection
+  const nft: any = "0x8634666bA15AdA4bbC83B9DbF285F73D9e46e4C2"; // Polygon Chicken Derby Collection
+  const maxxVault = "0xBF7BF3d445aEc7B0c357163d5594DB8ca7C12D31";
   let stakeCounter = -1;
   let days = 0;
   const amount = ethers.utils.parseEther("1");
+  let signers: any[];
 
   before(async () => {
-    const signers = await ethers.getSigners();
+    signers = await ethers.getSigners();
     deployer = signers[0];
     otherAddress = signers[1];
 
@@ -39,7 +41,7 @@ describe("Stake", () => {
     Stake = (await ethers.getContractFactory(
       "MaxxStake"
     )) as MaxxStake__factory;
-    stake = await Stake.deploy(maxx.address, timestamp, nft);
+    stake = await Stake.deploy(maxxVault, maxx.address, timestamp, nft);
 
     await maxx.grantRole(await maxx.MINTER_ROLE(), stake.address);
   });
@@ -241,7 +243,7 @@ describe("Stake", () => {
 
       await expect(
         stake.connect(otherAddress).restake(stakeCounter, 0)
-      ).to.be.revertedWith("You are not the owner of this stake");
+      ).to.be.revertedWith("NotOwner()");
     });
 
     it("should not restake a stake that has not matured", async () => {
@@ -263,7 +265,7 @@ describe("Stake", () => {
       days += 120;
 
       await expect(stake.restake(stakeCounter, 0)).to.be.revertedWith(
-        "You cannot restake a stake that is not matured"
+        "StakeNotComplete()"
       );
     });
 
@@ -300,6 +302,7 @@ describe("Stake", () => {
       expect(amountAfter.gt(amountBefore)).to.be.true;
     });
 
+    // TODO: create test
     it("should top up the restake amount without late penalties", async () => {
       await maxx.approve(stake.address, amount);
       await stake.stake(121, amount);
@@ -465,7 +468,27 @@ describe("Stake", () => {
       let userStake = await stake.stakes(stakeCounter);
       const ownerBefore = userStake.owner;
 
-      await stake.transferStake(stakeCounter, otherAddress.address);
+      await stake.transfer(otherAddress.address, stakeCounter);
+      userStake = await stake.stakes(stakeCounter);
+      const ownerAfter = userStake.owner;
+      expect(ownerAfter).to.not.be.equal(ownerBefore);
+      expect(ownerAfter).to.be.equal(otherAddress.address);
+    });
+
+    it("should transfer the stake to a new wallet from a spender address", async () => {
+      await maxx.approve(stake.address, amount);
+      await stake.stake(121, amount);
+      stakeCounter++;
+
+      let userStake = await stake.stakes(stakeCounter);
+      const ownerBefore = userStake.owner;
+      await stake.approve(signers[3].address, stakeCounter, true);
+
+      await stake.transferFrom(
+        signers[3].address,
+        otherAddress.address,
+        stakeCounter
+      );
       userStake = await stake.stakes(stakeCounter);
       const ownerAfter = userStake.owner;
       expect(ownerAfter).to.not.be.equal(ownerBefore);
