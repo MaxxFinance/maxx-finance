@@ -111,7 +111,8 @@ describe("Stake", () => {
       days += 30;
 
       const userStake = await stake.stakes(0);
-      expect(userStake.owner.toString()).to.equal(deployer.address);
+      const userStakeOwner = await stake.ownerOf(0);
+      expect(userStakeOwner.toString()).to.equal(deployer.address);
 
       const shares = userStake.shares;
       const fullInterest = shares.mul(30).mul(10).div(365).div(100);
@@ -135,7 +136,8 @@ describe("Stake", () => {
 
       const balanceBefore = await maxx.balanceOf(deployer.address);
       const userStake = await stake.stakes(stakeCounter);
-      expect(userStake.owner.toString()).to.equal(deployer.address);
+      const userStakeOwner = await stake.ownerOf(stakeCounter);
+      expect(userStakeOwner.toString()).to.equal(deployer.address);
 
       await stake.unstake(stakeCounter);
       const balanceAfter = await maxx.balanceOf(deployer.address);
@@ -465,12 +467,10 @@ describe("Stake", () => {
       await stake.stake(121, amount);
       stakeCounter++;
 
-      let userStake = await stake.stakes(stakeCounter);
-      const ownerBefore = userStake.owner;
+      const ownerBefore = await stake.ownerOf(stakeCounter);
 
       await stake.transfer(otherAddress.address, stakeCounter);
-      userStake = await stake.stakes(stakeCounter);
-      const ownerAfter = userStake.owner;
+      const ownerAfter = await stake.ownerOf(stakeCounter);
       expect(ownerAfter).to.not.be.equal(ownerBefore);
       expect(ownerAfter).to.be.equal(otherAddress.address);
     });
@@ -480,17 +480,15 @@ describe("Stake", () => {
       await stake.stake(121, amount);
       stakeCounter++;
 
-      let userStake = await stake.stakes(stakeCounter);
-      const ownerBefore = userStake.owner;
-      await stake.approve(signers[3].address, stakeCounter, true);
+      const ownerBefore = await stake.ownerOf(stakeCounter);
+      await stake.setApprovalForAll(signers[3].address, true);
 
       await stake.transferFrom(
         signers[3].address,
         otherAddress.address,
         stakeCounter
       );
-      userStake = await stake.stakes(stakeCounter);
-      const ownerAfter = userStake.owner;
+      const ownerAfter = await stake.ownerOf(stakeCounter);
       expect(ownerAfter).to.not.be.equal(ownerBefore);
       expect(ownerAfter).to.be.equal(otherAddress.address);
     });

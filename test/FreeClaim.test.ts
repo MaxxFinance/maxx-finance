@@ -209,10 +209,10 @@ describe("Free Claim", () => {
       const stakeId = await stake.idCounter();
       await freeClaim.freeClaim(amount, proof, signers[1].address);
       await freeClaim.stakeClaim();
-      const userStake = await stake.stakes(stakeId);
-      expect(userStake.owner).to.be.eq(deployer.address);
-      const referralStake = await stake.stakes(1);
-      expect(referralStake.owner).to.be.eq(signers[1].address);
+      const stakeOwner = await stake.ownerOf(stakeId);
+      expect(stakeOwner).to.be.eq(deployer.address);
+      const referralStakeOwner = await stake.ownerOf(1);
+      expect(referralStakeOwner).to.be.eq(signers[1].address);
     });
   });
 });

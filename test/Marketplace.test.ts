@@ -78,7 +78,7 @@ describe.only("Marketplace", () => {
       const userStake = await stake.stake(stakeDays, stakeAmount);
       log.green("stake created");
       const listingAmount = ethers.utils.parseEther("110");
-      await stake.approve(marketplace.address, stakeId, true);
+      await stake.setApprovalForAll(marketplace.address, true);
       const listStake = await marketplace.listStake(
         stakeId,
         listingAmount,
@@ -99,6 +99,7 @@ describe.only("Marketplace", () => {
       await maxx.approve(stake.address, stakeAmount);
       const userStake = await stake.stake(stakeDays, stakeAmount);
       const listingAmount = ethers.utils.parseEther("110");
+      await stake.setApprovalForAll(marketplace.address, false);
       await expect(
         marketplace.listStake(stakeId, listingAmount, duration)
       ).to.be.revertedWithCustomError(marketplace, "NotApproved");
@@ -112,7 +113,7 @@ describe.only("Marketplace", () => {
       await maxx.approve(stake.address, stakeAmount);
       const userStake = await stake.stake(stakeDays, stakeAmount);
       const listingAmount = ethers.utils.parseEther("110");
-      await stake.approve(marketplace.address, stakeId, true);
+      await stake.setApprovalForAll(marketplace.address, true);
 
       await expect(marketplace.listStake(stakeId, listingAmount, duration))
         .to.emit(marketplace, "List")
@@ -121,13 +122,7 @@ describe.only("Marketplace", () => {
 
     it("should delist stake from marketplace", async () => {
       const stakeId = Number(await stake.idCounter()) - 3;
-      log.yellow("stakeId: ", stakeId.toString());
-      const userStake = await stake.stakes(stakeId);
-      log.yellow("stakeOwner:", userStake.owner);
       const listingBefore = await marketplace.listings(stakeId);
-      log.yellow("listing.lister: ", listingBefore.lister);
-      log.yellow("listing.amount: ", listingBefore.amount.toString());
-      log.yellow("listing.endTime: ", listingBefore.endTime.toString());
       expect(listingBefore.lister).to.equal(signers[0].address);
       expect(listingBefore.amount).to.be.gt(0);
       await marketplace.delistStake(stakeId);
