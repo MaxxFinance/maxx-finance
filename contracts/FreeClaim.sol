@@ -35,7 +35,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     bytes32 public merkleRoot; // TODO: may need to create multiple merkle roots depending on Merkle Tree size.
 
     /// Free claim start date
-    uint256 public immutable startDate;
+    uint256 public immutable launchDate;
     uint256 constant FREE_CLAIM_DURATION = 365 days;
 
     /// Max number of MAXX tokens that can be claimed by a user
@@ -82,11 +82,11 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     );
 
     constructor(
-        uint256 _startDate,
+        uint256 _launchDate,
         bytes32 _merkleRoot,
         address _MAXX
     ) {
-        startDate = _startDate;
+        launchDate = _launchDate;
         merkleRoot = _merkleRoot;
         MAXX = IERC20(_MAXX);
     }
@@ -119,7 +119,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             _amount = MAX_CLAIM_AMOUNT; // cannot claim more than the MAX_CLAIM_AMOUNT
         }
 
-        uint256 timePassed = block.timestamp - startDate;
+        uint256 timePassed = block.timestamp - launchDate;
 
         _amount =
             (_amount * (FREE_CLAIM_DURATION - timePassed)) /
