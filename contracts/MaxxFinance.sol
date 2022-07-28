@@ -36,7 +36,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     bool public isBlockLimited;
 
     /// @notice Global daily sell limit
-    uint256 public globalDailySellLimit; // TODO: global daily sell limit or transfer limit?
+    uint256 public globalDailySellLimit;
 
     /// @notice Whale limit
     uint256 public whaleLimit;
@@ -47,8 +47,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice Tax rate when calling transfer() or transferFrom()
     uint16 public transferTax; // 1000 = 10%
 
-    uint64 private constant GLOBAL_DAILY_SELL_LIMIT_MINIMUM = 1000000000; // 1 billion TODO: confirm desired amount
-    uint64 private constant WHALE_LIMIT_MINIMUM = 1000000; // 1 million TODO: confirm desired amount
+    uint64 private constant GLOBAL_DAILY_SELL_LIMIT_MINIMUM = 1000000000; // 1 billion
+    uint64 private constant WHALE_LIMIT_MINIMUM = 1000000; // 1 million
     uint8 private constant BLOCKS_BETWEEN_TRANSFERS_MAXIMUM = 5;
     uint16 private constant TRANSFER_TAX_FACTOR = 10000;
     uint64 private constant INITIAL_SUPPLY = 100000000000;
@@ -66,7 +66,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     mapping(address => bool) public isPool;
 
     /// @notice The amount of tokens sold each day
-    mapping(uint32 => uint256) public dailyAmountSold; // TODO: can be circumvented if new pool is created.
+    mapping(uint32 => uint256) public dailyAmountSold;
 
     constructor(
         address _maxxVault,
@@ -74,8 +74,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         uint256 _whaleLimit,
         uint256 _globalSellLimit
     ) ERC20("Maxx Finance", "MAXX") {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender); // TODO: get admin address
-        _grantRole(MINTER_ROLE, msg.sender); // TODO: get minter address
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         initialTimestamp = block.timestamp;
         maxxVault = _maxxVault;
         _mint(maxxVault, INITIAL_SUPPLY * 10**decimals()); // Initial supply: 100 billion MAXX
@@ -94,6 +93,88 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         onlyRole(MINTER_ROLE)
     {
         _mint(_to, _amount);
+    }
+
+    /// @notice identify an address as a liquidity pool
+    /// @param _address The pool address
+    function addPool(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isPool[_address] = true;
+        isAllowed[_address] = true;
+    }
+
+    /// @notice Set the transfer tax percentage
+    /// @param _transferTax The transfer tax to set
+    function setTransferTax(uint16 _transferTax)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_transferTax > 2000) {
+            revert ConsumerProtection();
+        }
+        transferTax = _transferTax;
+    }
+
+    /// @notice Set the blocks required between transfers
+    /// @param _blocksBetweenTransfers The number of blocks required between transfers
+    function setBlocksBetweenTransfers(uint256 _blocksBetweenTransfers)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_blocksBetweenTransfers > BLOCKS_BETWEEN_TRANSFERS_MAXIMUM) {
+            revert ConsumerProtection();
+        }
+        blocksBetweenTransfers = _blocksBetweenTransfers;
+    }
+
+    /// @notice Update blockLimited
+    /// @param _blockLimited Whether to block limit or not
+    function updateBlockLimited(bool _blockLimited)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        isBlockLimited = _blockLimited;
+    }
+
+    /// @notice add an address to the allowlist
+    /// @param _address The address to add to the allowlist
+    function allow(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isAllowed[_address] = true;
+    }
+
+    /// @notice remove an address from the allowlist
+    /// @param _address The address to remove from the allowlist
+    function disallow(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isAllowed[_address] = false;
+    }
+
+    /// @notice add an address to the blocklist
+    /// @dev "block" is a reserved symbol in Solidity, so we use "blockUser" instead
+    /// @param _address The address to add to the blocklist
+    function blockUser(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isBlocked[_address] = true;
+    }
+
+    /// @notice remove an address from the blocklist
+    /// @param _address The address to remove from the blocklist
+    function unblock(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isBlocked[_address] = false;
+    }
+
+    /// @notice Pause the contract
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    /// @notice Unpause the contract
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
+    /// @notice Get the timestamp of the next day when the daily amount sold will be reset
+    /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
+    function getNextDayTimestamp() external view returns (uint256 timestamp) {
+        uint256 day = uint256(getCurrentDay() + 1);
+        timestamp = initialTimestamp + (day * 1 days);
     }
 
     /// @dev Overrides the transfer() function and implements a transfer tax on lp pools
@@ -160,25 +241,6 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         return super.transferFrom(_from, _to, _amount);
     }
 
-    /// @notice identify an address as a liquidity pool
-    /// @param _address The pool address
-    function addPool(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isPool[_address] = true;
-        isAllowed[_address] = true;
-    }
-
-    /// @notice Set the transfer tax percentage
-    /// @param _transferTax The transfer tax to set
-    function setTransferTax(uint16 _transferTax)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        if (_transferTax > 2000) {
-            revert ConsumerProtection();
-        }
-        transferTax = _transferTax;
-    }
-
     /// @notice Set the global daily sell limit
     /// @param _globalDailySellLimit The new global daily sell limit
     function setGlobalDailySellLimit(uint256 _globalDailySellLimit)
@@ -203,74 +265,11 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         whaleLimit = _whaleLimit * 10**decimals();
     }
 
-    /// @notice Set the blocks required between transfers
-    /// @param _blocksBetweenTransfers The number of blocks required between transfers
-    function setBlocksBetweenTransfers(uint256 _blocksBetweenTransfers)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        if (_blocksBetweenTransfers > BLOCKS_BETWEEN_TRANSFERS_MAXIMUM) {
-            revert ConsumerProtection();
-        }
-        blocksBetweenTransfers = _blocksBetweenTransfers;
-    }
-
-    /// @notice Update blockLimited
-    /// @param _blockLimited Whether to block limit or not
-    function updateBlockLimited(bool _blockLimited)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        isBlockLimited = _blockLimited;
-    }
-
-    /// @notice add an address to the allowlist
-    /// @param _address The address to add to the allowlist
-    function allow(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isAllowed[_address] = true;
-    }
-
-    /// @notice remove an address from the allowlist
-    /// @param _address The address to remove from the allowlist
-    function disallow(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isAllowed[_address] = false;
-    }
-
-    /// @notice add an address to the blocklist
-    /// @dev "block" is a reserved symbol in Solidity, so we use "blockUser" instead
-    /// @param _address The address to add to the blocklist
-    function blockUser(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isBlocked[_address] = true;
-    }
-
-    /// @notice remove an address from the blocklist
-    /// @param _address The address to remove from the blocklist
-    function unblock(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isBlocked[_address] = false;
-    }
-
-    /// @notice Pause the contract
-    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _pause();
-    }
-
-    /// @notice Unpause the contract
-    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _unpause();
-    }
-
     /// @notice This functions gets the current day since the initial timestamp
     /// @return day The current day since launch
     function getCurrentDay() public view returns (uint32 day) {
         day = uint32((block.timestamp - initialTimestamp) / 24 / 60 / 60);
         return day;
-    }
-
-    /// @notice Get the timestamp of the next day when the daily amount sold will be reset
-    /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
-    function getNextDayTimestamp() external view returns (uint256 timestamp) {
-        uint256 day = uint256(getCurrentDay() + 1);
-        timestamp = initialTimestamp + (day * 1 days);
     }
 
     function _beforeTokenTransfer(
