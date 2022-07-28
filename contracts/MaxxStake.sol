@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import {ILiquidityAmplifier} from "./interfaces/ILiquidityAmplifier.sol";
 import {IMaxxFinance} from "./interfaces/IMaxxFinance.sol";
+import {IMAXXBoost} from "./interfaces/IMAXXBoost.sol";
 
 /// Not authorized to control the stake
 error NotAuthorized();
@@ -42,11 +43,78 @@ error StakeDoesNotExist();
 /// Cannot transfer stake to zero address
 error TransferToTheZeroAddress();
 
+/// User does not own the NFT
+error NotNFTOwner();
+
+/// NFT boost has already been used
+error UsedNFT();
+
 /// @title Maxx Finance staking contract
 /// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxStake is Ownable {
     using ERC165Checker for address;
     using Counters for Counters.Counter;
+
+    // Calculation variables
+    uint256 immutable launchDate;
+    uint8 private constant LATE_DAYS = 14;
+    uint8 private constant MIN_STAKE_DAYS = 7;
+    uint16 private constant MAX_STAKE_DAYS = 3333;
+    uint8 private constant BASE_INFLATION = 10; // 10%
+    uint8 private constant BASE_INFLATION_FACTOR = 100;
+    uint16 private constant DAYS_IN_YEAR = 365;
+    uint256 private constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
+    uint256 private constant MAGIC_NUMBER = 1111;
+
+    /// @notice Maxx Finance Vault address
+    address public maxxVault;
+
+    /// @notice Maxx Finance token
+    IMaxxFinance public maxx;
+    /// @notice Stake Counter
+    Counters.Counter public idCounter;
+    /// @notice amount of shares all time
+    uint256 public totalShares;
+    /// @notice alltime stakes
+    Counters.Counter public totalStakesAlltime;
+    /// @notice all active stakes
+    Counters.Counter public totalStakesActive;
+    /// @notice number of withdrawn stakes
+    Counters.Counter public totalStakesWithdrawn;
+    /// @notice number of stakes that have ended but are not yet withdrawn
+    uint256 public totalStakesMatured; // who is going to pay for the transaction to update this? // timed bot to update value?
+    /// @notice amount of accrued interest
+    uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?  // timed bot to update value?
+    /// @notice percentage of nft bonus
+    uint8 public nftBonusPercentage;
+    /// @notice maxxBoost NFT
+    IMAXXBoost public maxxBoost;
+    /// @notice maxxGenesis NFT
+    IMAXXBoost public maxxGenesis;
+    /// @notice address of the freeClaim contract
+    address public freeClaim;
+    /// @notice address of the liquidityAmplifier contract
+    address public liquidityAmplifier;
+    /// @notice mapping of stake id to stake
+    mapping(uint256 => StakeData) public stakes; // TODO: change to array to iterate over all stakes
+    /// mapping of stake end times
+    mapping(uint256 => uint256) public endTimes;
+
+    // StakeData[] public stakes;
+    // StakeData[] public activeStakes;
+    // StakeData[] public withdrawnStakes;
+
+    /// @notice mapping of stake id to withdrawn amounts
+    mapping(uint256 => uint256) public withdrawnAmounts;
+
+    // Mapping of stake to owner
+    mapping(uint256 => address) private _owners;
+
+    // Mapping from token ID to approved address
+    mapping(uint256 => address) private _stakeApprovals;
+
+    // Mapping from owner to operator approvals
+    mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     /// @notice Emitted when MAXX is staked
     /// @param user The user staking MAXX
@@ -88,76 +156,6 @@ contract MaxxStake is Ownable {
     /// @param name The new name of the stake
     event StakeNameChange(uint256 stakeId, string name);
 
-    // Calculation variables
-    uint256 immutable launchDate;
-    uint8 private constant LATE_DAYS = 14;
-    uint8 private constant MIN_STAKE_DAYS = 7;
-    uint16 private constant MAX_STAKE_DAYS = 3333;
-    uint8 private constant BASE_INFLATION = 10; // 10%
-    uint8 private constant BASE_INFLATION_FACTOR = 100;
-    uint16 private constant DAYS_IN_YEAR = 365;
-    uint256 private constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
-    uint256 private constant MAGIC_NUMBER = 1111;
-
-    /// @notice Maxx Finance Vault address
-    address public maxxVault;
-
-    /// @notice Maxx Finance token
-    IMaxxFinance public maxx;
-
-    Counters.Counter public idCounter;
-
-    /// @notice amount of shares all time
-    uint256 public totalShares;
-
-    /// @notice alltime stakes
-    Counters.Counter public totalStakesAlltime;
-
-    /// @notice all active stakes
-    Counters.Counter public totalStakesActive;
-
-    /// @notice number of withdrawn stakes
-    Counters.Counter public totalStakesWithdrawn;
-
-    /// @notice number of stakes that have ended but are not yet withdrawn
-    uint256 public totalStakesMatured; // who is going to pay for the transaction to update this? // timed bot to update value?
-
-    /// @notice amount of accrued interest
-    uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?  // timed bot to update value?
-
-    /// @notice percentage of nft bonus
-    uint8 public nftBonusPercentage;
-
-    /// @notice bonus nft
-    IERC721 public nft; // import nft contract or generic ERC721 interface for balanceOf()
-
-    /// @notice address of the freeClaim contract
-    address public freeClaim;
-
-    /// @notice address of the liquidityAmplifier contract
-    address public liquidityAmplifier;
-
-    /// @notice mapping of stake id to stake
-    mapping(uint256 => StakeData) public stakes; // TODO: change to array to iterate over all stakes
-    /// mapping of stake end times
-    mapping(uint256 => uint256) public endTimes;
-
-    // StakeData[] public stakes;
-    // StakeData[] public activeStakes;
-    // StakeData[] public withdrawnStakes;
-
-    /// @notice mapping of stake id to withdrawn amounts
-    mapping(uint256 => uint256) public withdrawnAmounts;
-
-    // Mapping of stake to owner
-    mapping(uint256 => address) private _owners;
-
-    // Mapping from token ID to approved address
-    mapping(uint256 => address) private _stakeApprovals;
-
-    // Mapping from owner to operator approvals
-    mapping(address => mapping(address => bool)) private _operatorApprovals;
-
     struct StakeData {
         string name; // 32 letters max
         uint256 amount;
@@ -166,16 +164,23 @@ contract MaxxStake is Ownable {
         uint256 startDate;
     }
 
+    enum MaxxNFT {
+        MaxxGenesis,
+        MaxxBoost
+    }
+
     constructor(
         address _maxxVault,
         address _maxx,
         uint256 _launchDate,
-        address _nft
+        address _maxxBoost,
+        address _maxxGenesis
     ) {
         maxxVault = _maxxVault;
         maxx = IMaxxFinance(_maxx);
         launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date
-        nft = IERC721(_nft);
+        maxxBoost = IMAXXBoost(_maxxBoost);
+        maxxGenesis = IMAXXBoost(_maxxGenesis);
     }
 
     /// @notice Function to stake MAXX
@@ -183,40 +188,43 @@ contract MaxxStake is Ownable {
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
     function stake(uint16 _numDays, uint256 _amount) external {
-        if (_numDays < MIN_STAKE_DAYS) {
-            revert StakeTooShort();
-        } else if (_numDays > MAX_STAKE_DAYS) {
-            revert StakeTooLong();
-        }
-
-        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract -- removed from circulating supply
-
         uint256 shares = _calcShares(_numDays, _amount);
 
-        if (nft.balanceOf(msg.sender) > 0) {
-            shares = (shares * (100 + nftBonusPercentage)) / 100;
-        }
-
-        totalShares += shares;
-        totalStakesAlltime.increment();
-        totalStakesActive.increment();
-
-        uint256 duration = uint256(_numDays) * 1 days;
-
-        stakes[idCounter.current()] = StakeData(
-            "",
-            _amount,
-            shares,
-            duration,
-            block.timestamp
-        );
-        endTimes[idCounter.current()] = block.timestamp + duration;
-        _owners[idCounter.current()] = msg.sender;
-        idCounter.increment();
-        emit Stake(msg.sender, _numDays, _amount);
+        _stake(_numDays, _amount, shares);
     }
 
-    // TODO: pay special attention to the calculations in this function
+    /// @notice Function to stake MAXX
+    /// @dev User must approve MAXX before staking
+    /// @param _numDays The number of days to stake (min 7, max 3333)
+    /// @param _amount The amount of MAXX to stake
+    /// @param _tokenId // The token Id of the nft to use
+    /// @param _maxxNFT // The nft collection to use
+    function stake(
+        uint16 _numDays,
+        uint256 _amount,
+        uint256 _tokenId,
+        MaxxNFT _maxxNFT
+    ) external {
+        IMAXXBoost nft;
+        if (_maxxNFT == MaxxNFT.MaxxGenesis) {
+            nft = maxxGenesis;
+        } else {
+            nft = maxxBoost;
+        }
+
+        if (msg.sender != nft.ownerOf(_tokenId)) {
+            revert NotNFTOwner();
+        } else if (nft.getUsedState(_tokenId)) {
+            revert UsedNFT();
+        }
+        nft.setUsed(_tokenId);
+
+        uint256 shares = _calcShares(_numDays, _amount);
+        shares += shares / 10; // add 10% to the shares for the nft bonus
+
+        _stake(_numDays, _amount, shares);
+    }
+
     /// @notice Function to unstake MAXX
     /// @param _stakeId The id of the stake to unstake
     function unstake(uint256 _stakeId) external {
@@ -460,6 +468,61 @@ contract MaxxStake is Ownable {
         idCounter.increment();
     }
 
+    /// @notice Function to stake MAXX from liquidity amplifier contract
+    /// @param _numDays The number of days to stake for
+    /// @param _amount The amount of MAXX to stake
+    /// @param _tokenId // The token Id of the nft to use
+    /// @param _maxxNFT // The nft collection to use
+    function amplifierStake(
+        uint16 _numDays,
+        uint256 _amount,
+        uint256 _tokenId,
+        MaxxNFT _maxxNFT
+    ) external {
+        if (msg.sender != liquidityAmplifier) {
+            revert NotAuthorized();
+        }
+        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to the contract
+
+        IMAXXBoost nft;
+        if (_maxxNFT == MaxxNFT.MaxxGenesis) {
+            nft = maxxGenesis;
+        } else {
+            nft = maxxBoost;
+        }
+
+        if (msg.sender != nft.ownerOf(_tokenId)) {
+            revert NotNFTOwner();
+        } else if (nft.getUsedState(_tokenId)) {
+            revert UsedNFT();
+        }
+        nft.setUsed(_tokenId);
+
+        uint256 shares = _calcShares(_numDays, _amount);
+        shares += shares / 10; // add 10% to the shares for the nft bonus
+        if (_numDays >= DAYS_IN_YEAR) {
+            // TODO: calculate the bonus amount of shares
+            // e.g. shares = shares * 10%
+        }
+
+        totalShares += shares;
+        totalStakesAlltime.increment();
+        totalStakesActive.increment();
+
+        uint256 duration = _numDays * 1 days;
+
+        stakes[idCounter.current()] = StakeData(
+            "",
+            _amount,
+            shares,
+            duration,
+            block.timestamp
+        );
+        endTimes[idCounter.current()] = block.timestamp + duration;
+        _owners[idCounter.current()] = tx.origin;
+        idCounter.increment();
+    }
+
     /// @notice Function to stake MAXX from FreeClaim contract
     /// @param _owner The owner of the stake
     /// @param _amount The amount of MAXX to stake
@@ -513,11 +576,45 @@ contract MaxxStake is Ownable {
         nftBonusPercentage = _nftBonusPercentage;
     }
 
-    /// @notice Function to set the NFT contract address
-    /// @param _nft Address of the NFT contract
-    function setNftAddress(address _nft) external onlyOwner {
-        require(IERC721(_nft).supportsInterface(type(IERC721).interfaceId)); // must support IERC721 interface
-        nft = IERC721(_nft); // TODO: get the name of the NFT contract
+    /// @notice Function to set the MaxxBoost NFT contract address
+    /// @param _maxxBoost Address of the MaxxBoost NFT contract
+    function setMaxxBoost(address _maxxBoost) external onlyOwner {
+        require(
+            IERC721(_maxxBoost).supportsInterface(type(IERC721).interfaceId)
+        ); // must support IERC721 interface
+        maxxBoost = IMAXXBoost(_maxxBoost);
+    }
+
+    /// @notice Function to set the MaxxGenesis NFT contract address
+    /// @param _maxxGenesis Address of the MaxxGenesis NFT contract
+    function setMaxxGenesis(address _maxxGenesis) external onlyOwner {
+        require(
+            IERC721(_maxxGenesis).supportsInterface(type(IERC721).interfaceId)
+        ); // must support IERC721 interface
+        maxxGenesis = IMAXXBoost(_maxxGenesis);
+    }
+
+    /// @dev Gives permission to `_to` to transfer `_stakeId` token to another account.
+    /// @param _to The address given approval
+    /// @param _stakeId The id of the stake to be approved for transfer
+    function approve(address _to, uint256 _stakeId) public {
+        address owner = ownerOf(_stakeId);
+        if (_to == owner) {
+            revert SelfApproval();
+        }
+        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+            revert NotAuthorized();
+        }
+
+        _approve(_to, _stakeId);
+    }
+
+    /// @notice Approve or remove `operator` as an operator for the caller.
+    /// @dev Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.
+    /// @param _operator The account that will be added or removed as an operator.
+    /// @param _approved Whether the account is added or removed as an operator.
+    function setApprovalForAll(address _operator, bool _approved) public {
+        _setApprovalForAll(msg.sender, _operator, _approved);
     }
 
     /// @notice This function will return day `day` since the launch date
@@ -536,19 +633,6 @@ contract MaxxStake is Ownable {
         return owner;
     }
 
-    /// @dev Gives permission to `_to` to transfer `_stakeId` token to another account.
-    function approve(address _to, uint256 _stakeId) public {
-        address owner = ownerOf(_stakeId);
-        if (_to == owner) {
-            revert SelfApproval();
-        }
-        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
-            revert NotAuthorized();
-        }
-
-        _approve(_to, _stakeId);
-    }
-
     /// @notice Returns the account approved for `_stakeId` token.
     /// @param _stakeId The id of the stake
     /// @return operator The account approved for `_stakeId` token.
@@ -560,14 +644,6 @@ contract MaxxStake is Ownable {
         _requireStaked(_stakeId);
 
         return _stakeApprovals[_stakeId];
-    }
-
-    /// @notice Approve or remove `operator` as an operator for the caller.
-    /// @dev Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.
-    /// @param _operator The account that will be added or removed as an operator.
-    /// @param _approved Whether the account is added or removed as an operator.
-    function setApprovalForAll(address _operator, bool _approved) public {
-        _setApprovalForAll(msg.sender, _operator, _approved);
     }
 
     /// @notice Returns if the `operator` is allowed to manage all of the assets of `owner`.
@@ -592,7 +668,7 @@ contract MaxxStake is Ownable {
         address _owner,
         address _operator,
         bool _approved
-    ) internal virtual {
+    ) internal {
         if (_owner == _operator) {
             revert SelfApproval();
         }
@@ -600,15 +676,64 @@ contract MaxxStake is Ownable {
         emit ApprovalForAll(_owner, _operator, _approved);
     }
 
+    function _stake(
+        uint16 _numDays,
+        uint256 _amount,
+        uint256 _shares
+    ) internal {
+        if (_numDays < MIN_STAKE_DAYS) {
+            revert StakeTooShort();
+        } else if (_numDays > MAX_STAKE_DAYS) {
+            revert StakeTooLong();
+        }
+
+        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract -- removed from circulating supply
+
+        totalShares += _shares;
+        totalStakesAlltime.increment();
+        totalStakesActive.increment();
+
+        uint256 duration = uint256(_numDays) * 1 days;
+
+        stakes[idCounter.current()] = StakeData(
+            "",
+            _amount,
+            _shares,
+            duration,
+            block.timestamp
+        );
+        endTimes[idCounter.current()] = block.timestamp + duration;
+        _owners[idCounter.current()] = msg.sender;
+        idCounter.increment();
+        emit Stake(msg.sender, _numDays, _amount);
+    }
+
+    function _transferStake(uint256 _stakeId, address _to) internal {
+        if (_to == address(0)) {
+            revert TransferToTheZeroAddress();
+        }
+
+        delete _stakeApprovals[_stakeId];
+
+        _owners[_stakeId] = _to;
+        emit Transfer(msg.sender, _to);
+    }
+
+    function _transfer(address payable _to, uint256 _amount) internal {
+        // Note that "to" is declared as payable
+        (bool success, ) = _to.call{value: _amount}("");
+        require(success, "Failed to send Ether");
+    }
+
     /// @dev Reverts if the `_stakeId` has not been minted yet.
-    function _requireStaked(uint256 _stakeId) internal view virtual {
+    function _requireStaked(uint256 _stakeId) internal view {
         if (!_exists(_stakeId)) {
             revert StakeDoesNotExist();
         }
     }
 
     /// @dev Returns whether `_stakeId` exists.
-    function _exists(uint256 _stakeId) internal view virtual returns (bool) {
+    function _exists(uint256 _stakeId) internal view returns (bool) {
         return _owners[_stakeId] != address(0);
     }
 
@@ -622,17 +747,6 @@ contract MaxxStake is Ownable {
         return (_spender == owner ||
             isApprovedForAll(owner, _spender) ||
             getApproved(_stakeId) == _spender);
-    }
-
-    function _transferStake(uint256 _stakeId, address _to) internal {
-        if (_to == address(0)) {
-            revert TransferToTheZeroAddress(); // TODO: allow this?
-        }
-
-        delete _stakeApprovals[_stakeId];
-
-        _owners[_stakeId] = _to;
-        emit Transfer(msg.sender, _to);
     }
 
     /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
@@ -696,14 +810,5 @@ contract MaxxStake is Ownable {
             interestToDate = currentDurationInterest;
         }
         return interestToDate;
-    }
-
-    /// @notice Function to transfer Fantom from this contract to address from input
-    /// @param _to address of transfer recipient
-    /// @param _amount amount of Fantom to be transferred
-    function _transfer(address payable _to, uint256 _amount) internal {
-        // Note that "to" is declared as payable
-        (bool success, ) = _to.call{value: _amount}("");
-        require(success, "Failed to send Ether");
     }
 }
