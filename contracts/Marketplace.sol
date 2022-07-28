@@ -23,8 +23,22 @@ error FeeTooHigh();
 error ListingExpired();
 
 /// @title Maxx Finance Stake Marketplace
-/// @author Alta Web3 Labs
+/// @author Alta Web3 Labs - SonOfMosiah
 contract Marketplace is Ownable {
+    /// Maxx Finance staking contract
+    IStake public maxxStake;
+
+    /// The percentage of transactions to be paid to the marketplace (e.g. 25 = 2.5%)
+    uint16 public feePercentage; // percentage * 10 (e.g. 100 = 10%)
+    uint16 private constant MAX_FEE_PERCENTAGE = 100; // max fee percentage = 10%
+    uint16 private constant FEE_FACTOR = 1000;
+
+    /// mapping of stake id to their desired sellPrice
+    mapping(uint256 => uint256) public sellPrice;
+
+    /// mapping of stake id to their listing
+    mapping(uint256 => Listing) public listings;
+
     /// @notice Emitted when stake is listed to the market
     /// @param user The user who listed the stake
     /// @param stakeId The id of the stake
@@ -45,20 +59,6 @@ contract Marketplace is Ownable {
         uint256 indexed stakeId,
         uint256 amount
     );
-
-    /// Maxx Finance staking contract
-    IStake public maxxStake;
-
-    /// The percentage of transactions to be paid to the marketplace (e.g. 25 = 2.5%)
-    uint16 public feePercentage; // percentage * 10 (e.g. 100 = 10%)
-    uint16 private constant MAX_FEE_PERCENTAGE = 100; // max fee percentage = 10%
-    uint16 private constant FEE_FACTOR = 1000;
-
-    /// mapping of stake id to their desired sellPrice
-    mapping(uint256 => uint256) public sellPrice;
-
-    /// mapping of stake id to their listing
-    mapping(uint256 => Listing) public listings;
 
     struct Listing {
         address lister;
@@ -125,7 +125,6 @@ contract Marketplace is Ownable {
         }
 
         if (msg.value < sellPrice[_stakeId]) {
-            // TODO: send the extra to the seller or keep in contract? change following msg.value to sellPrice
             revert InsufficientValue();
         }
 
