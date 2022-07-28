@@ -51,7 +51,7 @@ error UsedNFT();
 
 /// @title Maxx Finance staking contract
 /// @author Alta Web3 Labs - SonOfMosiah
-contract MaxxStake is Ownable {
+contract MaxxStakeTest is Ownable {
     uint16 private constant TEST_TIME_FACTOR = 168; // Test contract runs 168x faster (1 hour = 1 week)
     using ERC165Checker for address;
     using Counters for Counters.Counter;

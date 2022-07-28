@@ -20,7 +20,7 @@ error ConsumerProtection();
 
 /// @title Maxx Finance -- MAXX ERC20 token contract
 /// @author Alta Web3 Labs - SonOfMosiah
-contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
+contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
     uint16 private constant TEST_TIME_FACTOR = 168; // Test contract runs 168x faster (1 hour = 1 week)
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 

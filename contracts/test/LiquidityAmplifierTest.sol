@@ -33,7 +33,7 @@ error StakingNotInitialized();
 
 /// @title Maxx Finance Liquidity Amplifier
 /// @author Alta Web3 Labs - SonOfMosiah
-contract LiquidityAmplifier is Ownable {
+contract LiquidityAmplifierTest is Ownable {
     using SafeERC20 for IERC20;
     using ERC165Checker for address;
 

@@ -28,7 +28,7 @@ error OnlyMaxxStake();
 
 /// @title Maxx Finance Free Claim
 /// @author Alta Web3 Labs - SonOfMosiah
-contract FreeClaim is Ownable, ReentrancyGuard {
+contract FreeClaimTest is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint16 private constant TEST_TIME_FACTOR = 168; // Test contract runs 168x faster (1 hour = 1 week)
@@ -37,7 +37,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     bytes32 public merkleRoot;
 
     /// Free claim start date
-    uint256 public immutable startDate;
+    uint256 public immutable launchDate;
     uint256 constant FREE_CLAIM_DURATION = 365 days;
 
     /// Max number of MAXX tokens that can be claimed by a user
@@ -84,11 +84,11 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     );
 
     constructor(
-        uint256 _startDate,
+        uint256 _launchDate,
         bytes32 _merkleRoot,
         address _MAXX
     ) {
-        startDate = _startDate;
+        launchDate = _launchDate;
         merkleRoot = _merkleRoot;
         MAXX = IERC20(_MAXX);
     }
@@ -121,7 +121,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             _amount = MAX_CLAIM_AMOUNT; // cannot claim more than the MAX_CLAIM_AMOUNT
         }
 
-        uint256 timePassed = (block.timestamp - startDate) * TEST_TIME_FACTOR;
+        uint256 timePassed = (block.timestamp - launchDate) * TEST_TIME_FACTOR;
 
         _amount =
             (_amount * (FREE_CLAIM_DURATION - timePassed)) /

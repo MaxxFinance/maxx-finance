@@ -24,7 +24,7 @@ error ListingExpired();
 
 /// @title Maxx Finance Stake Marketplace
 /// @author Alta Web3 Labs - SonOfMosiah
-contract Marketplace is Ownable {
+contract MarketplaceTest is Ownable {
     uint16 private constant TEST_TIME_FACTOR = 168; // Test contract runs 168x faster (1 hour = 1 week)
     /// Maxx Finance staking contract
     IStake public maxxStake;
