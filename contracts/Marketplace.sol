@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-import "hardhat/console.sol";
 
 import {IStake} from "./interfaces/IStake.sol";
 
@@ -15,10 +13,7 @@ error StakeNotListed();
 /// Not enough Matic sent with the transaction
 error InsufficientValue();
 
-/// Not the owner the stake
-error NotOwner();
-
-/// Marketplace not approved to transfer stake
+/// Not owner or approved as operator of the stake
 error NotApproved();
 
 /// Fee percentage can't be greater than 10%
@@ -55,8 +50,9 @@ contract Marketplace is Ownable {
     IStake public maxxStake;
 
     /// The percentage of transactions to be paid to the marketplace (e.g. 25 = 2.5%)
-    uint16 public feePercentage;
-    uint16 constant FEE_FACTOR = 1000;
+    uint16 public feePercentage; // percentage * 10 (e.g. 100 = 10%)
+    uint16 private constant MAX_FEE_PERCENTAGE = 100; // max fee percentage = 10%
+    uint16 private constant FEE_FACTOR = 1000;
 
     /// mapping of stake id to their desired sellPrice
     mapping(uint256 => uint256) public sellPrice;
@@ -82,13 +78,12 @@ contract Marketplace is Ownable {
         uint256 _amount,
         uint256 _duration
     ) external {
-        console.log("enter listStake");
-        address stakeOwner = maxxStake.stakeOwner(_stakeId);
-        if (!maxxStake.allowance(stakeOwner, address(this), _stakeId)) {
+        address stakeOwner = maxxStake.ownerOf(_stakeId);
+        if (
+            msg.sender != stakeOwner &&
+            !maxxStake.isApprovedForAll(stakeOwner, msg.sender)
+        ) {
             revert NotApproved();
-        }
-        if (msg.sender != stakeOwner) {
-            revert NotOwner();
         }
         sellPrice[_stakeId] = _amount;
         listings[_stakeId] = Listing(
@@ -96,38 +91,30 @@ contract Marketplace is Ownable {
             _amount,
             block.timestamp + _duration
         );
-        console.log("listings[_stakeId].lister", listings[_stakeId].lister);
         emit List(msg.sender, _stakeId, _amount);
     }
 
     /// @notice Function to delist stake from the market
     /// @param _stakeId The id of the stake to delist
     function delistStake(uint256 _stakeId) external {
-        console.log("enter delistStake");
-        address stakeOwner = maxxStake.stakeOwner(_stakeId);
-        if (msg.sender != stakeOwner) {
-            revert NotOwner();
+        address stakeOwner = maxxStake.ownerOf(_stakeId);
+        if (
+            msg.sender != stakeOwner &&
+            !maxxStake.isApprovedForAll(stakeOwner, msg.sender)
+        ) {
+            revert NotApproved();
         }
-        sellPrice[_stakeId] = 0;
-        listings[_stakeId] = Listing(address(0), 0, 0);
+        // sellPrice[_stakeId] = 0;
+        delete sellPrice[_stakeId]; // TODO Which is cheaper?
+        delete listings[_stakeId];
         emit Delist(msg.sender, _stakeId);
     }
 
     /// @notice Function to buy a stake from the market
     /// @param _stakeId The id of the stake to buy
     function buyStake(uint256 _stakeId) external payable {
-        console.log("enter buyStake");
-        address stakeOwner = maxxStake.stakeOwner(_stakeId);
-        if (!maxxStake.allowance(stakeOwner, address(this), _stakeId)) {
-            revert NotApproved();
-        }
-
-        console.log("_stakeId", _stakeId);
+        address stakeOwner = maxxStake.ownerOf(_stakeId);
         Listing memory listing = listings[_stakeId];
-
-        console.log("listing.lister", listing.lister);
-        console.log("listings[_stakeId].lister", listings[_stakeId].lister);
-        console.log("stakeOwner:", stakeOwner);
 
         if (listing.lister != stakeOwner) {
             revert StakeNotListed();
@@ -147,15 +134,16 @@ contract Marketplace is Ownable {
 
         payable(stakeOwner).transfer(amount);
 
-        sellPrice[_stakeId] = 0;
-        require(maxxStake.transferFrom(stakeOwner, msg.sender, _stakeId));
+        // sellPrice[_stakeId] = 0;
+        delete sellPrice[_stakeId]; // TODO Which is cheaper?
+        maxxStake.transferFrom(stakeOwner, msg.sender, _stakeId);
         emit Purchase(msg.sender, _stakeId, msg.value);
     }
 
     /// @notice Function to set the fee percentage for the marketplace
     /// @param _feePercentage The percentage of the transaction to be paid to the marketplace (e.g. 25 = 2.5%)
     function setFeePercentage(uint16 _feePercentage) external onlyOwner {
-        if (_feePercentage > 100) {
+        if (_feePercentage > MAX_FEE_PERCENTAGE) {
             revert FeeTooHigh();
         }
         feePercentage = _feePercentage;

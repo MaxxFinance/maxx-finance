@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
@@ -237,8 +237,9 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     }
 
     /// @notice add an address to the blocklist
+    /// @dev "block" is a reserved symbol in Solidity, so we use "blockUser" instead
     /// @param _address The address to add to the blocklist
-    function block(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function blockUser(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
         isBlocked[_address] = true;
     }
 
