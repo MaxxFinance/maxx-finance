@@ -188,7 +188,10 @@ contract LiquidityAmplifier is Ownable {
         emit Claim(msg.sender, amount);
     }
 
-    // @notice Function to claim MAXX and directly stake
+    /// @notice Function to claim MAXX and directly stake
+    /// @param _daysToStake The number of days to stake
+    /// @param _tokenId The token id of the NFT to use for a staking boost
+    /// @param _maxxNFT The NFT collection (0 - MaxxGenesis, 1 - MaxxBoost)
     function claimToStake(
         uint16 _daysToStake,
         uint256 _tokenId,
