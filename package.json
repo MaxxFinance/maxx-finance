@@ -10,15 +10,15 @@
     "docgen": "npx hardhat docgen",
     "prettier": "./node_modules/.bin/prettier --write contracts/**/*.sol",
     "deployMaxxFinance": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
-    "deployMaxxStake": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
-    "deployMarketplace": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
-    "deployFreeClaim": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
-    "deployLiquidityAmplifier": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
+    "deployMaxxStake": "npx hardhat run scripts/deploy/MaxxStake.ts --network polygon",
+    "deployMarketplace": "npx hardhat run scripts/deploy/Marketplace.ts --network polygon",
+    "deployFreeClaim": "npx hardhat run scripts/deploy/FreeClaim.ts --network polygon",
+    "deployLiquidityAmplifier": "npx hardhat run scripts/deploy/LiquidityAmplifier.ts --network polygon",
     "deployMaxxFinanceMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
-    "deployMaxxStakeMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
-    "deployMarketplaceMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
-    "deployFreeClaimMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
-    "deployLiquidityAmplifierMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai"
+    "deployMaxxStakeMumbai": "npx hardhat run scripts/deploy/MaxxStake.ts --network mumbai",
+    "deployMarketplaceMumbai": "npx hardhat run scripts/deploy/Marketplace.ts --network mumbai",
+    "deployFreeClaimMumbai": "npx hardhat run scripts/deploy/FreeClaim.ts --network mumbai",
+    "deployLiquidityAmplifierMumbai": "npx hardhat run scripts/deploy/LiquidityAmplifier.ts --network mumbai"
   },
   "repository": {
     "type": "git",
