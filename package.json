@@ -8,21 +8,33 @@
     "clean": "npx hardhat clean",
     "compile": "npx hardhat compile",
     "docgen": "npx hardhat docgen",
-    "prettier": "./node_modules/.bin/prettier --write contracts/**/*.sol"
+    "prettier": "./node_modules/.bin/prettier --write contracts/**/*.sol",
+    "deployMaxxFinance": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
+    "deployMaxxStake": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
+    "deployMarketplace": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
+    "deployFreeClaim": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
+    "deployLiquidityAmplifier": "npx hardhat run scripts/deploy/MaxxFinance.ts --network polygon",
+    "deployMaxxFinanceMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
+    "deployMaxxStakeMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
+    "deployMarketplaceMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
+    "deployFreeClaimMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai",
+    "deployLiquidityAmplifierMumbai": "npx hardhat run scripts/deploy/MaxxFinance.ts --network mumbai"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/altalabsdev/maxx-finance.git"
   },
-  "keywords": ["blockchain",
-  "web3",
-  "hardhat",
-  "alta",
-  "solidity",
-  "polygon",
-  "staking",
-  "NFT"], 
-  "author": "Alta Web3 Labs",
+  "keywords": [
+    "blockchain",
+    "web3",
+    "hardhat",
+    "alta",
+    "solidity",
+    "polygon",
+    "staking",
+    "NFT"
+  ],
+  "author": "Alta Web3 Labs - SonOfMosiah <ammon@alta.finance>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/altalabsdev/maxx-finance/issues"
