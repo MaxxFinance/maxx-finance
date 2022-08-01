@@ -31,6 +31,9 @@ error AlreadyInitialized();
 /// The Maxx Finance Staking contract hasn't been initialized
 error StakingNotInitialized();
 
+/// Current or proposed launch date has already passed
+error LaunchDatePassed();
+
 /// @title Maxx Finance Liquidity Amplifier
 /// @author Alta Web3 Labs - SonOfMosiah
 contract LiquidityAmplifier is Ownable {
@@ -57,14 +60,11 @@ contract LiquidityAmplifier is Ownable {
     /// @notice Address of the MAXX token contract
     IERC20 public maxx;
 
-    /// @notice Address of the MaxxGenesis NFT contract
-    IERC721 public MaxxGenesis;
+    bool private _allocationInitialized;
 
-    bool private allocationInitialized;
-
-    uint16 constant MAX_LATE_DAYS = 100;
-    uint16 constant CLAIM_PERIOD = 60;
-    uint16 constant AMPLIFIER_PERIOD = 60;
+    uint16 public constant MAX_LATE_DAYS = 100;
+    uint16 public constant CLAIM_PERIOD = 60;
+    uint16 public constant AMPLIFIER_PERIOD = 60;
 
     /// @notice maps address to day (indexed at 0) to amount of tokens deposited
     mapping(address => uint256[60]) public userDailyDeposits;
@@ -217,11 +217,69 @@ contract LiquidityAmplifier is Ownable {
         emit Claim(msg.sender, amount);
     }
 
-    /// @notice This function will return day `day` out of 60 days
-    /// @return day How many days have passed since `launchDate`
-    function getDay() public view returns (uint8 day) {
-        day = uint8(block.timestamp - launchDate / 60 / 60 / 24); // divide by 60 seconds, 60 minutes, 24 hours
-        return day;
+    /// @notice Function to set the Maxx Finance staking contract address
+    /// @param _stake Address of the Maxx Finance staking contract
+    function setStakeAddress(address _stake) external onlyOwner {
+        stake = IStake(_stake);
+    }
+
+    /// @notice Function to initialize the daily allocations
+    /// @dev Function can only be called once
+    /// @param _dailyAllocation Array of daily MAXX token allocations for 60 days
+    function setDailyAllocations(uint256[60] memory _dailyAllocation)
+        external
+        onlyOwner
+    {
+        if (_allocationInitialized) {
+            revert AlreadyInitialized();
+        }
+        _maxxDailyAllocation = _dailyAllocation;
+        _allocationInitialized = true;
+    }
+
+    /// @notice Function to change the daily maxx allocation
+    /// @dev Cannot change the daily allocation after the day has passed
+    /// @param _day Day of the amplifier to change the allocation for
+    /// @param _maxxAmount Amount of MAXX tokens to allocate for the day
+    function changeDailyAllocation(uint256 _day, uint256 _maxxAmount)
+        external
+        onlyOwner
+    {
+        if (block.timestamp >= launchDate + (_day * 1 days)) {
+            revert InvalidDay(_day);
+        }
+        _maxxDailyAllocation[_day] = _maxxAmount; // indexed at 0
+    }
+
+    /// @notice Function to change the start date
+    /// @dev Cannot change the start date after the day has passed
+    /// @param _launchDate New start date for the liquidity amplifier
+    function changeLaunchDate(uint256 _launchDate) external onlyOwner {
+        if (block.timestamp >= launchDate || block.timestamp >= _launchDate) {
+            revert LaunchDatePassed();
+        }
+        launchDate = _launchDate;
+    }
+
+    /// @notice Function to transfer Matic from this contract to address from input
+    /// @param _to address of transfer recipient
+    /// @param _amount amount of Matic to be transferred
+    function withdraw(address payable _to, uint256 _amount) external onlyOwner {
+        // Note that "to" is declared as payable
+        (bool success, ) = _to.call{value: _amount}("");
+        require(success, "Failed to send Ether");
+    }
+
+    /// @notice Function to reclaim any unallocated MAXX back to the vault
+    function withdrawMaxx() external onlyOwner {
+        if (
+            block.timestamp <=
+            launchDate + (AMPLIFIER_PERIOD * 1 days) + (CLAIM_PERIOD * 1 days)
+        ) {
+            revert AmplifierNotComplete();
+        }
+        uint256 extraMaxx = maxx.balanceOf(address(this));
+        maxx.safeTransfer(maxxVault, extraMaxx);
     }
 
     /// @notice This function will return all liquidity amplifier participants
@@ -274,76 +332,11 @@ contract LiquidityAmplifier is Ownable {
         return _effectiveMaticDailyDeposits[_day];
     }
 
-    /// @notice Function to set the Maxx Finance staking contract address
-    /// @param _stake Address of the Maxx Finance staking contract
-    function setStakeAddress(address _stake) external onlyOwner {
-        stake = IStake(_stake);
-    }
-
-    /// @notice Function to set the MaxxGenesis NFT contract address
-    /// @param _maxxGenesis Address of the MaxxGenesis NFT contract
-    function setMaxxGenesisAddress(address _maxxGenesis) external onlyOwner {
-        require(
-            IERC721(_maxxGenesis).supportsInterface(type(IERC721).interfaceId)
-        ); // must support IERC721 interface
-        MaxxGenesis = IERC721(_maxxGenesis);
-    }
-
-    /// @notice Function to initialize the daily allocations
-    /// @dev Function can only be called once
-    /// @param _dailyAllocation Array of daily MAXX token allocations for 60 days
-    function setDailyAllocations(uint256[60] memory _dailyAllocation)
-        external
-        onlyOwner
-    {
-        if (allocationInitialized) {
-            revert AlreadyInitialized();
-        }
-        _maxxDailyAllocation = _dailyAllocation;
-        allocationInitialized = true;
-    }
-
-    /// @notice Function to change the daily maxx allocation
-    /// @dev Cannot change the daily allocation after the day has passed
-    /// @param _day Day of the amplifier to change the allocation for
-    /// @param _maxxAmount Amount of MAXX tokens to allocate for the day
-    function changeDailyAllocation(uint256 _day, uint256 _maxxAmount)
-        external
-        onlyOwner
-    {
-        if (block.timestamp >= launchDate + (_day * 1 days)) {
-            revert InvalidDay(_day);
-        }
-        _maxxDailyAllocation[_day] = _maxxAmount; // indexed at 0
-    }
-
-    /// @notice Function to change the start date
-    /// @dev Cannot change the start date after the day has passed
-    /// @param _launchDate New start date for the liquidity amplifier
-    function changeLaunchDate(uint256 _launchDate) external onlyOwner {
-        require(block.timestamp < launchDate && block.timestamp < _launchDate);
-        launchDate = _launchDate;
-    }
-
-    /// @notice Function to transfer Matic from this contract to address from input
-    /// @param _to address of transfer recipient
-    /// @param _amount amount of Matic to be transferred
-    function withdraw(address payable _to, uint256 _amount) external onlyOwner {
-        // Note that "to" is declared as payable
-        (bool success, ) = _to.call{value: _amount}("");
-        require(success, "Failed to send Ether");
-    }
-
-    /// @notice Function to reclaim any unallocated MAXX back to the vault
-    function withdrawMaxx() external onlyOwner {
-        if (
-            block.timestamp <=
-            launchDate + (AMPLIFIER_PERIOD * 1 days) + (CLAIM_PERIOD * 1 days)
-        ) {
-            revert AmplifierNotComplete();
-        }
-        uint256 extraMaxx = maxx.balanceOf(address(this));
-        maxx.safeTransfer(maxxVault, extraMaxx);
+    /// @notice This function will return day `day` out of 60 days
+    /// @return day How many days have passed since `launchDate`
+    function getDay() public view returns (uint8 day) {
+        day = uint8(block.timestamp - launchDate / 60 / 60 / 24); // divide by 60 seconds, 60 minutes, 24 hours
+        return day;
     }
 
     /// @return amount The amount of MAXX tokens to be claimed
