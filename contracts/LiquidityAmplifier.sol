@@ -55,7 +55,7 @@ contract LiquidityAmplifier is Ownable {
     IStake public stake;
 
     /// @notice Address of the MAXX token contract
-    IERC20 public MAXX;
+    IERC20 public maxx;
 
     /// @notice Address of the MaxxGenesis NFT contract
     IERC721 public MaxxGenesis;
@@ -97,11 +97,11 @@ contract LiquidityAmplifier is Ownable {
     constructor(
         address _maxxVault,
         uint256 _launchDate,
-        address _MAXX
+        address _maxx
     ) {
         maxxVault = _maxxVault;
         launchDate = _launchDate;
-        MAXX = IERC20(_MAXX);
+        maxx = IERC20(_maxx);
     }
 
     /// @dev Function to deposit matic to the contract
@@ -173,7 +173,7 @@ contract LiquidityAmplifier is Ownable {
             }
         }
 
-        MAXX.safeTransfer(msg.sender, amount);
+        maxx.safeTransfer(msg.sender, amount);
         emit Claim(msg.sender, amount);
     }
 
@@ -183,7 +183,7 @@ contract LiquidityAmplifier is Ownable {
             revert AmplifierNotComplete();
         }
         uint256 amount = _getClaimAmount();
-        MAXX.safeApprove(address(stake), amount);
+        maxx.safeApprove(address(stake), amount);
         stake.amplifierStake(_daysToStake, amount);
         emit Claim(msg.sender, amount);
     }
@@ -201,7 +201,7 @@ contract LiquidityAmplifier is Ownable {
             revert AmplifierNotComplete();
         }
         uint256 amount = _getClaimAmount();
-        MAXX.safeApprove(address(stake), amount);
+        maxx.safeApprove(address(stake), amount);
         stake.amplifierStake(_daysToStake, amount, _tokenId, _maxxNFT);
         emit Claim(msg.sender, amount);
     }
@@ -212,7 +212,7 @@ contract LiquidityAmplifier is Ownable {
             revert AmplifierNotComplete();
         }
         uint256 amount = _getReferralAmount();
-        MAXX.safeApprove(address(stake), amount);
+        maxx.safeApprove(address(stake), amount);
         stake.amplifierStake(14, amount);
         emit Claim(msg.sender, amount);
     }
@@ -342,8 +342,8 @@ contract LiquidityAmplifier is Ownable {
         ) {
             revert AmplifierNotComplete();
         }
-        uint256 extraMaxx = MAXX.balanceOf(address(this));
-        MAXX.safeTransfer(maxxVault, extraMaxx);
+        uint256 extraMaxx = maxx.balanceOf(address(this));
+        maxx.safeTransfer(maxxVault, extraMaxx);
     }
 
     /// @return amount The amount of MAXX tokens to be claimed
