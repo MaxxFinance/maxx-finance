@@ -25,13 +25,19 @@ error ListingExpired();
 /// @title Maxx Finance Stake Marketplace
 /// @author Alta Web3 Labs - SonOfMosiah
 contract Marketplace is Ownable {
+    struct Listing {
+        address lister;
+        uint256 amount;
+        uint256 endTime;
+    }
+
     /// Maxx Finance staking contract
     IStake public maxxStake;
 
     /// The percentage of transactions to be paid to the marketplace (e.g. 25 = 2.5%)
     uint16 public feePercentage; // percentage * 10 (e.g. 100 = 10%)
-    uint16 private constant MAX_FEE_PERCENTAGE = 100; // max fee percentage = 10%
-    uint16 private constant FEE_FACTOR = 1000;
+    uint16 public constant MAX_FEE_PERCENTAGE = 100; // max fee percentage = 10%
+    uint16 public constant FEE_FACTOR = 1000;
 
     /// mapping of stake id to their desired sellPrice
     mapping(uint256 => uint256) public sellPrice;
@@ -59,12 +65,6 @@ contract Marketplace is Ownable {
         uint256 indexed stakeId,
         uint256 amount
     );
-
-    struct Listing {
-        address lister;
-        uint256 amount;
-        uint256 endTime;
-    }
 
     constructor(address _maxxStake) {
         maxxStake = IStake(_maxxStake);
@@ -104,8 +104,8 @@ contract Marketplace is Ownable {
         ) {
             revert NotApproved();
         }
-        // sellPrice[_stakeId] = 0;
-        delete sellPrice[_stakeId]; // TODO Which is cheaper?
+
+        delete sellPrice[_stakeId];
         delete listings[_stakeId];
         emit Delist(msg.sender, _stakeId);
     }
@@ -133,8 +133,7 @@ contract Marketplace is Ownable {
 
         payable(stakeOwner).transfer(amount);
 
-        // sellPrice[_stakeId] = 0;
-        delete sellPrice[_stakeId]; // TODO Which is cheaper?
+        delete sellPrice[_stakeId];
         maxxStake.transferFrom(stakeOwner, msg.sender, _stakeId);
         emit Purchase(msg.sender, _stakeId, msg.value);
     }
