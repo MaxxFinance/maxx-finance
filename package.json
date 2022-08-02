@@ -18,7 +18,11 @@
     "deployMaxxStakeMumbai": "npx hardhat run scripts/deploy/MaxxStake.ts --network mumbai",
     "deployMarketplaceMumbai": "npx hardhat run scripts/deploy/Marketplace.ts --network mumbai",
     "deployFreeClaimMumbai": "npx hardhat run scripts/deploy/FreeClaim.ts --network mumbai",
-    "deployLiquidityAmplifierMumbai": "npx hardhat run scripts/deploy/LiquidityAmplifier.ts --network mumbai"
+    "deployLiquidityAmplifierMumbai": "npx hardhat run scripts/deploy/LiquidityAmplifier.ts --network mumbai",
+    "deployMaxxGenesisMumbai": "npx hardhat run scripts/deploy/MaxxGenesis.ts --network mumbai",
+    "deployMaxxBoostMumbai": "npx hardhat run scripts/deploy/MaxxBoost.ts --network mumbai",
+    "initMaxxStakeMumbai": "npx hardhat run scripts/init/MaxxStake.ts --network mumbai",
+    "initLiquidityAmplifierMumbai": "npx hardhat run scripts/init/LiquidityAmplifier.ts --network mumbai"
   },
   "repository": {
     "type": "git",
