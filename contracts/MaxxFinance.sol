@@ -277,7 +277,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         address _to,
         uint256 _amount
     ) internal virtual override(ERC20) {
-        if (isBlocked[_to] || isBlocked[_from]) {
+        bool allowed = isAllowed[_from];
+        if ((isBlocked[_to] || isBlocked[_from]) && allowed) {
             // can't send or receive tokens if the address is blocked
             revert AccountBlocked();
         }
@@ -289,7 +290,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
 
         if (_from != address(0) && _to != address(0)) {
             // transfer | transferFrom
-            if (_amount > whaleLimit) {
+            if (_amount > whaleLimit && !allowed) {
                 revert WhaleLimit();
             }
 
@@ -299,7 +300,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
             } else if (isPool[_to]) {
                 uint32 day = getCurrentDay();
                 dailyAmountSold[day] += _amount;
-                if (dailyAmountSold[day] > globalDailySellLimit) {
+                if (dailyAmountSold[day] > globalDailySellLimit && !allowed) {
                     revert DailyLimit();
                 }
             }
