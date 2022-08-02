@@ -78,11 +78,7 @@ contract LiquidityAmplifier is Ownable {
     /// @notice Emitted when matic is 'deposited'
     /// @param user The user depositing matic into the liquidity amplifier
     /// @param amount The amount of matic depositied
-    event Deposit(address indexed user, uint256 amount);
-
-    /// @notice Emitted when matic is 'deposited'
-    /// @param user The user depositing matic into the liquidity amplifier
-    /// @param amount The amount of matic depositied
+    /// @param referrer The address of the referrer (0x0 if none)
     event Deposit(
         address indexed user,
         uint256 amount,
@@ -119,7 +115,7 @@ contract LiquidityAmplifier is Ownable {
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         _maticDailyDeposits[day] += amount;
         _effectiveMaticDailyDeposits[day] += amount;
-        emit Deposit(msg.sender, amount);
+        emit Deposit(msg.sender, amount, address(0));
     }
 
     /// @dev Function to deposit matic to the contract
