@@ -68,17 +68,6 @@ describe("Liquidity Amplifier", () => {
       expect(stakeAddress).to.equal(stake.address);
     });
 
-    it("should set maxxGenesis address", async () => {
-      await amplifier.setMaxxGenesisAddress(nft);
-      const maxxGenesisAddress = await amplifier.MaxxGenesis();
-      expect(maxxGenesisAddress).to.equal(nft);
-    });
-
-    it("should not set maxxGenesis address if IERC721 is not supported", async () => {
-      await expect(amplifier.setMaxxGenesisAddress(stake.address)).to.be
-        .reverted;
-    });
-
     it("should set maxx daily allocations", async () => {
       const dailyAllocations: [
         BigNumber,
