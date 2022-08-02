@@ -49,22 +49,45 @@ error NotNFTOwner();
 /// NFT boost has already been used
 error UsedNFT();
 
+/// NFT address has not been initialized
+error NftNotInitialized();
+
+/// Token transfer returned false (failed)
+error TransferFailed();
+
+/// `_nft` does not support the IERC721 interface
+/// @param _nft the address of the NFT contract
+error InterfaceNotSupported(address _nft);
+
 /// @title Maxx Finance staking contract
 /// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxStake is Ownable {
     using ERC165Checker for address;
     using Counters for Counters.Counter;
 
+    struct StakeData {
+        string name; // 32 letters max
+        uint256 amount;
+        uint256 shares;
+        uint256 duration;
+        uint256 startDate;
+    }
+
+    enum MaxxNFT {
+        MaxxGenesis,
+        MaxxBoost
+    }
+
     // Calculation variables
-    uint256 immutable launchDate;
-    uint8 private constant LATE_DAYS = 14;
-    uint8 private constant MIN_STAKE_DAYS = 7;
-    uint16 private constant MAX_STAKE_DAYS = 3333;
-    uint8 private constant BASE_INFLATION = 10; // 10%
-    uint8 private constant BASE_INFLATION_FACTOR = 100;
-    uint16 private constant DAYS_IN_YEAR = 365;
-    uint256 private constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
-    uint256 private constant MAGIC_NUMBER = 1111;
+    uint256 public immutable launchDate;
+    uint8 public constant LATE_DAYS = 14;
+    uint8 public constant MIN_STAKE_DAYS = 7;
+    uint16 public constant MAX_STAKE_DAYS = 3333;
+    uint8 public constant BASE_INFLATION = 10; // 10%
+    uint8 public constant BASE_INFLATION_FACTOR = 100;
+    uint16 public constant DAYS_IN_YEAR = 365;
+    uint256 public constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
+    uint256 public constant MAGIC_NUMBER = 1111;
 
     /// @notice Maxx Finance Vault address
     address public maxxVault;
@@ -156,31 +179,14 @@ contract MaxxStake is Ownable {
     /// @param name The new name of the stake
     event StakeNameChange(uint256 stakeId, string name);
 
-    struct StakeData {
-        string name; // 32 letters max
-        uint256 amount;
-        uint256 shares;
-        uint256 duration;
-        uint256 startDate;
-    }
-
-    enum MaxxNFT {
-        MaxxGenesis,
-        MaxxBoost
-    }
-
     constructor(
         address _maxxVault,
         address _maxx,
-        uint256 _launchDate,
-        address _maxxBoost,
-        address _maxxGenesis
+        uint256 _launchDate
     ) {
         maxxVault = _maxxVault;
         maxx = IMaxxFinance(_maxx);
         launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date
-        maxxBoost = IMAXXBoost(_maxxBoost);
-        maxxGenesis = IMAXXBoost(_maxxGenesis);
     }
 
     /// @notice Function to stake MAXX
@@ -213,6 +219,10 @@ contract MaxxStake is Ownable {
             nft = maxxBoost;
         }
 
+        if (address(nft) == address(0)) {
+            revert NftNotInitialized();
+        }
+
         if (msg.sender != nft.ownerOf(_tokenId)) {
             revert NotNFTOwner();
         } else if (nft.getUsedState(_tokenId)) {
@@ -231,8 +241,11 @@ contract MaxxStake is Ownable {
     /// @param _stakeId The id of the stake to unstake
     function unstake(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
-        address owner = ownerOf(_stakeId);
-        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+        address stakeOwner = ownerOf(_stakeId);
+        if (
+            msg.sender != stakeOwner &&
+            !isApprovedForAll(stakeOwner, msg.sender)
+        ) {
             revert NotAuthorized();
         }
         totalStakesWithdrawn.increment();
@@ -281,9 +294,15 @@ contract MaxxStake is Ownable {
             maxx.mint(address(this), fullAmount - maxxBalance); // mint additional tokens to this contract
         }
 
-        require(maxx.transfer(msg.sender, withdrawableAmount)); // transfer the withdrawable amount to the user
+        if (!maxx.transfer(msg.sender, withdrawableAmount)) {
+            // transfer the withdrawable amount to the user
+            revert TransferFailed();
+        }
         if (penaltyAmount > 0) {
-            require(maxx.transfer(maxxVault, penaltyAmount / 2)); // transfer half the penalty amount to the maxx vault
+            if (!maxx.transfer(maxxVault, penaltyAmount / 2)) {
+                // transfer half the penalty amount to the maxx vault
+                revert TransferFailed();
+            }
             maxx.burn(penaltyAmount / 2); // burn the other half of the penalty amount
         }
 
@@ -294,8 +313,11 @@ contract MaxxStake is Ownable {
     /// @param _stakeId The id of the stake to change
     function maxShare(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
-        address owner = ownerOf(_stakeId);
-        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+        address stakeOwner = ownerOf(_stakeId);
+        if (
+            msg.sender != stakeOwner &&
+            !isApprovedForAll(stakeOwner, msg.sender)
+        ) {
             revert NotAuthorized();
         }
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
@@ -323,8 +345,11 @@ contract MaxxStake is Ownable {
     /// @param _topUpAmount The amount of MAXX to top up the stake
     function restake(uint256 _stakeId, uint256 _topUpAmount) external {
         StakeData memory tStake = stakes[_stakeId];
-        address owner = ownerOf(_stakeId);
-        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+        address stakeOwner = ownerOf(_stakeId);
+        if (
+            msg.sender != stakeOwner &&
+            !isApprovedForAll(stakeOwner, msg.sender)
+        ) {
             revert NotAuthorized();
         }
         uint256 maturation = tStake.startDate + tStake.duration;
@@ -334,7 +359,14 @@ contract MaxxStake is Ownable {
         if (_topUpAmount > maxx.balanceOf(msg.sender)) {
             revert InsufficientMaxx();
         }
-        require(maxx.transferFrom(msg.sender, address(this), _topUpAmount)); // transfer tokens to this contract
+        bool transferSuccess = maxx.transferFrom(
+            msg.sender,
+            address(this),
+            _topUpAmount
+        ); // transfer tokens to this contract
+        if (!transferSuccess) {
+            revert TransferFailed();
+        }
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
@@ -386,8 +418,11 @@ contract MaxxStake is Ownable {
     /// @param _stakeId The id of the stake
     function scrapeInterest(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
-        address owner = ownerOf(_stakeId);
-        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+        address stakeOwner = ownerOf(_stakeId);
+        if (
+            msg.sender != stakeOwner &&
+            !isApprovedForAll(stakeOwner, msg.sender)
+        ) {
             revert NotAuthorized();
         }
 
@@ -416,9 +451,11 @@ contract MaxxStake is Ownable {
             PERCENT_FACTOR;
         uint256 penaltyAmount = interestToDate - withdrawableAmount;
         withdrawnAmounts[_stakeId] = interestToDate;
-        require(maxx.transfer(msg.sender, withdrawableAmount));
-
-        require(maxx.transfer(maxxVault, penaltyAmount / 2));
+        bool withdrawalSuccess = maxx.transfer(msg.sender, withdrawableAmount);
+        bool taxSuccess = maxx.transfer(maxxVault, penaltyAmount / 2);
+        if (!withdrawalSuccess || !taxSuccess) {
+            revert TransferFailed();
+        }
         maxx.burn(penaltyAmount / 2);
 
         emit ScrapeInterest(msg.sender, interestToDate);
@@ -428,8 +465,11 @@ contract MaxxStake is Ownable {
     /// @param _stakeId The id of the stake
     /// @param _name The new name of the stake
     function changeStakeName(uint256 _stakeId, string memory _name) external {
-        address owner = ownerOf(_stakeId);
-        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+        address stakeOwner = ownerOf(_stakeId);
+        if (
+            msg.sender != stakeOwner &&
+            !isApprovedForAll(stakeOwner, msg.sender)
+        ) {
             revert NotAuthorized();
         }
 
@@ -475,6 +515,10 @@ contract MaxxStake is Ownable {
             nft = maxxGenesis;
         } else {
             nft = maxxBoost;
+        }
+
+        if (address(nft) == address(0)) {
+            revert NftNotInitialized();
         }
 
         if (msg.sender != nft.ownerOf(_tokenId)) {
@@ -538,18 +582,22 @@ contract MaxxStake is Ownable {
     /// @notice Function to set the MaxxBoost NFT contract address
     /// @param _maxxBoost Address of the MaxxBoost NFT contract
     function setMaxxBoost(address _maxxBoost) external onlyOwner {
-        require(
-            IERC721(_maxxBoost).supportsInterface(type(IERC721).interfaceId)
-        ); // must support IERC721 interface
+        if (!IERC721(_maxxBoost).supportsInterface(type(IERC721).interfaceId)) {
+            // must support IERC721 interface
+            revert InterfaceNotSupported(_maxxBoost);
+        }
         maxxBoost = IMAXXBoost(_maxxBoost);
     }
 
     /// @notice Function to set the MaxxGenesis NFT contract address
     /// @param _maxxGenesis Address of the MaxxGenesis NFT contract
     function setMaxxGenesis(address _maxxGenesis) external onlyOwner {
-        require(
-            IERC721(_maxxGenesis).supportsInterface(type(IERC721).interfaceId)
-        ); // must support IERC721 interface
+        if (
+            !IERC721(_maxxGenesis).supportsInterface(type(IERC721).interfaceId)
+        ) {
+            // must support IERC721 interface
+            revert InterfaceNotSupported(_maxxGenesis);
+        }
         maxxGenesis = IMAXXBoost(_maxxGenesis);
     }
 
@@ -557,11 +605,14 @@ contract MaxxStake is Ownable {
     /// @param _to The address given approval
     /// @param _stakeId The id of the stake to be approved for transfer
     function approve(address _to, uint256 _stakeId) public {
-        address owner = ownerOf(_stakeId);
-        if (_to == owner) {
+        address stakeOwner = ownerOf(_stakeId);
+        if (_to == stakeOwner) {
             revert SelfApproval();
         }
-        if (msg.sender != owner && !isApprovedForAll(owner, msg.sender)) {
+        if (
+            msg.sender != stakeOwner &&
+            !isApprovedForAll(stakeOwner, msg.sender)
+        ) {
             revert NotAuthorized();
         }
 
@@ -585,13 +636,16 @@ contract MaxxStake is Ownable {
 
     /// @dev Returns the owner of the `_stakeId` token.
     /// @param _stakeId The id of the stake
-    /// @return The owner of the stake
-    function ownerOf(uint256 _stakeId) public view returns (address) {
-        address owner = _owners[_stakeId];
-        if (owner == address(0)) {
+    /// @return stakeOwner The owner of the stake
+    function ownerOf(uint256 _stakeId)
+        public
+        view
+        returns (address stakeOwner)
+    {
+        stakeOwner = _owners[_stakeId];
+        if (stakeOwner == address(0)) {
             revert StakeDoesNotExist();
         }
-        return owner;
     }
 
     /// @notice Returns the account approved for `_stakeId` token.
@@ -648,7 +702,14 @@ contract MaxxStake is Ownable {
             revert StakeTooLong();
         }
 
-        require(maxx.transferFrom(msg.sender, address(this), _amount)); // transfer tokens to this contract -- removed from circulating supply
+        bool transferSuccess = maxx.transferFrom(
+            msg.sender,
+            address(this),
+            _amount
+        ); // transfer tokens to this contract -- removed from circulating supply
+        if (!transferSuccess) {
+            revert TransferFailed();
+        }
 
         totalShares += _shares;
         totalStakesAlltime.increment();
@@ -703,9 +764,9 @@ contract MaxxStake is Ownable {
         view
         returns (bool)
     {
-        address owner = ownerOf(_stakeId);
-        return (_spender == owner ||
-            isApprovedForAll(owner, _spender) ||
+        address stakeOwner = ownerOf(_stakeId);
+        return (_spender == stakeOwner ||
+            isApprovedForAll(stakeOwner, _spender) ||
             getApproved(_stakeId) == _spender);
     }
 
