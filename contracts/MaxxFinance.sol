@@ -47,11 +47,11 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice Tax rate when calling transfer() or transferFrom()
     uint16 public transferTax; // 1000 = 10%
 
-    uint64 private constant GLOBAL_DAILY_SELL_LIMIT_MINIMUM = 1000000000; // 1 billion
-    uint64 private constant WHALE_LIMIT_MINIMUM = 1000000; // 1 million
-    uint8 private constant BLOCKS_BETWEEN_TRANSFERS_MAXIMUM = 5;
-    uint16 private constant TRANSFER_TAX_FACTOR = 10000;
-    uint64 private constant INITIAL_SUPPLY = 100000000000;
+    uint64 public constant GLOBAL_DAILY_SELL_LIMIT_MINIMUM = 1000000000; // 1 billion
+    uint64 public constant WHALE_LIMIT_MINIMUM = 1000000; // 1 million
+    uint8 public constant BLOCKS_BETWEEN_TRANSFERS_MAXIMUM = 5;
+    uint16 public constant TRANSFER_TAX_FACTOR = 10000;
+    uint64 public constant INITIAL_SUPPLY = 100000000000;
 
     /// @notice blacklisted addresses
     mapping(address => bool) public isBlocked;

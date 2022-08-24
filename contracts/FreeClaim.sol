@@ -31,18 +31,23 @@ error OnlyMaxxStake();
 contract FreeClaim is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    struct Claim {
+        address user;
+        uint256 amount;
+    }
+
     /// Merkle root for the free claim whitelist
     bytes32 public merkleRoot; // TODO: may need to create multiple merkle roots depending on Merkle Tree size.
 
     /// Free claim start date
     uint256 public immutable launchDate;
-    uint256 constant FREE_CLAIM_DURATION = 365 days;
+    uint256 public constant FREE_CLAIM_DURATION = 365 days;
 
     /// Max number of MAXX tokens that can be claimed by a user
     uint256 public constant MAX_CLAIM_AMOUNT = 1000000 * (10**8); // 1 million MAXX
 
     /// MAXX token contract
-    IERC20 public MAXX;
+    IERC20 public maxx;
 
     /// MAXX staking contract
     IStake public maxxStake;
@@ -53,18 +58,14 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// Mapping claims to owners
     mapping(address => uint256) public claimOwners;
     /// Array of staked claims
-    Claim[] private stakedClaims;
+    Claim[] public stakedClaims;
     /// Array of unstaked claims;
-    Claim[] private unstakedClaims;
+    Claim[] public unstakedClaims;
 
-    uint256 private claimedAmount;
-    uint256 private remainingBalance;
-    uint256 private maxxAllocation;
+    uint256 public remainingBalance;
+    uint256 public maxxAllocation;
 
-    struct Claim {
-        address user;
-        uint256 amount;
-    }
+    uint256 public claimedAmount;
 
     /// @notice Emitted when free claim is claimed
     /// @param user The user claiming free claim
@@ -81,14 +82,9 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(
-        uint256 _launchDate,
-        bytes32 _merkleRoot,
-        address _MAXX
-    ) {
+    constructor(uint256 _launchDate, address _maxx) {
         launchDate = _launchDate;
-        merkleRoot = _merkleRoot;
-        MAXX = IERC20(_MAXX);
+        maxx = IERC20(_maxx);
     }
 
     /// @notice Function to retrive free claim
@@ -118,7 +114,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         if (_amount > MAX_CLAIM_AMOUNT) {
             _amount = MAX_CLAIM_AMOUNT; // cannot claim more than the MAX_CLAIM_AMOUNT
         }
-
+        // solhint-disable-next-line not-rely-on-time
         uint256 timePassed = block.timestamp - launchDate;
 
         _amount =
@@ -127,6 +123,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
 
         if (
             address(maxxStake) != address(0) &&
+            // solhint-disable-next-line not-rely-on-time
             maxxStake.launchDate() < block.timestamp
         ) {
             if (_amount > remainingBalance) {
@@ -182,7 +179,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @notice Add MAXX to the free claim allocation
     /// @param _amount The amount of MAXX to add to the free claim allocation
     function allocateMaxx(uint256 _amount) external onlyOwner {
-        MAXX.transferFrom(msg.sender, address(this), _amount);
+        maxx.transferFrom(msg.sender, address(this), _amount);
         maxxAllocation += _amount;
     }
 
@@ -192,9 +189,9 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         maxxStake = IStake(_maxxStake);
     }
 
-    /// @notice Update the merkle root
+    /// @notice Set the merkle root
     /// @param _merkleRoot new merkle root
-    function updateMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
         merkleRoot = _merkleRoot;
     }
 
@@ -208,6 +205,12 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             stakedClaims.push(unstakedClaims[i]);
         }
         delete unstakedClaims;
+    }
+
+    /// @notice Get the number of total claimers
+    /// @return The number of total claimers
+    function getTotalClaimers() external view returns (uint256) {
+        return stakedClaims.length + unstakedClaims.length;
     }
 
     /// @param _account The account presumed to be in the merkle tree
@@ -227,19 +230,19 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             );
     }
 
-    function _generateMerkleLeaf(address _account, uint256 _amount)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(_account, _amount));
-    }
-
     function _verifyMerkleLeaf(bytes32 _leafNode, bytes32[] memory _proof)
         internal
         view
         returns (bool)
     {
         return MerkleProof.verify(_proof, merkleRoot, _leafNode);
+    }
+
+    function _generateMerkleLeaf(address _account, uint256 _amount)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(_account, _amount));
     }
 }
