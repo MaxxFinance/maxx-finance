@@ -487,8 +487,7 @@ contract MaxxStake is Ownable {
 
         uint256 shares = _calcShares(_numDays, _amount);
         if (_numDays >= DAYS_IN_YEAR) {
-            // TODO: calculate the bonus amount of shares
-            // e.g. shares = shares * 10%
+            shares = (shares * 11) / 10;
         }
 
         _stake(_numDays, _amount, shares);
@@ -531,8 +530,7 @@ contract MaxxStake is Ownable {
         uint256 shares = _calcShares(_numDays, _amount);
         shares += shares / 10; // add 10% to the shares for the nft bonus
         if (_numDays >= DAYS_IN_YEAR) {
-            // TODO: calculate the bonus amount of shares
-            // e.g. shares = shares * 10%
+            shares = (shares * 11) / 10;
         }
 
         _stake(_numDays, _amount, shares);
