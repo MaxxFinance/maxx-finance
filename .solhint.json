@@ -11,6 +11,7 @@
     "modifier-name-mixedcase": "warn",
     "private-vars-leading-underscore": "warn",
     "func-order": "warn",
-    "ordering": "warn"
+    "ordering": "warn",
+    "not-rely-on-time": "none"
   }
 }
