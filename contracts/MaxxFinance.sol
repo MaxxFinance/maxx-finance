@@ -21,7 +21,7 @@ error ConsumerProtection();
 /// @title Maxx Finance -- MAXX ERC20 token contract
 /// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE"); // TODO may need to change to private + getter function for inclusion in interface
 
     /// @notice The amount of MAXX tokens burned
     uint256 public burnedAmount;
@@ -236,7 +236,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
             uint256 tax = _amount - netAmount;
             _amount = netAmount;
             require(super.transferFrom(msg.sender, maxxVault, tax / 2));
-            burnFrom(msg.sender, tax / 2);
+            burn(tax / 2);
         }
         return super.transferFrom(_from, _to, _amount);
     }
@@ -278,7 +278,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         uint256 _amount
     ) internal virtual override(ERC20) {
         bool allowed = isAllowed[_from];
-        if ((isBlocked[_to] || isBlocked[_from]) && allowed) {
+        if ((isBlocked[_to] || isBlocked[_from]) && !allowed) {
             // can't send or receive tokens if the address is blocked
             revert AccountBlocked();
         }
