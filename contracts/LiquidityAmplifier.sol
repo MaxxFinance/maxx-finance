@@ -73,11 +73,11 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     uint256 public constant MIN_GENESIS_AMOUNT = 1e24; //1 million MAXX // QUESTION: Is this the right amount?
 
     /// @notice maps address to day (indexed at 0) to amount of tokens deposited
-    mapping(address => uint256[]) public userDailyDeposits;
+    mapping(address => uint256[60]) public userDailyDeposits;
     /// @notice maps address to day (indexed at 0) to amount of effective tokens deposited adjusted for referral and nft bonuses
-    mapping(address => uint256[]) public effectiveUserDailyDeposits;
+    mapping(address => uint256[60]) public effectiveUserDailyDeposits;
     /// @notice maps address to day (indexed at 0) to amount of effective tokens gained by referring users
-    mapping(address => uint256[]) public effectiveUserReferrals;
+    mapping(address => uint256[60]) public effectiveUserReferrals;
     /// @notice tracks if address has participated in the amplifier
     mapping(address => bool) public participated;
 
