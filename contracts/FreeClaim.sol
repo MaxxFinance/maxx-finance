@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -28,6 +28,9 @@ error StakingNotInitialized();
 
 /// Only the Staking contract can call this function
 error OnlyMaxxStake();
+
+/// MAXX tokens not transferred to this contract
+error MaxxAllocationFailed();
 
 /// @title Maxx Finance Free Claim
 /// @author Alta Web3 Labs - SonOfMosiah
@@ -138,22 +141,22 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             (_amount * (FREE_CLAIM_DURATION - timePassed)) /
             FREE_CLAIM_DURATION; // adjust amount for the speed penalty
 
-        if (address(maxxStake) != address(0)) {
-            console.log("stake launch date: %s", maxxStake.launchDate());
-            console.log("timestamp:", block.timestamp);
-            console.log(
-                "stake has launched:",
-                block.timestamp > maxxStake.launchDate()
-            );
-        }
+        // if (address(maxxStake) != address(0)) {
+        //     console.log("stake launch date: %s", maxxStake.launchDate());
+        //     console.log("timestamp:", block.timestamp);
+        //     console.log(
+        //         "stake has launched:",
+        //         block.timestamp > maxxStake.launchDate()
+        //     );
+        // }
 
         if (
             address(maxxStake) != address(0) &&
             maxxStake.launchDate() < block.timestamp
         ) {
-            console.log("staking is initialized");
+            // console.log("staking is initialized");
             if (_amount > remainingBalance) {
-                console.log("_amount > remainingBalance");
+                // console.log("_amount > remainingBalance");
                 // No referral bonus if contract balance is less than the amount to claim
                 _amount = remainingBalance;
 
@@ -176,19 +179,19 @@ contract FreeClaim is Ownable, ReentrancyGuard {
                 claimedAmount += _amount;
                 emit UserClaim(msg.sender, _amount);
             } else {
-                console.log("_amount <= remainingBalance");
+                // console.log("_amount <= remainingBalance");
                 uint256 stakeId;
                 uint256 shares;
                 if (_referrer != address(0)) {
-                    console.log("_referrer != address(0)");
+                    // console.log("_referrer != address(0)");
                     uint256 referralAmount = _amount / 10;
                     _amount += referralAmount; // +10% bonus for referral
                     (stakeId, shares) = maxxStake.freeClaimStake(
                         _referrer,
                         referralAmount
                     );
-                    console.log("referral stakeId: %s", stakeId);
-                    console.log("referral shares: %s", shares);
+                    // console.log("referral stakeId: %s", stakeId);
+                    // console.log("referral shares: %s", shares);
 
                     Claim memory referralClaim = Claim({
                         user: msg.sender,
@@ -210,8 +213,8 @@ contract FreeClaim is Ownable, ReentrancyGuard {
                     msg.sender,
                     _amount
                 );
-                console.log("claim stakeId: %s", stakeId);
-                console.log("claim shares: %s", shares);
+                // console.log("claim stakeId: %s", stakeId);
+                // console.log("claim shares: %s", shares);
 
                 Claim memory userClaim = Claim({
                     user: msg.sender,
@@ -286,7 +289,9 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @notice Add MAXX to the free claim allocation
     /// @param _amount The amount of MAXX to add to the free claim allocation
     function allocateMaxx(uint256 _amount) external onlyOwner {
-        maxx.transferFrom(msg.sender, address(this), _amount);
+        if (!maxx.transferFrom(msg.sender, address(this), _amount)) {
+            revert MaxxAllocationFailed();
+        }
         maxxAllocation += _amount;
         remainingBalance = maxx.balanceOf(address(this));
     }
