@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 /// @title The interface for the Maxx Finance token contract
-interface IMaxxFinance is IERC20 {
+interface IMaxxFinance is IERC20, IAccessControl {
     /// @notice Increases the token balance of `to` by `amount`
     /// @param to The address to mint to
     /// @param amount The amount to mint
@@ -21,4 +22,7 @@ interface IMaxxFinance is IERC20 {
     /// @param amount The amount to burn
     /// Emits a {Transfer} event with `to` set to the zero address.
     function burnFrom(address from, uint256 amount) external;
+
+    // solhint-disable-next-line func-name-mixedcase
+    function MINTER_ROLE() external view returns (bytes32);
 }
