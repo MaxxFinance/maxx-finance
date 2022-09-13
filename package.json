@@ -22,7 +22,16 @@
     "deployMaxxGenesisMumbai": "npx hardhat run scripts/deploy/MaxxGenesis.ts --network mumbai",
     "deployMaxxBoostMumbai": "npx hardhat run scripts/deploy/MaxxBoost.ts --network mumbai",
     "initMaxxStakeMumbai": "npx hardhat run scripts/init/MaxxStake.ts --network mumbai",
-    "initLiquidityAmplifierMumbai": "npx hardhat run scripts/init/LiquidityAmplifier.ts --network mumbai"
+    "initLiquidityAmplifierMumbai": "npx hardhat run scripts/init/LiquidityAmplifier.ts --network mumbai",
+    "initFreeClaimMumbai": "npx hardhat run scripts/init/FreeClaim.ts --network mumbai",
+    "amplifierDepositMumbai": "npx hardhat run scripts/tx/amplifierDeposit.ts --network mumbai",
+    "maxxTransferMumbai": "npx hardhat run scripts/tx/maxxTransfer.ts --network mumbai",
+    "claimMumbai": "npx hardhat run scripts/tx/freeClaim.ts --network mumbai",
+    "generateMerkleTree": "npx hardhat run scripts/generateMerkleTree.ts",
+    "stakeMumbai": "npx hardhat run scripts/tx/stake.ts --network mumbai",
+    "stakeDataMumbai": "npx hardhat run scripts/tx/stakeData.ts --network mumbai",
+    "addLpMumbai": " npx hardhat run scripts/tx/addLp.ts --network mumbai",
+    "maxxDataMumbai": " npx hardhat run scripts/tx/maxxData.ts --network mumbai"
   },
   "repository": {
     "type": "git",
@@ -30,6 +39,7 @@
   },
   "keywords": [
     "blockchain",
+    "EVM",
     "web3",
     "hardhat",
     "alta",
@@ -38,42 +48,34 @@
     "staking",
     "NFT"
   ],
-  "author": "Alta Web3 Labs - SonOfMosiah <ammon@alta.finance>",
+  "author": "Alta Web3 Labs [SonOfMosiah.eth]",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/altalabsdev/maxx-finance/issues"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^1.0.2",
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-solhint": "^2.0.1",
-    "@openzeppelin/contracts": "^4.6.0",
-    "@typechain/ethers-v5": "^10.1.0",
-    "@types/chai": "^4.3.1",
-    "@types/mocha": "^9.1.1",
-    "@types/node": "^12.20.55",
-    "@typescript-eslint/eslint-plugin": "^4.33.0",
-    "@typescript-eslint/parser": "^4.33.0",
-    "chai": "^4.3.6",
-    "dotenv": "^16.0.1",
+    "@openzeppelin/contracts": "^4.7.1",
+    "dotenv": "^10.0.0",
     "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-prettier": "^8.3.0",
     "eslint-config-standard": "^16.0.3",
-    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^3.4.1",
     "eslint-plugin-promise": "^5.2.0",
-    "ethers": "^5.6.8",
-    "hardhat": "^2.10.1",
+    "ethers": "^5.5.3",
+    "hardhat": "^2.9.1",
     "hardhat-docgen": "^1.3.0",
     "ololog": "^1.1.175",
-    "prettier": "^2.6.2",
+    "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
-    "solhint": "^3.3.7",
-    "solhint-plugin-prettier": "^0.0.5",
-    "ts-node": "^10.8.1",
-    "typechain": "^8.1.0",
-    "typescript": "^4.7.3"
+    "solhint-plugin-prettier": "^0.0.5"
+  },
+  "dependencies": {
+    "keccak256": "^1.0.6",
+    "merkletreejs": "^0.2.32"
   }
 }
