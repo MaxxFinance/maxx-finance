@@ -29,16 +29,20 @@ interface IStake {
 
     function unstake(uint256 stakeId) external;
 
-    function freeClaimStake(address owner, uint256 amount) external;
+    function freeClaimStake(address owner, uint256 amount)
+        external
+        returns (uint256 stakeId, uint256 shares);
 
-    function amplifierStake(uint16 numDays, uint256 amount) external;
+    function amplifierStake(uint16 numDays, uint256 amount)
+        external
+        returns (uint256 stakeId, uint256 shares);
 
     function amplifierStake(
         uint16 numDays,
         uint256 amount,
         uint256 tokenId,
         MaxxNFT nft
-    ) external;
+    ) external returns (uint256 stakeId, uint256 shares);
 
     function allowance(
         address owner,
