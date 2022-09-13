@@ -191,6 +191,8 @@ contract MaxxStake is Ownable, Pausable {
         maxxVault = _maxxVault;
         maxx = IMaxxFinance(_maxx);
         launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date
+        // start stake ID at 1
+        idCounter.increment();
     }
 
     /// @notice Function to stake MAXX
