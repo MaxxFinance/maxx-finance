@@ -440,6 +440,14 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         return _effectiveMaticDailyDeposits[_day];
     }
 
+    function getUserAmpReferrals(address _user)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return userAmpReferral[_user];
+    }
+
     /// @notice This function will return day `day` out of 60 days
     /// @return day How many days have passed since `launchDate`
     function getDay() public view returns (uint8 day) {
