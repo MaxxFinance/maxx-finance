@@ -185,6 +185,11 @@ contract FreeClaim is Ownable, ReentrancyGuard {
                 if (_referrer != address(0)) {
                     // console.log("_referrer != address(0)");
                     uint256 referralAmount = _amount / 10;
+
+                    userFreeReferral[_referrer].push(block.timestamp);
+                    userFreeReferral[_referrer].push(_amount);
+                    userFreeReferral[_referrer].push(referralAmount);
+
                     _amount += referralAmount; // +10% bonus for referral
                     (stakeId, shares) = maxxStake.freeClaimStake(
                         _referrer,
@@ -252,6 +257,11 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             } else {
                 if (_referrer != address(0)) {
                     uint256 referralAmount = _amount / 10;
+
+                    userFreeReferral[_referrer].push(block.timestamp);
+                    userFreeReferral[_referrer].push(_amount);
+                    userFreeReferral[_referrer].push(referralAmount);
+
                     _amount += referralAmount; // +10% bonus for referral
                     Claim memory referralClaim = Claim({
                         user: msg.sender,
@@ -340,6 +350,10 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     /// @return The number of total claimers
     function getTotalClaimers() external view returns (uint256) {
         return stakedClaims.length + unstakedClaims.length;
+    }
+
+    function getUserFreeReferrals() external view returns (uint256[] memory) {
+        return userFreeReferral[msg.sender];
     }
 
     /// @param _account The account presumed to be in the merkle tree
