@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import {ILiquidityAmplifier} from "./interfaces/ILiquidityAmplifier.sol";
 import {IMaxxFinance} from "./interfaces/IMaxxFinance.sol";
@@ -41,6 +42,9 @@ error StakeMatured();
 /// Stake does not exist
 error StakeDoesNotExist();
 
+/// Stake has already been claimed
+error StakeAlreadyWithdrawn();
+
 /// Cannot transfer stake to zero address
 error TransferToTheZeroAddress();
 
@@ -65,7 +69,7 @@ error InterfaceNotSupported(address _nft);
 
 /// @title Maxx Finance staking contract
 /// @author Alta Web3 Labs - SonOfMosiah
-contract MaxxStake is Ownable, Pausable {
+contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
     using ERC165Checker for address;
     using Counters for Counters.Counter;
 
@@ -122,12 +126,11 @@ contract MaxxStake is Ownable, Pausable {
     address public freeClaim;
     /// @notice address of the liquidityAmplifier contract
     address public liquidityAmplifier;
-    /// @notice mapping of stake id to stake
-    mapping(uint256 => StakeData) public stakes; // TODO: change to array to iterate over all stakes
     /// mapping of stake end times
     mapping(uint256 => uint256) public endTimes;
 
-    // StakeData[] public stakes;
+    /// @notice Array of all stakes
+    StakeData[] public stakes;
     // StakeData[] public activeStakes;
     // StakeData[] public withdrawnStakes;
 
@@ -173,11 +176,6 @@ contract MaxxStake is Ownable, Pausable {
         bool approved
     );
 
-    /// @notice Emitted when interest is scraped early
-    /// @param user The user who scraped interest
-    /// @param amount The amount of interest scraped
-    event ScrapeInterest(address indexed user, uint256 amount);
-
     /// @notice Emitted when the name of a stake is changed
     /// @param stakeId The id of the stake
     /// @param name The new name of the stake
@@ -193,6 +191,7 @@ contract MaxxStake is Ownable, Pausable {
         launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date
         // start stake ID at 1
         idCounter.increment();
+        stakes.push(StakeData("", 0, 0, 0, 0)); // index 0 is null stake;
     }
 
     /// @notice Function to stake MAXX
@@ -254,6 +253,10 @@ contract MaxxStake is Ownable, Pausable {
         ) {
             revert NotAuthorized();
         }
+        if (withdrawnStakes[_stakeId]) {
+            revert StakeAlreadyWithdrawn();
+        }
+        withdrawnStakes[_stakeId] = true;
         totalStakesWithdrawn.increment();
         totalStakesActive.decrement();
 
@@ -318,7 +321,8 @@ contract MaxxStake is Ownable, Pausable {
     function maxShare(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
         address stakeOwner = ownerOf(_stakeId);
-        if (tStake.duration == uint256(MAX_STAKE_DAYS) * 1 days) {
+        // TODO: slither says == is a dangerous strict equality
+        if (tStake.duration >= uint256(MAX_STAKE_DAYS) * 1 days) {
             revert AlreadyMaxDuration();
         }
 
@@ -350,7 +354,10 @@ contract MaxxStake is Ownable, Pausable {
     /// @notice Function to restake without penalties
     /// @param _stakeId The id of the stake to restake
     /// @param _topUpAmount The amount of MAXX to top up the stake
-    function restake(uint256 _stakeId, uint256 _topUpAmount) external {
+    function restake(uint256 _stakeId, uint256 _topUpAmount)
+        external
+        nonReentrant
+    {
         StakeData memory tStake = stakes[_stakeId];
         address stakeOwner = ownerOf(_stakeId);
         if (
@@ -366,14 +373,6 @@ contract MaxxStake is Ownable, Pausable {
         if (_topUpAmount > maxx.balanceOf(msg.sender)) {
             revert InsufficientMaxx();
         }
-        bool transferSuccess = maxx.transferFrom(
-            msg.sender,
-            address(this),
-            _topUpAmount
-        ); // transfer tokens to this contract
-        if (!transferSuccess) {
-            revert TransferFailed();
-        }
         uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
@@ -388,6 +387,16 @@ contract MaxxStake is Ownable, Pausable {
         tStake.startDate = block.timestamp;
         totalShares += tStake.shares;
         stakes[_stakeId] = tStake;
+
+        bool transferSuccess = maxx.transferFrom(
+            msg.sender,
+            address(this),
+            _topUpAmount
+        ); // transfer tokens to this contract
+        if (!transferSuccess) {
+            revert TransferFailed();
+        }
+
         emit Stake(msg.sender, durationInDays, tStake.amount);
     }
 
@@ -568,6 +577,12 @@ contract MaxxStake is Ownable, Pausable {
         maxxGenesis = IMAXXBoost(_maxxGenesis);
     }
 
+    /// @notice Get the stakes array
+    /// @return stakes The stakes array
+    function getAllStakes() external view returns (StakeData[] memory) {
+        return stakes;
+    }
+
     /// @dev Gives permission to `_to` to transfer `_stakeId` token to another account.
     /// @param _to The address given approval
     /// @param _stakeId The id of the stake to be approved for transfer
@@ -669,6 +684,8 @@ contract MaxxStake is Ownable, Pausable {
             revert StakeTooLong();
         }
 
+        // TODO: compare the gas usage of minting 1 wei before the transfer
+
         bool transferSuccess = maxx.transferFrom(
             msg.sender,
             address(this),
@@ -694,13 +711,15 @@ contract MaxxStake is Ownable, Pausable {
 
         uint256 duration = uint256(_numDays) * 1 days;
         stakeId = idCounter.current();
-        stakes[stakeId] = StakeData(
-            "",
-            _amount,
-            _shares,
-            duration,
-            block.timestamp
-        );
+        assert(stakeId == stakes.length + 1);
+        stakes.push(StakeData("", _amount, _shares, duration, block.timestamp));
+        // stakes[stakeId] = StakeData(
+        //     "",
+        //     _amount,
+        //     _shares,
+        //     duration,
+        //     block.timestamp
+        // );
         endTimes[stakeId] = block.timestamp + duration;
         idCounter.increment();
         emit Stake(msg.sender, _numDays, _amount);
