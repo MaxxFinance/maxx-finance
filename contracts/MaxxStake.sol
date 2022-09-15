@@ -388,12 +388,8 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
         totalShares += tStake.shares;
         stakes[_stakeId] = tStake;
 
-        bool transferSuccess = maxx.transferFrom(
-            msg.sender,
-            address(this),
-            _topUpAmount
-        ); // transfer tokens to this contract
-        if (!transferSuccess) {
+        // transfer tokens to this contract
+        if (!maxx.transferFrom(msg.sender, address(this), _topUpAmount)) {
             revert TransferFailed();
         }
 
@@ -686,12 +682,8 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
 
         // TODO: compare the gas usage of minting 1 wei before the transfer
 
-        bool transferSuccess = maxx.transferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        ); // transfer tokens to this contract -- removed from circulating supply
-        if (!transferSuccess) {
+        // transfer tokens to this contract -- removed from circulating supply
+        if (!maxx.transferFrom(msg.sender, address(this), _amount)) {
             revert TransferFailed();
         }
 
@@ -711,7 +703,7 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
 
         uint256 duration = uint256(_numDays) * 1 days;
         stakeId = idCounter.current();
-        assert(stakeId == stakes.length + 1);
+        assert(stakeId == stakes.length);
         stakes.push(StakeData("", _amount, _shares, duration, block.timestamp));
         // stakes[stakeId] = StakeData(
         //     "",
@@ -740,7 +732,9 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
     function _transfer(address payable _to, uint256 _amount) internal {
         // Note that "to" is declared as payable
         (bool success, ) = _to.call{value: _amount}("");
-        require(success, "Failed to send Ether");
+        if (!success) {
+            revert TransferFailed();
+        }
     }
 
     /// @dev Reverts if the `_stakeId` has not been minted yet.
