@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -245,7 +243,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     function _claim(
         uint256 _amount,
         address _referrer,
-        bool staked
+        bool stake
     ) internal {
         if (_amount <= remainingBalance) {
             if (_referrer != address(0)) {
@@ -258,9 +256,9 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         claimedAmount += _amount;
         uint256 stakeId;
         uint256 shares;
-        if (staked) {
-            (stakeId, shares) = maxxStake.freeClaimStake(msg.sender, _amount);
+        if (stake) {
             stakedClaims.push(claimCounter.current());
+            (stakeId, shares) = maxxStake.freeClaimStake(msg.sender, _amount);
         } else {
             unstakedClaims.push(claimCounter.current());
         }
@@ -282,7 +280,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     function _referralClaim(
         uint256 _amount,
         address _referrer,
-        bool _staked
+        bool stake
     ) internal {
         uint256 referralAmount = _amount / 10;
 
@@ -296,7 +294,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         uint256 stakeId;
         uint256 shares;
 
-        if (_staked) {
+        if (stake) {
             stakedClaims.push(claimCounter.current());
             (stakeId, shares) = maxxStake.freeClaimStake(
                 _referrer,
