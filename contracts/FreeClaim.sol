@@ -63,8 +63,8 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     IStake public maxxStake;
 
     /// Mapping of claims by user address
-    mapping(address => Claim[]) public userClaims; // TODO
-    mapping(address => uint256[]) public userFreeReferral; // TODO
+    mapping(address => Claim[]) public userClaims;
+    mapping(address => uint256[]) public userFreeReferral;
 
     /// True if user has already claimed MAXX
     mapping(address => bool) public hasClaimed;
@@ -207,8 +207,26 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         return stakedClaims.length + unstakedClaims.length;
     }
 
-    function getUserFreeReferrals() external view returns (uint256[] memory) {
-        return userFreeReferral[msg.sender];
+    /// @notice Get the referrals by user
+    /// @param _user The user to get the referrals for
+    /// @return The referrals for _user
+    function getUserFreeReferrals(address _user)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return userFreeReferral[_user];
+    }
+
+    /// @notice Get the claims by user
+    /// @param _user The user to get the claims for
+    /// @return The claims for _user
+    function getUserClaims(address _user)
+        external
+        view
+        returns (Claim[] memory)
+    {
+        return userClaims[_user];
     }
 
     /// @param _account The account presumed to be in the merkle tree
