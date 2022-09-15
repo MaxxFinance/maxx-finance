@@ -141,159 +141,14 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             (_amount * (FREE_CLAIM_DURATION - timePassed)) /
             FREE_CLAIM_DURATION; // adjust amount for the speed penalty
 
-        // if (address(maxxStake) != address(0)) {
-        //     console.log("stake launch date: %s", maxxStake.launchDate());
-        //     console.log("timestamp:", block.timestamp);
-        //     console.log(
-        //         "stake has launched:",
-        //         block.timestamp > maxxStake.launchDate()
-        //     );
-        // }
-
+        bool stake;
         if (
             address(maxxStake) != address(0) &&
             maxxStake.launchDate() < block.timestamp
         ) {
-            // console.log("staking is initialized");
-            if (_amount > remainingBalance) {
-                // console.log("_amount > remainingBalance");
-                // No referral bonus if contract balance is less than the amount to claim
-                _amount = remainingBalance;
-
-                (uint256 _stakeId, uint256 _shares) = maxxStake.freeClaimStake(
-                    msg.sender,
-                    _amount
-                );
-
-                Claim memory userClaim = Claim({
-                    user: msg.sender,
-                    amount: _amount,
-                    shares: _shares,
-                    stakeId: _stakeId,
-                    timestamp: block.timestamp
-                });
-                claims[claimCounter.current()] = userClaim;
-                userClaims[msg.sender].push(userClaim);
-                stakedClaims.push(claimCounter.current());
-                claimCounter.increment();
-                claimedAmount += _amount;
-                emit UserClaim(msg.sender, _amount);
-            } else {
-                // console.log("_amount <= remainingBalance");
-                uint256 stakeId;
-                uint256 shares;
-                if (_referrer != address(0)) {
-                    // console.log("_referrer != address(0)");
-                    uint256 referralAmount = _amount / 10;
-
-                    userFreeReferral[_referrer].push(block.timestamp);
-                    userFreeReferral[_referrer].push(_amount);
-                    userFreeReferral[_referrer].push(referralAmount);
-
-                    _amount += referralAmount; // +10% bonus for referral
-                    (stakeId, shares) = maxxStake.freeClaimStake(
-                        _referrer,
-                        referralAmount
-                    );
-                    // console.log("referral stakeId: %s", stakeId);
-                    // console.log("referral shares: %s", shares);
-
-                    Claim memory referralClaim = Claim({
-                        user: msg.sender,
-                        amount: _amount,
-                        shares: shares,
-                        stakeId: stakeId,
-                        timestamp: block.timestamp
-                    });
-                    claims[claimCounter.current()] = referralClaim;
-                    userClaims[_referrer].push(referralClaim);
-                    stakedClaims.push(claimCounter.current());
-                    claimCounter.increment();
-                    claimedAmount += referralAmount;
-                    emit UserClaim(_referrer, referralAmount);
-                    emit Referral(_referrer, msg.sender, referralAmount);
-                }
-
-                (stakeId, shares) = maxxStake.freeClaimStake(
-                    msg.sender,
-                    _amount
-                );
-                // console.log("claim stakeId: %s", stakeId);
-                // console.log("claim shares: %s", shares);
-
-                Claim memory userClaim = Claim({
-                    user: msg.sender,
-                    amount: _amount,
-                    shares: shares,
-                    stakeId: stakeId,
-                    timestamp: block.timestamp
-                });
-                claims[claimCounter.current()] = userClaim;
-                userClaims[msg.sender].push(userClaim);
-                stakedClaims.push(claimCounter.current());
-                claimCounter.increment();
-                claimedAmount += _amount;
-                emit UserClaim(msg.sender, _amount);
-            }
-        } else {
-            if (_amount > remainingBalance) {
-                // No referral bonus if contract balance is less than the amount to claim
-                _amount = remainingBalance;
-
-                Claim memory userClaim = Claim({
-                    user: msg.sender,
-                    amount: _amount,
-                    shares: 0,
-                    stakeId: 0,
-                    timestamp: block.timestamp
-                });
-
-                claims[claimCounter.current()] = userClaim;
-                userClaims[msg.sender].push(userClaim);
-                unstakedClaims.push(claimCounter.current());
-                claimCounter.increment();
-                claimedAmount += _amount;
-                emit UserClaim(msg.sender, _amount);
-            } else {
-                if (_referrer != address(0)) {
-                    uint256 referralAmount = _amount / 10;
-
-                    userFreeReferral[_referrer].push(block.timestamp);
-                    userFreeReferral[_referrer].push(_amount);
-                    userFreeReferral[_referrer].push(referralAmount);
-
-                    _amount += referralAmount; // +10% bonus for referral
-                    Claim memory referralClaim = Claim({
-                        user: msg.sender,
-                        amount: _amount,
-                        shares: 0,
-                        stakeId: 0,
-                        timestamp: block.timestamp
-                    });
-                    claims[claimCounter.current()] = referralClaim;
-                    userClaims[_referrer].push(referralClaim);
-                    unstakedClaims.push(claimCounter.current());
-                    claimCounter.increment();
-                    claimedAmount += referralAmount;
-                    emit UserClaim(_referrer, referralAmount);
-                    emit Referral(_referrer, msg.sender, referralAmount);
-                }
-                Claim memory userClaim = Claim({
-                    user: msg.sender,
-                    amount: _amount,
-                    shares: 0,
-                    stakeId: 0,
-                    timestamp: block.timestamp
-                });
-
-                claims[claimCounter.current()] = userClaim;
-                userClaims[msg.sender].push(userClaim);
-                stakedClaims.push(claimCounter.current());
-                claimCounter.increment();
-                claimedAmount += _amount;
-                emit UserClaim(msg.sender, _amount);
-            }
+            stake = true;
         }
+        _claim(_amount, _referrer, stake);
     }
 
     /// @notice Add MAXX to the free claim allocation
@@ -367,6 +222,85 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     ) external view returns (bool) {
         return
             _verifyMerkleLeaf(_generateMerkleLeaf(_account, _amount), _proof);
+    }
+
+    function _claim(
+        uint256 _amount,
+        address _referrer,
+        bool staked
+    ) internal {
+        if (_amount <= remainingBalance) {
+            if (_referrer != address(0)) {
+                _referralClaim(_amount, _referrer, true);
+            }
+        } else {
+            _amount = remainingBalance;
+        }
+
+        claimedAmount += _amount;
+        uint256 stakeId;
+        uint256 shares;
+        if (staked) {
+            (stakeId, shares) = maxxStake.freeClaimStake(msg.sender, _amount);
+            stakedClaims.push(claimCounter.current());
+        } else {
+            unstakedClaims.push(claimCounter.current());
+        }
+
+        Claim memory userClaim = Claim({
+            user: msg.sender,
+            amount: _amount,
+            shares: shares,
+            stakeId: stakeId,
+            timestamp: block.timestamp
+        });
+        claims[claimCounter.current()] = userClaim;
+        userClaims[msg.sender].push(userClaim);
+
+        claimCounter.increment();
+        emit UserClaim(msg.sender, _amount);
+    }
+
+    function _referralClaim(
+        uint256 _amount,
+        address _referrer,
+        bool _staked
+    ) internal {
+        uint256 referralAmount = _amount / 10;
+
+        userFreeReferral[_referrer].push(block.timestamp);
+        userFreeReferral[_referrer].push(_amount);
+        userFreeReferral[_referrer].push(referralAmount);
+
+        _amount += referralAmount; // +10% bonus for referral
+        claimedAmount += referralAmount;
+
+        uint256 stakeId;
+        uint256 shares;
+
+        if (_staked) {
+            stakedClaims.push(claimCounter.current());
+            (stakeId, shares) = maxxStake.freeClaimStake(
+                _referrer,
+                referralAmount
+            );
+        } else {
+            unstakedClaims.push(claimCounter.current());
+        }
+
+        Claim memory referralClaim = Claim({
+            user: msg.sender,
+            amount: _amount,
+            shares: shares,
+            stakeId: stakeId,
+            timestamp: block.timestamp
+        });
+        claims[claimCounter.current()] = referralClaim;
+        userClaims[_referrer].push(referralClaim);
+
+        claimCounter.increment();
+        emit UserClaim(_referrer, referralAmount);
+        emit Referral(_referrer, msg.sender, referralAmount);
     }
 
     function _verifyMerkleLeaf(bytes32 _leafNode, bytes32[] memory _proof)
