@@ -1,0 +1,1573 @@
+
+[91m
+LiquidityAmplifier.claim() (contracts/LiquidityAmplifier.sol#233-259) ignores return value by IMaxxFinance(maxx).transfer(msg.sender,amount) (contracts/LiquidityAmplifier.sol#256-257)
+LiquidityAmplifier.withdrawMaxx() (contracts/LiquidityAmplifier.sol#359-375) ignores return value by IMaxxFinance(maxx).transfer(maxxVault,extraMaxx) (contracts/LiquidityAmplifier.sol#373-375)
+FreeClaimTest.allocateMaxx(uint256) (contracts/test/FreeClaimTest.sol#186-189) ignores return value by MAXX.transferFrom(msg.sender,address(this),_amount) (contracts/test/FreeClaimTest.sol#187)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-transfer[0m
+[91m
+LiquidityAmplifier.claim(uint8) (contracts/LiquidityAmplifier.sol#242-266) ignores return value by IMaxxFinance(maxx).transfer(msg.sender,amount) (contracts/LiquidityAmplifier.sol#264)
+LiquidityAmplifier.withdrawMaxx() (contracts/LiquidityAmplifier.sol#365-379) ignores return value by IMaxxFinance(maxx).transfer(maxxVault,extraMaxx) (contracts/LiquidityAmplifier.sol#378)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-transfer[0m
+[91m
+LiquidityAmplifier.maxxGenesis (contracts/LiquidityAmplifier.sol#51-53) is never initialized. It is used in:
+	- LiquidityAmplifier._mintMaxxGenesis(string) (contracts/LiquidityAmplifier.sol#457-463)
+FreeClaimTest.remainingBalance (contracts/test/FreeClaimTest.sol#63) is never initialized. It is used in:
+	- FreeClaimTest.freeClaim(uint256,bytes32[],address) (contracts/test/FreeClaimTest.sol#99-182)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-state-variables[0m
+[93m
+MaxxStake.unstake(uint256) (contracts/MaxxStake.sol#247-313) performs a multiplication on the result of a division:
+	-daysServed = (block.timestamp - tStake.startDate) / 86400 (contracts/MaxxStake.sol#261-262)
+	-withdrawableAmount = ((tStake.amount + interestToDate) * daysServed) / tStake.duration / 86400 (contracts/MaxxStake.sol#272-275)
+MaxxStake._calcShares(uint16,uint256) (contracts/MaxxStake.sol#752-768) performs a multiplication on the result of a division:
+	-basicShares = _amount / (2 - shareFactor) (contracts/MaxxStake.sol#758-760)
+	-bpbBonus = _amount / 10000000 (contracts/MaxxStake.sol#760-761)
+	-bpbShares = (basicShares * bpbBonus) / 100 (contracts/MaxxStake.sol#763-765)
+MaxxStake._calcInterestToDate(uint256,uint256,uint256) (contracts/MaxxStake.sol#780-806) performs a multiplication on the result of a division:
+	-stakeDuration = _duration / 86400 (contracts/MaxxStake.sol#785-786)
+	-fullDurationInterest = (_stakeTotalShares * BASE_INFLATION * stakeDuration) / DAYS_IN_YEAR / BASE_INFLATION_FACTOR (contracts/MaxxStake.sol#786-791)
+MaxxStake._calcInterestToDate(uint256,uint256,uint256) (contracts/MaxxStake.sol#780-806) performs a multiplication on the result of a division:
+	-stakeDuration = _duration / 86400 (contracts/MaxxStake.sol#785-786)
+	-currentDurationInterest = (_daysServed * _stakeTotalShares * stakeDuration * BASE_INFLATION) / stakeDuration / BASE_INFLATION_FACTOR / DAYS_IN_YEAR (contracts/MaxxStake.sol#791-798)
+MaxxStakeTest.unstake(uint256) (contracts/test/MaxxStakeTest.sol#233-293) performs a multiplication on the result of a division:
+	-daysServed = ((block.timestamp - tStake.startDate) / 86400) * TEST_TIME_FACTOR (contracts/test/MaxxStakeTest.sol#244-245)
+MaxxStakeTest.maxShare(uint256) (contracts/test/MaxxStakeTest.sol#297-322) performs a multiplication on the result of a division:
+	-daysServed = ((block.timestamp - tStake.startDate) / 86400) * TEST_TIME_FACTOR (contracts/test/MaxxStakeTest.sol#303-304)
+MaxxStakeTest.restake(uint256,uint256) (contracts/test/MaxxStakeTest.sol#327-358) performs a multiplication on the result of a division:
+	-daysServed = ((block.timestamp - tStake.startDate) / 86400) * TEST_TIME_FACTOR (contracts/test/MaxxStakeTest.sol#341-342)
+MaxxStakeTest.scrapeInterest(uint256) (contracts/test/MaxxStakeTest.sol#391-430) performs a multiplication on the result of a division:
+	-daysServed = ((block.timestamp - tStake.startDate) / 86400) * TEST_TIME_FACTOR (contracts/test/MaxxStakeTest.sol#401-402)
+MaxxStakeTest.scrapeInterest(uint256) (contracts/test/MaxxStakeTest.sol#391-430) performs a multiplication on the result of a division:
+	-percentServed = (daysServed * PERCENT_FACTOR) / durationInDays (contracts/test/MaxxStakeTest.sol#418)
+	-withdrawableAmount = (interestToDate * percentServed) / PERCENT_FACTOR (contracts/test/MaxxStakeTest.sol#420-421)
+MaxxStakeTest._calcShares(uint16,uint256) (contracts/test/MaxxStakeTest.sol#723-740) performs a multiplication on the result of a division:
+	-basicShares = _amount / (2 - shareFactor) (contracts/test/MaxxStakeTest.sol#730)
+	-bpbBonus = _amount / 10000000 (contracts/test/MaxxStakeTest.sol#731)
+	-bpbShares = (basicShares * bpbBonus) / 100 (contracts/test/MaxxStakeTest.sol#735)
+MaxxStakeTest._calcInterestToDate(uint256,uint256,uint256) (contracts/test/MaxxStakeTest.sol#751-777) performs a multiplication on the result of a division:
+	-stakeDuration = _duration / 86400 (contracts/test/MaxxStakeTest.sol#756)
+	-fullDurationInterest = (_stakeTotalShares * BASE_INFLATION * stakeDuration) / DAYS_IN_YEAR / BASE_INFLATION_FACTOR (contracts/test/MaxxStakeTest.sol#757-761)
+MaxxStakeTest._calcInterestToDate(uint256,uint256,uint256) (contracts/test/MaxxStakeTest.sol#751-777) performs a multiplication on the result of a division:
+	-stakeDuration = _duration / 86400 (contracts/test/MaxxStakeTest.sol#756)
+	-currentDurationInterest = (_daysServed * _stakeTotalShares * stakeDuration * BASE_INFLATION) / stakeDuration / BASE_INFLATION_FACTOR / DAYS_IN_YEAR (contracts/test/MaxxStakeTest.sol#763-769)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply[0m
+[93m
+MaxxStake.unstake(uint256) (contracts/MaxxStake.sol#248-314) performs a multiplication on the result of a division:
+	-daysServed = (block.timestamp - tStake.startDate) / 86400 (contracts/MaxxStake.sol#262)
+	-withdrawableAmount = ((tStake.amount + interestToDate) * daysServed) / tStake.duration / 86400 (contracts/MaxxStake.sol#273-276)
+MaxxStake._calcShares(uint16,uint256) (contracts/MaxxStake.sol#753-770) performs a multiplication on the result of a division:
+	-basicShares = _amount / (2 - shareFactor) (contracts/MaxxStake.sol#760)
+	-bpbBonus = _amount / 10000000 (contracts/MaxxStake.sol#761)
+	-bpbShares = (basicShares * bpbBonus) / 100 (contracts/MaxxStake.sol#765)
+MaxxStake._calcInterestToDate(uint256,uint256,uint256) (contracts/MaxxStake.sol#781-807) performs a multiplication on the result of a division:
+	-stakeDuration = _duration / 86400 (contracts/MaxxStake.sol#786)
+	-fullDurationInterest = (_stakeTotalShares * BASE_INFLATION * stakeDuration) / DAYS_IN_YEAR / BASE_INFLATION_FACTOR (contracts/MaxxStake.sol#787-791)
+MaxxStake._calcInterestToDate(uint256,uint256,uint256) (contracts/MaxxStake.sol#781-807) performs a multiplication on the result of a division:
+	-stakeDuration = _duration / 86400 (contracts/MaxxStake.sol#786)
+	-currentDurationInterest = (_daysServed * _stakeTotalShares * stakeDuration * BASE_INFLATION) / stakeDuration / BASE_INFLATION_FACTOR / DAYS_IN_YEAR (contracts/MaxxStake.sol#793-799)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply[0m
+[93m
+MaxxStake._stake(uint16,uint256,uint256) (contracts/MaxxStake.sol#658-706) uses a dangerous strict equality:
+	- maxx.hasRole(maxx.MINTER_ROLE(),msg.sender) && maxx.balanceOf(msg.sender) == 0 && msg.sender != freeClaim && msg.sender != liquidityAmplifier (contracts/MaxxStake.sol#679-685)
+MaxxStake.maxShare(uint256) (contracts/MaxxStake.sol#317-347) uses a dangerous strict equality:
+	- tStake.duration == uint256(MAX_STAKE_DAYS) * 86400 (contracts/MaxxStake.sol#320-321)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities[0m
+[93m
+MaxxStake._stake(uint16,uint256,uint256) (contracts/MaxxStake.sol#661-708) uses a dangerous strict equality:
+	- maxx.hasRole(maxx.MINTER_ROLE(),msg.sender) && maxx.balanceOf(msg.sender) == 0 && msg.sender != freeClaim && msg.sender != liquidityAmplifier (contracts/MaxxStake.sol#682-685)
+MaxxStake.maxShare(uint256) (contracts/MaxxStake.sol#318-348) uses a dangerous strict equality:
+	- tStake.duration == uint256(MAX_STAKE_DAYS) * 86400 (contracts/MaxxStake.sol#321)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities[0m
+[93m
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#189-191)
+	- (stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#211-213)
+	State variables written after the call(s):
+	- claimedAmount += _amount (contracts/FreeClaim.sol#229-231)
+	- stakedClaims.push(claimCounter.current()) (contracts/FreeClaim.sol#227-228)
+	- userClaims[msg.sender].push(userClaim_scope_0) (contracts/FreeClaim.sol#225-226)
+Reentrancy in MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#352-391):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_topUpAmount) (contracts/MaxxStake.sol#367-372)
+	State variables written after the call(s):
+	- stakes[_stakeId] = tStake (contracts/MaxxStake.sol#389-390)
+Reentrancy in MaxxStakeTest.restake(uint256,uint256) (contracts/test/MaxxStakeTest.sol#327-358):
+	External calls:
+	- require(bool)(maxx.transferFrom(msg.sender,address(this),_topUpAmount)) (contracts/test/MaxxStakeTest.sol#340)
+	State variables written after the call(s):
+	- stakes[_stakeId] = tStake (contracts/test/MaxxStakeTest.sol#356)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1[0m
+[93m
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#194-197)
+	- (stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#217-220)
+	State variables written after the call(s):
+	- claimedAmount += _amount (contracts/FreeClaim.sol#235)
+	- stakedClaims.push(claimCounter.current()) (contracts/FreeClaim.sol#233)
+	- userClaims[msg.sender].push(userClaim_scope_0) (contracts/FreeClaim.sol#232)
+Reentrancy in MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#353-392):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_topUpAmount) (contracts/MaxxStake.sol#369-373)
+	State variables written after the call(s):
+	- stakes[_stakeId] = tStake (contracts/MaxxStake.sol#390)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1[0m
+[93m
+MAXXGenesis.tokensOfOwner(address).ownedTokenIndex (contracts/MAXXGenesis.sol#102) is a local variable never initialized
+MAXXBoost.tokensOfOwner(address).ownedTokenIndex (contracts/MAXXBoost.sol#92) is a local variable never initialized
+MAXXGenesis.setCodes(bytes32[]).i (contracts/MAXXGenesis.sol#68) is a local variable never initialized
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables[0m
+[93m
+ERC721._checkOnERC721Received(address,address,uint256,bytes) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#394-416) ignores return value by IERC721Receiver(to).onERC721Received(_msgSender(),from,tokenId,data) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#401-412)
+FreeClaim.setMaxxStake(address) (contracts/FreeClaim.sol#300-302) ignores return value by maxx.approve(_maxxStake,type()(uint256).max) (contracts/FreeClaim.sol#301-302)
+LiquidityAmplifier.claimToStake(uint16) (contracts/LiquidityAmplifier.sol#260-271) ignores return value by IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#269-270)
+LiquidityAmplifier.claimToStake(uint16) (contracts/LiquidityAmplifier.sol#260-271) ignores return value by stake.amplifierStake(_daysToStake,amount) (contracts/LiquidityAmplifier.sol#270-271)
+LiquidityAmplifier.claimToStake(uint16,uint256,IStake.MaxxNFT) (contracts/LiquidityAmplifier.sol#280-291) ignores return value by IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#285-287)
+LiquidityAmplifier.claimToStake(uint16,uint256,IStake.MaxxNFT) (contracts/LiquidityAmplifier.sol#280-291) ignores return value by stake.amplifierStake(_daysToStake,amount,_tokenId,_maxxNFT) (contracts/LiquidityAmplifier.sol#287-289)
+LiquidityAmplifier.claimReferrals() (contracts/LiquidityAmplifier.sol#294-302) ignores return value by IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#299-300)
+LiquidityAmplifier.claimReferrals() (contracts/LiquidityAmplifier.sol#294-302) ignores return value by stake.amplifierStake(14,amount) (contracts/LiquidityAmplifier.sol#300-301)
+LiquidityAmplifierTest.claimToStake(uint16) (contracts/test/LiquidityAmplifierTest.sol#194-205) ignores return value by stake.amplifierStake(_daysToStake,amount) (contracts/test/LiquidityAmplifierTest.sol#203)
+LiquidityAmplifierTest.claimToStake(uint16,uint256,IStake.MaxxNFT) (contracts/test/LiquidityAmplifierTest.sol#211-226) ignores return value by stake.amplifierStake(_daysToStake,amount,_tokenId,_maxxNFT) (contracts/test/LiquidityAmplifierTest.sol#224)
+LiquidityAmplifierTest.claimReferrals() (contracts/test/LiquidityAmplifierTest.sol#229-240) ignores return value by stake.amplifierStake(14,amount) (contracts/test/LiquidityAmplifierTest.sol#238)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return[0m
+[93m
+FreeClaim.setMaxxStake(address) (contracts/FreeClaim.sol#311-314) ignores return value by maxx.approve(_maxxStake,type()(uint256).max) (contracts/FreeClaim.sol#313)
+LiquidityAmplifier.claimToStake(uint8,uint16) (contracts/LiquidityAmplifier.sol#271-278) ignores return value by IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#275)
+LiquidityAmplifier.claimToStake(uint8,uint16) (contracts/LiquidityAmplifier.sol#271-278) ignores return value by stake.amplifierStake(_daysToStake,amount) (contracts/LiquidityAmplifier.sol#276)
+LiquidityAmplifier.claimToStake(uint8,uint16,uint256,IStake.MaxxNFT) (contracts/LiquidityAmplifier.sol#285-297) ignores return value by IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#294)
+LiquidityAmplifier.claimToStake(uint8,uint16,uint256,IStake.MaxxNFT) (contracts/LiquidityAmplifier.sol#285-297) ignores return value by stake.amplifierStake(_daysToStake,amount,_tokenId,_maxxNFT) (contracts/LiquidityAmplifier.sol#295)
+LiquidityAmplifier.claimReferrals(uint8) (contracts/LiquidityAmplifier.sol#301-307) ignores return value by stake.amplifierStake(14,amount) (contracts/LiquidityAmplifier.sol#305)
+LiquidityAmplifier._getReferralAmountAndApprove(uint8) (contracts/LiquidityAmplifier.sol#490-503) ignores return value by IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#501)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return[0m
+[93m
+FreeClaim.freeClaim(uint256,bytes32[],address).stakeId (contracts/FreeClaim.sol#183) is written in both
+	(stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#194-197)
+	(stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#217-220)
+FreeClaim.freeClaim(uint256,bytes32[],address).shares (contracts/FreeClaim.sol#184) is written in both
+	(stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#194-197)
+	(stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#217-220)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#write-after-write[0m
+[92m
+MAXXBoost.tokensOfOwner(address)._owner (contracts/MAXXBoost.sol#84) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MAXXGenesis.tokensOfOwner(address)._owner (contracts/MAXXGenesis.sol#94) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MaxxStake.freeClaimStake(address,uint256)._owner (contracts/MaxxStake.sol#507-508) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MaxxStake.isApprovedForAll(address,address)._owner (contracts/MaxxStake.sol#634-635) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MaxxStake._setApprovalForAll(address,address,bool)._owner (contracts/MaxxStake.sol#649) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MaxxStakeTest.unstake(uint256).owner (contracts/test/MaxxStakeTest.sol#235) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+MaxxStakeTest.maxShare(uint256).owner (contracts/test/MaxxStakeTest.sol#299) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+MaxxStakeTest.restake(uint256,uint256).owner (contracts/test/MaxxStakeTest.sol#329) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+MaxxStakeTest.scrapeInterest(uint256).owner (contracts/test/MaxxStakeTest.sol#393) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+MaxxStakeTest.changeStakeName(uint256,string).owner (contracts/test/MaxxStakeTest.sol#436) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+MaxxStakeTest.freeClaimStake(address,uint256)._owner (contracts/test/MaxxStakeTest.sol#507) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MaxxStakeTest.approve(address,uint256).owner (contracts/test/MaxxStakeTest.sol#565) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+MaxxStakeTest.ownerOf(uint256).owner (contracts/test/MaxxStakeTest.sol#599) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+MaxxStakeTest.isApprovedForAll(address,address)._owner (contracts/test/MaxxStakeTest.sol#623) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MaxxStakeTest._setApprovalForAll(address,address,bool)._owner (contracts/test/MaxxStakeTest.sol#638) shadows:
+	- Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+MaxxStakeTest._isApprovedOrOwner(address,uint256).owner (contracts/test/MaxxStakeTest.sol#715) shadows:
+	- Ownable.owner() (node_modules/@openzeppelin/contracts/access/Ownable.sol#43-45) (function)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing[0m
+[92m
+LiquidityAmplifier.changeLaunchDate(uint256) (contracts/LiquidityAmplifier.sol#343-347) should emit an event for: 
+	- launchDate = _launchDate (contracts/LiquidityAmplifier.sol#346-347) 
+Marketplace.setFeePercentage(uint16) (contracts/Marketplace.sol#143-148) should emit an event for: 
+	- feePercentage = _feePercentage (contracts/Marketplace.sol#147) 
+LiquidityAmplifierTest.changeLaunchDate(uint256) (contracts/test/LiquidityAmplifierTest.sol#347-350) should emit an event for: 
+	- launchDate = _launchDate (contracts/test/LiquidityAmplifierTest.sol#349) 
+MarketplaceTest.setFeePercentage(uint16) (contracts/test/MarketplaceTest.sol#145-150) should emit an event for: 
+	- feePercentage = _feePercentage (contracts/test/MarketplaceTest.sol#149) 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic[0m
+[92m
+LiquidityAmplifier.changeLaunchDate(uint256) (contracts/LiquidityAmplifier.sol#346-351) should emit an event for: 
+	- launchDate = _launchDate (contracts/LiquidityAmplifier.sol#350) 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic[0m
+[92m
+LiquidityAmplifier.constructor(address,uint256,address)._maxxVault (contracts/LiquidityAmplifier.sol#101-104) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/LiquidityAmplifier.sol#105-106)
+LiquidityAmplifier.constructor(address,uint256,address)._maxx (contracts/LiquidityAmplifier.sol#104-105) lacks a zero-check on :
+		- maxx = _maxx (contracts/LiquidityAmplifier.sol#106-107)
+LiquidityAmplifier.withdraw(address,uint256)._to (contracts/LiquidityAmplifier.sol#353) lacks a zero-check on :
+		- (success) = _to.call{value: _amount}() (contracts/LiquidityAmplifier.sol#355-356)
+MAXXBoost.constructor(address,address)._amplifierContract (contracts/MAXXBoost.sol#39) lacks a zero-check on :
+		- amplifierContract = _amplifierContract (contracts/MAXXBoost.sol#42)
+MAXXBoost.constructor(address,address)._stakingContract (contracts/MAXXBoost.sol#39) lacks a zero-check on :
+		- stakingContract = _stakingContract (contracts/MAXXBoost.sol#43)
+MAXXGenesis.constructor(address)._amplifierContract (contracts/MAXXGenesis.sol#37) lacks a zero-check on :
+		- amplifierContract = _amplifierContract (contracts/MAXXGenesis.sol#38)
+Marketplace.withdraw(address,uint256)._to (contracts/Marketplace.sol#153) lacks a zero-check on :
+		- (success) = _to.call{value: _amount}() (contracts/Marketplace.sol#155)
+MaxxFinance.constructor(address,uint16,uint256,uint256)._maxxVault (contracts/MaxxFinance.sol#72) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/MaxxFinance.sol#79)
+MaxxStake.constructor(address,address,uint256)._maxxVault (contracts/MaxxStake.sol#184-186) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/MaxxStake.sol#189-190)
+MaxxStake.setLiquidityAmplifier(address)._liquidityAmplifier (contracts/MaxxStake.sol#527) lacks a zero-check on :
+		- liquidityAmplifier = _liquidityAmplifier (contracts/MaxxStake.sol#529-531)
+MaxxStake.setFreeClaim(address)._freeClaim (contracts/MaxxStake.sol#535-536) lacks a zero-check on :
+		- freeClaim = _freeClaim (contracts/MaxxStake.sol#536)
+LiquidityAmplifierTest.constructor(address,uint256,address)._maxxVault (contracts/test/LiquidityAmplifierTest.sol#100) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/test/LiquidityAmplifierTest.sol#104)
+LiquidityAmplifierTest.withdraw(address,uint256)._to (contracts/test/LiquidityAmplifierTest.sol#355) lacks a zero-check on :
+		- (success) = _to.call{value: _amount}() (contracts/test/LiquidityAmplifierTest.sol#357)
+MarketplaceTest.withdraw(address,uint256)._to (contracts/test/MarketplaceTest.sol#155) lacks a zero-check on :
+		- (success) = _to.call{value: _amount}() (contracts/test/MarketplaceTest.sol#157)
+MaxxFinanceTest.constructor(address,uint16,uint256,uint256)._maxxVault (contracts/test/MaxxFinanceTest.sol#73) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/test/MaxxFinanceTest.sol#80)
+MaxxStakeTest.constructor(address,address,uint256,address,address)._maxxVault (contracts/test/MaxxStakeTest.sol#174) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/test/MaxxStakeTest.sol#180)
+MaxxStakeTest.setLiquidityAmplifier(address)._liquidityAmplifier (contracts/test/MaxxStakeTest.sol#521) lacks a zero-check on :
+		- liquidityAmplifier = _liquidityAmplifier (contracts/test/MaxxStakeTest.sol#525)
+MaxxStakeTest.setFreeClaim(address)._freeClaim (contracts/test/MaxxStakeTest.sol#530) lacks a zero-check on :
+		- freeClaim = _freeClaim (contracts/test/MaxxStakeTest.sol#531)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation[0m
+[92m
+LiquidityAmplifier.constructor(address,uint256,address)._maxxVault (contracts/LiquidityAmplifier.sol#112) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/LiquidityAmplifier.sol#116)
+LiquidityAmplifier.constructor(address,uint256,address)._maxx (contracts/LiquidityAmplifier.sol#114) lacks a zero-check on :
+		- maxx = _maxx (contracts/LiquidityAmplifier.sol#118)
+LiquidityAmplifier.withdraw(address,uint256)._to (contracts/LiquidityAmplifier.sol#356) lacks a zero-check on :
+		- (success) = _to.call{value: _amount}() (contracts/LiquidityAmplifier.sol#358)
+MaxxStake.constructor(address,address,uint256)._maxxVault (contracts/MaxxStake.sol#187) lacks a zero-check on :
+		- maxxVault = _maxxVault (contracts/MaxxStake.sol#191)
+MaxxStake.setLiquidityAmplifier(address)._liquidityAmplifier (contracts/MaxxStake.sol#527) lacks a zero-check on :
+		- liquidityAmplifier = _liquidityAmplifier (contracts/MaxxStake.sol#531)
+MaxxStake.setFreeClaim(address)._freeClaim (contracts/MaxxStake.sol#536) lacks a zero-check on :
+		- freeClaim = _freeClaim (contracts/MaxxStake.sol#537)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation[0m
+[92m
+Variable 'ERC721._checkOnERC721Received(address,address,uint256,bytes).retval (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#401)' in ERC721._checkOnERC721Received(address,address,uint256,bytes) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#394-416) potentially used before declaration: retval == IERC721Receiver.onERC721Received.selector (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#402)
+Variable 'ERC721._checkOnERC721Received(address,address,uint256,bytes).reason (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#403)' in ERC721._checkOnERC721Received(address,address,uint256,bytes) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#394-416) potentially used before declaration: reason.length == 0 (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#404)
+Variable 'ERC721._checkOnERC721Received(address,address,uint256,bytes).reason (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#403)' in ERC721._checkOnERC721Received(address,address,uint256,bytes) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#394-416) potentially used before declaration: revert(uint256,uint256)(32 + reason,mload(uint256)(reason)) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#409)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#pre-declaration-usage-of-local-variables[0m
+[92m
+Reentrancy in MaxxStake._stake(uint16,uint256,uint256) (contracts/MaxxStake.sol#658-706):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+	- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	State variables written after the call(s):
+	- endTimes[stakeId] = block.timestamp + duration (contracts/MaxxStake.sol#702-704)
+	- stakes[stakeId] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/MaxxStake.sol#696-702)
+	- totalShares += _shares (contracts/MaxxStake.sol#688-689)
+Reentrancy in MaxxStakeTest._stake(uint16,uint256,uint256) (contracts/test/MaxxStakeTest.sol#649-678):
+	External calls:
+	- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	State variables written after the call(s):
+	- endTimes[idCounter.current()] = block.timestamp + duration (contracts/test/MaxxStakeTest.sol#675)
+	- stakes[idCounter.current()] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/test/MaxxStakeTest.sol#668-674)
+	- totalShares += _shares (contracts/test/MaxxStakeTest.sol#662)
+Reentrancy in FreeClaim.allocateMaxx(uint256) (contracts/FreeClaim.sol#289-294):
+	External calls:
+	- ! maxx.transferFrom(msg.sender,address(this),_amount) (contracts/FreeClaim.sol#290-291)
+	State variables written after the call(s):
+	- maxxAllocation += _amount (contracts/FreeClaim.sol#292-293)
+	- remainingBalance = maxx.balanceOf(address(this)) (contracts/FreeClaim.sol#293-294)
+Reentrancy in FreeClaimTest.allocateMaxx(uint256) (contracts/test/FreeClaimTest.sol#186-189):
+	External calls:
+	- MAXX.transferFrom(msg.sender,address(this),_amount) (contracts/test/FreeClaimTest.sol#187)
+	State variables written after the call(s):
+	- maxxAllocation += _amount (contracts/test/FreeClaimTest.sol#188)
+Reentrancy in MaxxStake.amplifierStake(uint16,uint256) (contracts/MaxxStake.sol#441-457):
+	External calls:
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#452-455)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	State variables written after the call(s):
+	- _owners[stakeId] = tx.origin (contracts/MaxxStake.sol#455-456)
+Reentrancy in MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#464-502):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#489-490)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#496-499)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	State variables written after the call(s):
+	- _owners[stakeId] = tx.origin (contracts/MaxxStake.sol#499-501)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#496-499)
+		- endTimes[stakeId] = block.timestamp + duration (contracts/MaxxStake.sol#702-704)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#496-499)
+		- stakes[stakeId] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/MaxxStake.sol#696-702)
+Reentrancy in MaxxStakeTest.amplifierStake(uint16,uint256) (contracts/test/MaxxStakeTest.sol#448-461):
+	External calls:
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#459)
+		- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	State variables written after the call(s):
+	- _owners[idCounter.current()] = tx.origin (contracts/test/MaxxStakeTest.sol#460)
+Reentrancy in MaxxStakeTest.amplifierStake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT) (contracts/test/MaxxStakeTest.sol#468-502):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/test/MaxxStakeTest.sol#490)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#499)
+		- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	State variables written after the call(s):
+	- _owners[idCounter.current()] = tx.origin (contracts/test/MaxxStakeTest.sol#501)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#499)
+		- endTimes[idCounter.current()] = block.timestamp + duration (contracts/test/MaxxStakeTest.sol#675)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#499)
+		- stakes[idCounter.current()] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/test/MaxxStakeTest.sol#668-674)
+Reentrancy in LiquidityAmplifier.deposit(string) (contracts/LiquidityAmplifier.sol#169-194):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#177)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#460-462)
+	State variables written after the call(s):
+	- _effectiveMaticDailyDeposits[day] += amount (contracts/LiquidityAmplifier.sol#190-191)
+	- _maticDailyDeposits[day] += amount (contracts/LiquidityAmplifier.sol#189)
+	- dailyDepositors[day] += 1 (contracts/LiquidityAmplifier.sol#191)
+	- effectiveUserDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#184-187)
+	- participants.push(msg.sender) (contracts/LiquidityAmplifier.sol#183-184)
+	- participated[msg.sender] = true (contracts/LiquidityAmplifier.sol#182-183)
+	- userDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#184)
+Reentrancy in LiquidityAmplifier.deposit(string,address) (contracts/LiquidityAmplifier.sol#195-230):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#206)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#460-462)
+	State variables written after the call(s):
+	- _effectiveMaticDailyDeposits[day] += effectiveDeposit (contracts/LiquidityAmplifier.sol#224-226)
+	- _maticDailyDeposits[day] += amount (contracts/LiquidityAmplifier.sol#223-224)
+	- dailyDepositors[day] += 1 (contracts/LiquidityAmplifier.sol#226-227)
+	- effectiveUserDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#220-221)
+	- effectiveUserReferrals[_referrer][day] += referrerAmount (contracts/LiquidityAmplifier.sol#222-223)
+	- participants.push(msg.sender) (contracts/LiquidityAmplifier.sol#218-219)
+	- participated[msg.sender] = true (contracts/LiquidityAmplifier.sol#217-218)
+	- userAmpReferral[msg.sender].push(block.timestamp) (contracts/LiquidityAmplifier.sol#227-228)
+	- userAmpReferral[msg.sender].push(amount) (contracts/LiquidityAmplifier.sol#228)
+	- userAmpReferral[msg.sender].push(referrerAmount) (contracts/LiquidityAmplifier.sol#228-230)
+	- userDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#219-220)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284):
+	External calls:
+	- (_stakeId,_shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#161-165)
+	State variables written after the call(s):
+	- claimedAmount += _amount (contracts/FreeClaim.sol#178-179)
+	- claims[claimCounter.current()] = userClaim (contracts/FreeClaim.sol#174-175)
+	- stakedClaims.push(claimCounter.current()) (contracts/FreeClaim.sol#176-177)
+	- userClaims[msg.sender].push(userClaim) (contracts/FreeClaim.sol#175-176)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#189-191)
+	State variables written after the call(s):
+	- claimedAmount += referralAmount (contracts/FreeClaim.sol#208)
+	- claims[claimCounter.current()] = referralClaim (contracts/FreeClaim.sol#202-203)
+	- stakedClaims.push(claimCounter.current()) (contracts/FreeClaim.sol#205-206)
+	- userClaims[_referrer].push(referralClaim) (contracts/FreeClaim.sol#203-204)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#189-191)
+	- (stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#211-213)
+	State variables written after the call(s):
+	- claims[claimCounter.current()] = userClaim_scope_0 (contracts/FreeClaim.sol#224-225)
+Reentrancy in MaxxStake.freeClaimStake(address,uint256) (contracts/MaxxStake.sol#507-522):
+	External calls:
+	- stakeId = _stake(DAYS_IN_YEAR,_amount,shares) (contracts/MaxxStake.sol#516-518)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	State variables written after the call(s):
+	- _owners[stakeId] = _owner (contracts/MaxxStake.sol#518-520)
+Reentrancy in MaxxStakeTest.freeClaimStake(address,uint256) (contracts/test/MaxxStakeTest.sol#507-517):
+	External calls:
+	- _stake(DAYS_IN_YEAR,_amount,shares) (contracts/test/MaxxStakeTest.sol#514)
+		- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	State variables written after the call(s):
+	- _owners[idCounter.current()] = _owner (contracts/test/MaxxStakeTest.sol#516)
+Reentrancy in MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#352-391):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_topUpAmount) (contracts/MaxxStake.sol#367-372)
+	State variables written after the call(s):
+	- totalShares -= tStake.shares (contracts/MaxxStake.sol#385-386)
+	- totalShares += tStake.shares (contracts/MaxxStake.sol#388-389)
+Reentrancy in MaxxStakeTest.restake(uint256,uint256) (contracts/test/MaxxStakeTest.sol#327-358):
+	External calls:
+	- require(bool)(maxx.transferFrom(msg.sender,address(this),_topUpAmount)) (contracts/test/MaxxStakeTest.sol#340)
+	State variables written after the call(s):
+	- totalShares -= tStake.shares (contracts/test/MaxxStakeTest.sol#352)
+	- totalShares += tStake.shares (contracts/test/MaxxStakeTest.sol#355)
+Reentrancy in MaxxStakeTest.scrapeInterest(uint256) (contracts/test/MaxxStakeTest.sol#391-430):
+	External calls:
+	- maxx.mint(address(this),interestToDate - maxx.balanceOf(address(this))) (contracts/test/MaxxStakeTest.sol#410-413)
+	State variables written after the call(s):
+	- withdrawnAmounts[_stakeId] = interestToDate (contracts/test/MaxxStakeTest.sol#423)
+Reentrancy in MaxxStake.stake(uint16,uint256) (contracts/MaxxStake.sol#201-206):
+	External calls:
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#203-205)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	State variables written after the call(s):
+	- _owners[stakeId] = msg.sender (contracts/MaxxStake.sol#205-206)
+Reentrancy in MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#214-243):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#235-236)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#240-242)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	State variables written after the call(s):
+	- _owners[stakeId] = msg.sender (contracts/MaxxStake.sol#242-243)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#240-242)
+		- endTimes[stakeId] = block.timestamp + duration (contracts/MaxxStake.sol#702-704)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#240-242)
+		- stakes[stakeId] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/MaxxStake.sol#696-702)
+Reentrancy in MaxxStakeTest.stake(uint16,uint256) (contracts/test/MaxxStakeTest.sol#191-196):
+	External calls:
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#194)
+		- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	State variables written after the call(s):
+	- _owners[idCounter.current()] = msg.sender (contracts/test/MaxxStakeTest.sol#195)
+Reentrancy in MaxxStakeTest.stake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT) (contracts/test/MaxxStakeTest.sol#204-229):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/test/MaxxStakeTest.sol#222)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#227)
+		- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	State variables written after the call(s):
+	- _owners[idCounter.current()] = msg.sender (contracts/test/MaxxStakeTest.sol#228)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#227)
+		- endTimes[idCounter.current()] = block.timestamp + duration (contracts/test/MaxxStakeTest.sol#675)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#227)
+		- stakes[idCounter.current()] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/test/MaxxStakeTest.sol#668-674)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2[0m
+[92m
+Reentrancy in MaxxStake._stake(uint16,uint256,uint256) (contracts/MaxxStake.sol#661-708):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+	- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	State variables written after the call(s):
+	- endTimes[stakeId] = block.timestamp + duration (contracts/MaxxStake.sol#704)
+	- stakes[stakeId] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/MaxxStake.sol#697-703)
+	- totalShares += _shares (contracts/MaxxStake.sol#691)
+Reentrancy in FreeClaim.allocateMaxx(uint256) (contracts/FreeClaim.sol#301-307):
+	External calls:
+	- ! maxx.transferFrom(msg.sender,address(this),_amount) (contracts/FreeClaim.sol#302)
+	State variables written after the call(s):
+	- maxxAllocation += _amount (contracts/FreeClaim.sol#305)
+	- remainingBalance = maxx.balanceOf(address(this)) (contracts/FreeClaim.sol#306)
+Reentrancy in MaxxStake.amplifierStake(uint16,uint256) (contracts/MaxxStake.sol#442-458):
+	External calls:
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#455)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	State variables written after the call(s):
+	- _owners[stakeId] = tx.origin (contracts/MaxxStake.sol#456)
+Reentrancy in MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#465-503):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#491)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#499)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	State variables written after the call(s):
+	- _owners[stakeId] = tx.origin (contracts/MaxxStake.sol#501)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#499)
+		- endTimes[stakeId] = block.timestamp + duration (contracts/MaxxStake.sol#704)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#499)
+		- stakes[stakeId] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/MaxxStake.sol#697-703)
+Reentrancy in LiquidityAmplifier.deposit(string) (contracts/LiquidityAmplifier.sol#177-201):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#184)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#471)
+	State variables written after the call(s):
+	- _effectiveMaticDailyDeposits[day] += amount (contracts/LiquidityAmplifier.sol#197)
+	- _maticDailyDeposits[day] += amount (contracts/LiquidityAmplifier.sol#196)
+	- dailyDepositors[day] += 1 (contracts/LiquidityAmplifier.sol#199)
+	- effectiveUserDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#195)
+	- participants.push(msg.sender) (contracts/LiquidityAmplifier.sol#191)
+	- participated[msg.sender] = true (contracts/LiquidityAmplifier.sol#190)
+	- userDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#194)
+Reentrancy in LiquidityAmplifier.deposit(string,address) (contracts/LiquidityAmplifier.sol#204-238):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#214)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#471)
+	State variables written after the call(s):
+	- _effectiveMaticDailyDeposits[day] += effectiveDeposit (contracts/LiquidityAmplifier.sol#230)
+	- _maticDailyDeposits[day] += amount (contracts/LiquidityAmplifier.sol#229)
+	- dailyDepositors[day] += 1 (contracts/LiquidityAmplifier.sol#231)
+	- effectiveUserDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#227)
+	- effectiveUserReferrals[_referrer][day] += referrerAmount (contracts/LiquidityAmplifier.sol#228)
+	- participants.push(msg.sender) (contracts/LiquidityAmplifier.sol#224)
+	- participated[msg.sender] = true (contracts/LiquidityAmplifier.sol#223)
+	- userAmpReferral[msg.sender].push(block.timestamp) (contracts/LiquidityAmplifier.sol#233)
+	- userAmpReferral[msg.sender].push(amount) (contracts/LiquidityAmplifier.sol#234)
+	- userAmpReferral[msg.sender].push(referrerAmount) (contracts/LiquidityAmplifier.sol#235)
+	- userDailyDeposits[msg.sender][day] += amount (contracts/LiquidityAmplifier.sol#226)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297):
+	External calls:
+	- (_stakeId,_shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#163-166)
+	State variables written after the call(s):
+	- claimedAmount += _amount (contracts/FreeClaim.sol#179)
+	- claims[claimCounter.current()] = userClaim (contracts/FreeClaim.sol#175)
+	- stakedClaims.push(claimCounter.current()) (contracts/FreeClaim.sol#177)
+	- userClaims[msg.sender].push(userClaim) (contracts/FreeClaim.sol#176)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#194-197)
+	State variables written after the call(s):
+	- claimedAmount += referralAmount (contracts/FreeClaim.sol#212)
+	- claims[claimCounter.current()] = referralClaim (contracts/FreeClaim.sol#208)
+	- stakedClaims.push(claimCounter.current()) (contracts/FreeClaim.sol#210)
+	- userClaims[_referrer].push(referralClaim) (contracts/FreeClaim.sol#209)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#194-197)
+	- (stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#217-220)
+	State variables written after the call(s):
+	- claims[claimCounter.current()] = userClaim_scope_0 (contracts/FreeClaim.sol#231)
+Reentrancy in MaxxStake.freeClaimStake(address,uint256) (contracts/MaxxStake.sol#508-523):
+	External calls:
+	- stakeId = _stake(DAYS_IN_YEAR,_amount,shares) (contracts/MaxxStake.sol#518)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	State variables written after the call(s):
+	- _owners[stakeId] = _owner (contracts/MaxxStake.sol#520)
+Reentrancy in MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#353-392):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_topUpAmount) (contracts/MaxxStake.sol#369-373)
+	State variables written after the call(s):
+	- totalShares -= tStake.shares (contracts/MaxxStake.sol#386)
+	- totalShares += tStake.shares (contracts/MaxxStake.sol#389)
+Reentrancy in MaxxStake.stake(uint16,uint256) (contracts/MaxxStake.sol#202-207):
+	External calls:
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#205)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	State variables written after the call(s):
+	- _owners[stakeId] = msg.sender (contracts/MaxxStake.sol#206)
+Reentrancy in MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#215-244):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#237)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#242)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	State variables written after the call(s):
+	- _owners[stakeId] = msg.sender (contracts/MaxxStake.sol#243)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#242)
+		- endTimes[stakeId] = block.timestamp + duration (contracts/MaxxStake.sol#704)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#242)
+		- stakes[stakeId] = StakeData(,_amount,_shares,duration,block.timestamp) (contracts/MaxxStake.sol#697-703)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2[0m
+[92m
+Reentrancy in MaxxStake._stake(uint16,uint256,uint256) (contracts/MaxxStake.sol#658-706):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+	- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/MaxxStake.sol#705-706)
+Reentrancy in MaxxStakeTest._stake(uint16,uint256,uint256) (contracts/test/MaxxStakeTest.sol#649-678):
+	External calls:
+	- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/test/MaxxStakeTest.sol#677)
+Reentrancy in MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#464-502):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#489-490)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#496-499)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/MaxxStake.sol#705-706)
+		- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#496-499)
+Reentrancy in MaxxStakeTest.amplifierStake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT) (contracts/test/MaxxStakeTest.sol#468-502):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/test/MaxxStakeTest.sol#490)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#499)
+		- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/test/MaxxStakeTest.sol#677)
+		- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#499)
+Reentrancy in Marketplace.buyStake(uint256) (contracts/Marketplace.sol#115-139):
+	External calls:
+	- maxxStake.transferFrom(stakeOwner,msg.sender,_stakeId) (contracts/Marketplace.sol#137)
+	External calls sending eth:
+	- address(stakeOwner).transfer(amount) (contracts/Marketplace.sol#134)
+	Event emitted after the call(s):
+	- Purchase(msg.sender,_stakeId,msg.value) (contracts/Marketplace.sol#138)
+Reentrancy in MarketplaceTest.buyStake(uint256) (contracts/test/MarketplaceTest.sol#116-141):
+	External calls:
+	- maxxStake.transferFrom(stakeOwner,msg.sender,_stakeId) (contracts/test/MarketplaceTest.sol#139)
+	External calls sending eth:
+	- address(stakeOwner).transfer(amount) (contracts/test/MarketplaceTest.sol#135)
+	Event emitted after the call(s):
+	- Purchase(msg.sender,_stakeId,msg.value) (contracts/test/MarketplaceTest.sol#140)
+Reentrancy in LiquidityAmplifier.claim() (contracts/LiquidityAmplifier.sol#233-259):
+	External calls:
+	- IMaxxFinance(maxx).transfer(msg.sender,amount) (contracts/LiquidityAmplifier.sol#256-257)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#258-259)
+Reentrancy in LiquidityAmplifierTest.claim() (contracts/test/LiquidityAmplifierTest.sol#157-191):
+	External calls:
+	- MAXX.safeTransfer(msg.sender,amount) (contracts/test/LiquidityAmplifierTest.sol#189)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/test/LiquidityAmplifierTest.sol#190)
+Reentrancy in LiquidityAmplifier.claimReferrals() (contracts/LiquidityAmplifier.sol#294-302):
+	External calls:
+	- IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#299-300)
+	- stake.amplifierStake(14,amount) (contracts/LiquidityAmplifier.sol#300-301)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#301-302)
+Reentrancy in LiquidityAmplifierTest.claimReferrals() (contracts/test/LiquidityAmplifierTest.sol#229-240):
+	External calls:
+	- MAXX.safeApprove(address(stake),amount) (contracts/test/LiquidityAmplifierTest.sol#237)
+	- stake.amplifierStake(14,amount) (contracts/test/LiquidityAmplifierTest.sol#238)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/test/LiquidityAmplifierTest.sol#239)
+Reentrancy in LiquidityAmplifier.claimToStake(uint16) (contracts/LiquidityAmplifier.sol#260-271):
+	External calls:
+	- IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#269-270)
+	- stake.amplifierStake(_daysToStake,amount) (contracts/LiquidityAmplifier.sol#270-271)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#271)
+Reentrancy in LiquidityAmplifier.claimToStake(uint16,uint256,IStake.MaxxNFT) (contracts/LiquidityAmplifier.sol#280-291):
+	External calls:
+	- IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#285-287)
+	- stake.amplifierStake(_daysToStake,amount,_tokenId,_maxxNFT) (contracts/LiquidityAmplifier.sol#287-289)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#290-291)
+Reentrancy in LiquidityAmplifierTest.claimToStake(uint16) (contracts/test/LiquidityAmplifierTest.sol#194-205):
+	External calls:
+	- MAXX.safeApprove(address(stake),amount) (contracts/test/LiquidityAmplifierTest.sol#202)
+	- stake.amplifierStake(_daysToStake,amount) (contracts/test/LiquidityAmplifierTest.sol#203)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/test/LiquidityAmplifierTest.sol#204)
+Reentrancy in LiquidityAmplifierTest.claimToStake(uint16,uint256,IStake.MaxxNFT) (contracts/test/LiquidityAmplifierTest.sol#211-226):
+	External calls:
+	- MAXX.safeApprove(address(stake),amount) (contracts/test/LiquidityAmplifierTest.sol#223)
+	- stake.amplifierStake(_daysToStake,amount,_tokenId,_maxxNFT) (contracts/test/LiquidityAmplifierTest.sol#224)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/test/LiquidityAmplifierTest.sol#225)
+Reentrancy in LiquidityAmplifier.deposit(string) (contracts/LiquidityAmplifier.sol#169-194):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#177)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#460-462)
+	Event emitted after the call(s):
+	- Deposit(msg.sender,amount,address(0)) (contracts/LiquidityAmplifier.sol#192-194)
+Reentrancy in LiquidityAmplifier.deposit(string,address) (contracts/LiquidityAmplifier.sol#195-230):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#206)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#460-462)
+	Event emitted after the call(s):
+	- Deposit(msg.sender,amount,_referrer) (contracts/LiquidityAmplifier.sol#230)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284):
+	External calls:
+	- (_stakeId,_shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#161-165)
+	Event emitted after the call(s):
+	- UserClaim(msg.sender,_amount) (contracts/FreeClaim.sol#179-180)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#189-191)
+	Event emitted after the call(s):
+	- Referral(_referrer,msg.sender,referralAmount) (contracts/FreeClaim.sol#209-210)
+	- UserClaim(_referrer,referralAmount) (contracts/FreeClaim.sol#208-209)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#189-191)
+	- (stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#211-213)
+	Event emitted after the call(s):
+	- UserClaim(msg.sender,_amount) (contracts/FreeClaim.sol#231)
+Reentrancy in MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#352-391):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_topUpAmount) (contracts/MaxxStake.sol#367-372)
+	Event emitted after the call(s):
+	- Stake(msg.sender,durationInDays,tStake.amount) (contracts/MaxxStake.sol#390-391)
+Reentrancy in MaxxStakeTest.restake(uint256,uint256) (contracts/test/MaxxStakeTest.sol#327-358):
+	External calls:
+	- require(bool)(maxx.transferFrom(msg.sender,address(this),_topUpAmount)) (contracts/test/MaxxStakeTest.sol#340)
+	Event emitted after the call(s):
+	- Stake(msg.sender,durationInDays,tStake.amount) (contracts/test/MaxxStakeTest.sol#357)
+Reentrancy in MaxxStakeTest.scrapeInterest(uint256) (contracts/test/MaxxStakeTest.sol#391-430):
+	External calls:
+	- maxx.mint(address(this),interestToDate - maxx.balanceOf(address(this))) (contracts/test/MaxxStakeTest.sol#410-413)
+	- require(bool)(maxx.transfer(msg.sender,withdrawableAmount)) (contracts/test/MaxxStakeTest.sol#424)
+	- require(bool)(maxx.transfer(maxxVault,penaltyAmount / 2)) (contracts/test/MaxxStakeTest.sol#426)
+	- maxx.burn(penaltyAmount / 2) (contracts/test/MaxxStakeTest.sol#427)
+	Event emitted after the call(s):
+	- ScrapeInterest(msg.sender,interestToDate) (contracts/test/MaxxStakeTest.sol#429)
+Reentrancy in MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#214-243):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#235-236)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#240-242)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#669-674)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#687-688)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/MaxxStake.sol#705-706)
+		- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#240-242)
+Reentrancy in MaxxStakeTest.stake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT) (contracts/test/MaxxStakeTest.sol#204-229):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/test/MaxxStakeTest.sol#222)
+	- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#227)
+		- require(bool)(maxx.transferFrom(msg.sender,address(this),_amount)) (contracts/test/MaxxStakeTest.sol#660)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/test/MaxxStakeTest.sol#677)
+		- _stake(_numDays,_amount,shares) (contracts/test/MaxxStakeTest.sol#227)
+Reentrancy in MaxxStake.unstake(uint256) (contracts/MaxxStake.sol#247-313):
+	External calls:
+	- maxx.mint(address(this),fullAmount - maxxBalance) (contracts/MaxxStake.sol#297-298)
+	- ! maxx.transfer(msg.sender,withdrawableAmount) (contracts/MaxxStake.sol#298-301)
+	- ! maxx.transfer(maxxVault,penaltyAmount / 2) (contracts/MaxxStake.sol#305-306)
+	- maxx.burn(penaltyAmount / 2) (contracts/MaxxStake.sol#308-310)
+	Event emitted after the call(s):
+	- Unstake(msg.sender,withdrawableAmount) (contracts/MaxxStake.sol#310-313)
+Reentrancy in MaxxStakeTest.unstake(uint256) (contracts/test/MaxxStakeTest.sol#233-293):
+	External calls:
+	- maxx.mint(address(this),fullAmount - maxxBalance) (contracts/test/MaxxStakeTest.sol#283)
+	- require(bool)(maxx.transfer(msg.sender,withdrawableAmount)) (contracts/test/MaxxStakeTest.sol#286)
+	- require(bool)(maxx.transfer(maxxVault,penaltyAmount / 2)) (contracts/test/MaxxStakeTest.sol#288)
+	- maxx.burn(penaltyAmount / 2) (contracts/test/MaxxStakeTest.sol#289)
+	Event emitted after the call(s):
+	- Unstake(msg.sender,withdrawableAmount) (contracts/test/MaxxStakeTest.sol#292)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3[0m
+[92m
+Reentrancy in MaxxStake._stake(uint16,uint256,uint256) (contracts/MaxxStake.sol#661-708):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+	- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/MaxxStake.sol#706)
+Reentrancy in MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#465-503):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#491)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#499)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/MaxxStake.sol#706)
+		- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#499)
+Reentrancy in LiquidityAmplifier.claim(uint8) (contracts/LiquidityAmplifier.sol#242-266):
+	External calls:
+	- IMaxxFinance(maxx).transfer(msg.sender,amount) (contracts/LiquidityAmplifier.sol#264)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#265)
+Reentrancy in LiquidityAmplifier.claimReferrals(uint8) (contracts/LiquidityAmplifier.sol#301-307):
+	External calls:
+	- amount = _getReferralAmountAndApprove(_day) (contracts/LiquidityAmplifier.sol#304)
+		- IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#501)
+	- stake.amplifierStake(14,amount) (contracts/LiquidityAmplifier.sol#305)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#306)
+Reentrancy in LiquidityAmplifier.claimToStake(uint8,uint16) (contracts/LiquidityAmplifier.sol#271-278):
+	External calls:
+	- IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#275)
+	- stake.amplifierStake(_daysToStake,amount) (contracts/LiquidityAmplifier.sol#276)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#277)
+Reentrancy in LiquidityAmplifier.claimToStake(uint8,uint16,uint256,IStake.MaxxNFT) (contracts/LiquidityAmplifier.sol#285-297):
+	External calls:
+	- IMaxxFinance(maxx).approve(address(stake),amount) (contracts/LiquidityAmplifier.sol#294)
+	- stake.amplifierStake(_daysToStake,amount,_tokenId,_maxxNFT) (contracts/LiquidityAmplifier.sol#295)
+	Event emitted after the call(s):
+	- Claim(msg.sender,amount) (contracts/LiquidityAmplifier.sol#296)
+Reentrancy in LiquidityAmplifier.deposit(string) (contracts/LiquidityAmplifier.sol#177-201):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#184)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#471)
+	Event emitted after the call(s):
+	- Deposit(msg.sender,amount,address(0)) (contracts/LiquidityAmplifier.sol#200)
+Reentrancy in LiquidityAmplifier.deposit(string,address) (contracts/LiquidityAmplifier.sol#204-238):
+	External calls:
+	- _mintMaxxGenesis(_code) (contracts/LiquidityAmplifier.sol#214)
+		- success = IMAXXBoost(maxxGenesis).mint(code,msg.sender) (contracts/LiquidityAmplifier.sol#471)
+	Event emitted after the call(s):
+	- Deposit(msg.sender,amount,_referrer) (contracts/LiquidityAmplifier.sol#237)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297):
+	External calls:
+	- (_stakeId,_shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#163-166)
+	Event emitted after the call(s):
+	- UserClaim(msg.sender,_amount) (contracts/FreeClaim.sol#180)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#194-197)
+	Event emitted after the call(s):
+	- Referral(_referrer,msg.sender,referralAmount) (contracts/FreeClaim.sol#214)
+	- UserClaim(_referrer,referralAmount) (contracts/FreeClaim.sol#213)
+Reentrancy in FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297):
+	External calls:
+	- (stakeId,shares) = maxxStake.freeClaimStake(_referrer,referralAmount) (contracts/FreeClaim.sol#194-197)
+	- (stakeId,shares) = maxxStake.freeClaimStake(msg.sender,_amount) (contracts/FreeClaim.sol#217-220)
+	Event emitted after the call(s):
+	- UserClaim(msg.sender,_amount) (contracts/FreeClaim.sol#236)
+Reentrancy in MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#353-392):
+	External calls:
+	- transferSuccess = maxx.transferFrom(msg.sender,address(this),_topUpAmount) (contracts/MaxxStake.sol#369-373)
+	Event emitted after the call(s):
+	- Stake(msg.sender,durationInDays,tStake.amount) (contracts/MaxxStake.sol#391)
+Reentrancy in MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT) (contracts/MaxxStake.sol#215-244):
+	External calls:
+	- nft.setUsed(_tokenId) (contracts/MaxxStake.sol#237)
+	- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#242)
+		- transferSuccess = maxx.transferFrom(msg.sender,address(this),_amount) (contracts/MaxxStake.sol#672-676)
+		- maxx.mint(msg.sender,1) (contracts/MaxxStake.sol#688)
+	Event emitted after the call(s):
+	- Stake(msg.sender,_numDays,_amount) (contracts/MaxxStake.sol#706)
+		- stakeId = _stake(_numDays,_amount,shares) (contracts/MaxxStake.sol#242)
+Reentrancy in MaxxStake.unstake(uint256) (contracts/MaxxStake.sol#248-314):
+	External calls:
+	- maxx.mint(address(this),fullAmount - maxxBalance) (contracts/MaxxStake.sol#298)
+	- ! maxx.transfer(msg.sender,withdrawableAmount) (contracts/MaxxStake.sol#301)
+	- ! maxx.transfer(maxxVault,penaltyAmount / 2) (contracts/MaxxStake.sol#306)
+	- maxx.burn(penaltyAmount / 2) (contracts/MaxxStake.sol#310)
+	Event emitted after the call(s):
+	- Unstake(msg.sender,withdrawableAmount) (contracts/MaxxStake.sol#313)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3[0m
+[92m
+FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-284) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _amount > MAX_CLAIM_AMOUNT (contracts/FreeClaim.sol#135)
+	- console.log(stake has launched:,block.timestamp > maxxStake.launchDate()) (contracts/FreeClaim.sol#147-149)
+	- address(maxxStake) != address(0) && maxxStake.launchDate() < block.timestamp (contracts/FreeClaim.sol#151-155)
+	- _amount > remainingBalance (contracts/FreeClaim.sol#157-158)
+	- _amount > remainingBalance (contracts/FreeClaim.sol#232-233)
+LiquidityAmplifier.deposit() (contracts/LiquidityAmplifier.sol#109-135) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (AMPLIFIER_PERIOD * 86400) (contracts/LiquidityAmplifier.sol#112-115)
+LiquidityAmplifier.deposit(address) (contracts/LiquidityAmplifier.sol#136-166) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + AMPLIFIER_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#141-144)
+LiquidityAmplifier.deposit(string) (contracts/LiquidityAmplifier.sol#169-194) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (AMPLIFIER_PERIOD * 86400) (contracts/LiquidityAmplifier.sol#170-171)
+LiquidityAmplifier.deposit(string,address) (contracts/LiquidityAmplifier.sol#195-230) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + AMPLIFIER_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#203-204)
+LiquidityAmplifier.claim() (contracts/LiquidityAmplifier.sol#233-259) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + AMPLIFIER_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#234-235)
+	- address(stake) == address(0) || block.timestamp < stake.launchDate() (contracts/LiquidityAmplifier.sol#237-240)
+	- block.timestamp > stake.launchDate() + CLAIM_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#243-245)
+	- daysLate >= MAX_LATE_DAYS (contracts/LiquidityAmplifier.sol#252)
+LiquidityAmplifier.claimToStake(uint16) (contracts/LiquidityAmplifier.sol#260-271) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + CLAIM_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#264-265)
+LiquidityAmplifier.claimToStake(uint16,uint256,IStake.MaxxNFT) (contracts/LiquidityAmplifier.sol#280-291) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + CLAIM_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#282-283)
+LiquidityAmplifier.claimReferrals() (contracts/LiquidityAmplifier.sol#294-302) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + CLAIM_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#295)
+LiquidityAmplifier.changeDailyAllocation(uint256,uint256) (contracts/LiquidityAmplifier.sol#330-337) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (_day * 86400) (contracts/LiquidityAmplifier.sol#332-333)
+LiquidityAmplifier.changeLaunchDate(uint256) (contracts/LiquidityAmplifier.sol#343-347) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate || block.timestamp >= _launchDate (contracts/LiquidityAmplifier.sol#345)
+LiquidityAmplifier.withdrawMaxx() (contracts/LiquidityAmplifier.sol#359-375) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= stake.launchDate() + (CLAIM_PERIOD * 86400) + (MAX_LATE_DAYS * 86400) (contracts/LiquidityAmplifier.sol#365-369)
+LiquidityAmplifier.getMaxxDailyAllocation(uint8) (contracts/LiquidityAmplifier.sol#399-410) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day > currentDay (contracts/LiquidityAmplifier.sol#403-405)
+LiquidityAmplifier.getMaticDailyDeposit(uint8) (contracts/LiquidityAmplifier.sol#418-425) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day > currentDay (contracts/LiquidityAmplifier.sol#421)
+LiquidityAmplifier.getEffectiveMaticDailyDeposit(uint8) (contracts/LiquidityAmplifier.sol#433-442) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day >= currentDay (contracts/LiquidityAmplifier.sol#436-437)
+LiquidityAmplifier.getDay() (contracts/LiquidityAmplifier.sol#445-457) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < launchDate (contracts/LiquidityAmplifier.sol#448-450)
+Marketplace.buyStake(uint256) (contracts/Marketplace.sol#115-139) uses timestamp for comparisons
+	Dangerous comparisons:
+	- listing.lister != stakeOwner (contracts/Marketplace.sol#119)
+	- listing.endTime < block.timestamp (contracts/Marketplace.sol#123)
+MaxxStake.unstake(uint256) (contracts/MaxxStake.sol#247-313) uses timestamp for comparisons
+	Dangerous comparisons:
+	- daysServed < (tStake.duration / 86400) (contracts/MaxxStake.sol#269-270)
+	- daysServed > (tStake.duration / 86400) + LATE_DAYS (contracts/MaxxStake.sol#276-277)
+	- fullAmount > maxxBalance (contracts/MaxxStake.sol#295-297)
+	- penaltyAmount > 0 (contracts/MaxxStake.sol#303-304)
+MaxxStake.maxShare(uint256) (contracts/MaxxStake.sol#317-347) uses timestamp for comparisons
+	Dangerous comparisons:
+	- tStake.duration == uint256(MAX_STAKE_DAYS) * 86400 (contracts/MaxxStake.sol#320-321)
+MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#352-391) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < maturation (contracts/MaxxStake.sol#362-363)
+MaxxStake._calcShares(uint16,uint256) (contracts/MaxxStake.sol#752-768) uses timestamp for comparisons
+	Dangerous comparisons:
+	- bpbBonus > 10 (contracts/MaxxStake.sol#761)
+MaxxStake._getShareFactor() (contracts/MaxxStake.sol#772-776) uses timestamp for comparisons
+	Dangerous comparisons:
+	- assert(bool)(shareFactor <= 1) (contracts/MaxxStake.sol#774-775)
+MaxxStake._calcInterestToDate(uint256,uint256,uint256) (contracts/MaxxStake.sol#780-806) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentDurationInterest > fullDurationInterest (contracts/MaxxStake.sol#799-801)
+FreeClaimTest.freeClaim(uint256,bytes32[],address) (contracts/test/FreeClaimTest.sol#99-182) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _amount > MAX_CLAIM_AMOUNT (contracts/test/FreeClaimTest.sol#120)
+	- address(maxxStake) != address(0) && maxxStake.launchDate() < block.timestamp (contracts/test/FreeClaimTest.sol#131-132)
+	- _amount > remainingBalance (contracts/test/FreeClaimTest.sol#134)
+	- _amount > remainingBalance (contracts/test/FreeClaimTest.sol#158)
+FreeClaimTest.stakeClaims() (contracts/test/FreeClaimTest.sol#204-213) uses timestamp for comparisons
+	Dangerous comparisons:
+	- i < unstakedClaims.length (contracts/test/FreeClaimTest.sol#209)
+LiquidityAmplifierTest.deposit() (contracts/test/LiquidityAmplifierTest.sol#110-128) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (AMPLIFIER_PERIOD * 86400) / TEST_TIME_FACTOR (contracts/test/LiquidityAmplifierTest.sol#112-113)
+LiquidityAmplifierTest.deposit(address) (contracts/test/LiquidityAmplifierTest.sol#131-154) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + AMPLIFIER_PERIOD * 86400 (contracts/test/LiquidityAmplifierTest.sol#135)
+LiquidityAmplifierTest.claim() (contracts/test/LiquidityAmplifierTest.sol#157-191) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + (CLAIM_PERIOD * 86400) / TEST_TIME_FACTOR (contracts/test/LiquidityAmplifierTest.sol#159-160)
+	- address(stake) == address(0) || block.timestamp < stake.launchDate() (contracts/test/LiquidityAmplifierTest.sol#165)
+	- block.timestamp > stake.launchDate() + (CLAIM_PERIOD * 86400) / TEST_TIME_FACTOR (contracts/test/LiquidityAmplifierTest.sol#173-174)
+	- daysLate >= 100 (contracts/test/LiquidityAmplifierTest.sol#181)
+LiquidityAmplifierTest.claimToStake(uint16) (contracts/test/LiquidityAmplifierTest.sol#194-205) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + (CLAIM_PERIOD * 86400) / TEST_TIME_FACTOR (contracts/test/LiquidityAmplifierTest.sol#196-197)
+LiquidityAmplifierTest.claimToStake(uint16,uint256,IStake.MaxxNFT) (contracts/test/LiquidityAmplifierTest.sol#211-226) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + (CLAIM_PERIOD * 86400) / TEST_TIME_FACTOR (contracts/test/LiquidityAmplifierTest.sol#217-218)
+LiquidityAmplifierTest.claimReferrals() (contracts/test/LiquidityAmplifierTest.sol#229-240) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + (CLAIM_PERIOD * 86400) / TEST_TIME_FACTOR (contracts/test/LiquidityAmplifierTest.sol#231-232)
+LiquidityAmplifierTest.getMaxxDailyAllocation(uint8) (contracts/test/LiquidityAmplifierTest.sol#261-271) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day >= currentDay (contracts/test/LiquidityAmplifierTest.sol#267)
+LiquidityAmplifierTest.getMaticDailyDeposit(uint8) (contracts/test/LiquidityAmplifierTest.sol#277-283) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day >= currentDay (contracts/test/LiquidityAmplifierTest.sol#279)
+LiquidityAmplifierTest.getEffectiveMaticDailyDeposit(uint8) (contracts/test/LiquidityAmplifierTest.sol#289-299) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day >= currentDay (contracts/test/LiquidityAmplifierTest.sol#295)
+LiquidityAmplifierTest.changeDailyAllocation(uint256,uint256) (contracts/test/LiquidityAmplifierTest.sol#334-342) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (_day * 86400) (contracts/test/LiquidityAmplifierTest.sol#338)
+LiquidityAmplifierTest.changeLaunchDate(uint256) (contracts/test/LiquidityAmplifierTest.sol#347-350) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool)(block.timestamp < launchDate && block.timestamp < _launchDate) (contracts/test/LiquidityAmplifierTest.sol#348)
+LiquidityAmplifierTest.withdrawMaxx() (contracts/test/LiquidityAmplifierTest.sol#362-371) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + (AMPLIFIER_PERIOD * 86400) + (CLAIM_PERIOD * 86400) (contracts/test/LiquidityAmplifierTest.sol#364-365)
+MarketplaceTest.buyStake(uint256) (contracts/test/MarketplaceTest.sol#116-141) uses timestamp for comparisons
+	Dangerous comparisons:
+	- listing.lister != stakeOwner (contracts/test/MarketplaceTest.sol#120)
+	- listing.endTime < block.timestamp (contracts/test/MarketplaceTest.sol#124)
+MaxxStakeTest.unstake(uint256) (contracts/test/MaxxStakeTest.sol#233-293) uses timestamp for comparisons
+	Dangerous comparisons:
+	- daysServed < (tStake.duration / 86400) (contracts/test/MaxxStakeTest.sol#254)
+	- daysServed > (tStake.duration / 86400) + LATE_DAYS (contracts/test/MaxxStakeTest.sol#261)
+	- fullAmount > maxxBalance (contracts/test/MaxxStakeTest.sol#282)
+	- require(bool)(maxx.transfer(msg.sender,withdrawableAmount)) (contracts/test/MaxxStakeTest.sol#286)
+	- penaltyAmount > 0 (contracts/test/MaxxStakeTest.sol#287)
+	- require(bool)(maxx.transfer(maxxVault,penaltyAmount / 2)) (contracts/test/MaxxStakeTest.sol#288)
+MaxxStakeTest.restake(uint256,uint256) (contracts/test/MaxxStakeTest.sol#327-358) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < maturation (contracts/test/MaxxStakeTest.sol#334)
+MaxxStakeTest.scrapeInterest(uint256) (contracts/test/MaxxStakeTest.sol#391-430) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > endTimes[_stakeId] (contracts/test/MaxxStakeTest.sol#398)
+	- interestToDate > maxx.balanceOf(address(this)) (contracts/test/MaxxStakeTest.sol#409)
+	- require(bool)(maxx.transfer(msg.sender,withdrawableAmount)) (contracts/test/MaxxStakeTest.sol#424)
+	- require(bool)(maxx.transfer(maxxVault,penaltyAmount / 2)) (contracts/test/MaxxStakeTest.sol#426)
+MaxxStakeTest._calcShares(uint16,uint256) (contracts/test/MaxxStakeTest.sol#723-740) uses timestamp for comparisons
+	Dangerous comparisons:
+	- bpbBonus > 10 (contracts/test/MaxxStakeTest.sol#732)
+MaxxStakeTest._getShareFactor() (contracts/test/MaxxStakeTest.sol#743-747) uses timestamp for comparisons
+	Dangerous comparisons:
+	- assert(bool)(shareFactor <= 1) (contracts/test/MaxxStakeTest.sol#745)
+MaxxStakeTest._calcInterestToDate(uint256,uint256,uint256) (contracts/test/MaxxStakeTest.sol#751-777) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentDurationInterest > fullDurationInterest (contracts/test/MaxxStakeTest.sol#771)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp[0m
+[92m
+FreeClaim.freeClaim(uint256,bytes32[],address) (contracts/FreeClaim.sol#113-297) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _amount > MAX_CLAIM_AMOUNT (contracts/FreeClaim.sol#135)
+	- address(maxxStake) != address(0) && maxxStake.launchDate() < block.timestamp (contracts/FreeClaim.sol#154-155)
+	- _amount > remainingBalance (contracts/FreeClaim.sol#158)
+	- _amount > remainingBalance (contracts/FreeClaim.sol#239)
+LiquidityAmplifier.deposit() (contracts/LiquidityAmplifier.sol#122-142) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (AMPLIFIER_PERIOD * 86400) (contracts/LiquidityAmplifier.sol#123)
+LiquidityAmplifier.deposit(address) (contracts/LiquidityAmplifier.sol#145-174) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + AMPLIFIER_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#149)
+LiquidityAmplifier.deposit(string) (contracts/LiquidityAmplifier.sol#177-201) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (AMPLIFIER_PERIOD * 86400) (contracts/LiquidityAmplifier.sol#178)
+LiquidityAmplifier.deposit(string,address) (contracts/LiquidityAmplifier.sol#204-238) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + AMPLIFIER_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#208)
+LiquidityAmplifier.claim(uint8) (contracts/LiquidityAmplifier.sol#242-266) uses timestamp for comparisons
+	Dangerous comparisons:
+	- address(stake) == address(0) || block.timestamp < stake.launchDate() (contracts/LiquidityAmplifier.sol#245)
+	- block.timestamp > stake.launchDate() + CLAIM_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#252)
+	- daysLate >= MAX_LATE_DAYS (contracts/LiquidityAmplifier.sol#256)
+LiquidityAmplifier.changeDailyAllocation(uint256,uint256) (contracts/LiquidityAmplifier.sol#333-341) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate + (_day * 86400) (contracts/LiquidityAmplifier.sol#337)
+LiquidityAmplifier.changeLaunchDate(uint256) (contracts/LiquidityAmplifier.sol#346-351) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= launchDate || block.timestamp >= _launchDate (contracts/LiquidityAmplifier.sol#347)
+LiquidityAmplifier.withdrawMaxx() (contracts/LiquidityAmplifier.sol#365-379) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= stake.launchDate() + (CLAIM_PERIOD * 86400) + (MAX_LATE_DAYS * 86400) (contracts/LiquidityAmplifier.sol#370-373)
+LiquidityAmplifier.getMaxxDailyAllocation(uint8) (contracts/LiquidityAmplifier.sol#402-415) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day > currentDay (contracts/LiquidityAmplifier.sol#410)
+LiquidityAmplifier.getMaticDailyDeposit(uint8) (contracts/LiquidityAmplifier.sol#421-430) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day > currentDay (contracts/LiquidityAmplifier.sol#425)
+LiquidityAmplifier.getEffectiveMaticDailyDeposit(uint8) (contracts/LiquidityAmplifier.sol#436-446) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _day >= AMPLIFIER_PERIOD || _day >= currentDay (contracts/LiquidityAmplifier.sol#442)
+LiquidityAmplifier.getDay() (contracts/LiquidityAmplifier.sol#458-464) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < launchDate (contracts/LiquidityAmplifier.sol#459)
+LiquidityAmplifier._checkDayRange(uint8) (contracts/LiquidityAmplifier.sol#505-512) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp <= launchDate + CLAIM_PERIOD * 86400 (contracts/LiquidityAmplifier.sol#509)
+MaxxStake.unstake(uint256) (contracts/MaxxStake.sol#248-314) uses timestamp for comparisons
+	Dangerous comparisons:
+	- daysServed < (tStake.duration / 86400) (contracts/MaxxStake.sol#270)
+	- daysServed > (tStake.duration / 86400) + LATE_DAYS (contracts/MaxxStake.sol#277)
+	- fullAmount > maxxBalance (contracts/MaxxStake.sol#297)
+	- penaltyAmount > 0 (contracts/MaxxStake.sol#305)
+MaxxStake.maxShare(uint256) (contracts/MaxxStake.sol#318-348) uses timestamp for comparisons
+	Dangerous comparisons:
+	- tStake.duration == uint256(MAX_STAKE_DAYS) * 86400 (contracts/MaxxStake.sol#321)
+MaxxStake.restake(uint256,uint256) (contracts/MaxxStake.sol#353-392) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < maturation (contracts/MaxxStake.sol#363)
+MaxxStake._calcShares(uint16,uint256) (contracts/MaxxStake.sol#753-770) uses timestamp for comparisons
+	Dangerous comparisons:
+	- bpbBonus > 10 (contracts/MaxxStake.sol#762)
+MaxxStake._getShareFactor() (contracts/MaxxStake.sol#773-777) uses timestamp for comparisons
+	Dangerous comparisons:
+	- assert(bool)(shareFactor <= 1) (contracts/MaxxStake.sol#775)
+MaxxStake._calcInterestToDate(uint256,uint256,uint256) (contracts/MaxxStake.sol#781-807) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentDurationInterest > fullDurationInterest (contracts/MaxxStake.sol#801)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp[0m
+[92m
+ERC721._checkOnERC721Received(address,address,uint256,bytes) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#394-416) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#408-410)
+Address.verifyCallResult(bool,bytes,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#201-221) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/utils/Address.sol#213-216)
+MerkleProof._efficientHash(bytes32,bytes32) (node_modules/@openzeppelin/contracts/utils/cryptography/MerkleProof.sol#204-211) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/utils/cryptography/MerkleProof.sol#206-210)
+EnumerableSet.values(EnumerableSet.AddressSet) (node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol#282-292) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol#287-289)
+EnumerableSet.values(EnumerableSet.UintSet) (node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol#356-366) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol#361-363)
+console._sendLogPayload(bytes) (node_modules/hardhat/console.sol#7-14) uses assembly
+	- INLINE ASM (node_modules/hardhat/console.sol#10-13)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage[0m
+[92m
+Deployer.deploy(bytes,uint256) (contracts/Deployer.sol#11-21) uses assembly
+	- INLINE ASM (contracts/Deployer.sol#13-18)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage[0m
+[92m
+Different versions of Solidity are used:
+	- Version used: ['>=0.4.22<0.9.0', '^0.8.0', '^0.8.1']
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/access/AccessControl.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/access/IAccessControl.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/security/Pausable.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol#4)
+	- ^0.8.1 (node_modules/@openzeppelin/contracts/utils/Address.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Context.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Counters.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Strings.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/cryptography/MerkleProof.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165Checker.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol#4)
+	- ^0.8.0 (contracts/FreeClaim.sol#2)
+	- ^0.8.0 (contracts/LiquidityAmplifier.sol#2)
+	- ^0.8.0 (contracts/MAXXBoost.sol#2)
+	- ^0.8.0 (contracts/MAXXGenesis.sol#2)
+	- ^0.8.0 (contracts/Marketplace.sol#2)
+	- ^0.8.0 (contracts/MaxxFinance.sol#2)
+	- ^0.8.0 (contracts/MaxxStake.sol#2)
+	- ^0.8.0 (contracts/interfaces/ILiquidityAmplifier.sol#2)
+	- ^0.8.0 (contracts/interfaces/IMAXXBoost.sol#2)
+	- ^0.8.0 (contracts/interfaces/IMaxxFinance.sol#2)
+	- ^0.8.0 (contracts/interfaces/IStake.sol#2)
+	- ^0.8.0 (contracts/test/FreeClaimTest.sol#2)
+	- ^0.8.0 (contracts/test/LiquidityAmplifierTest.sol#2)
+	- ^0.8.0 (contracts/test/MarketplaceTest.sol#2)
+	- ^0.8.0 (contracts/test/MaxxFinanceTest.sol#2)
+	- ^0.8.0 (contracts/test/MaxxStakeTest.sol#2)
+	- >=0.4.22<0.9.0 (node_modules/hardhat/console.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used[0m
+[92m
+Different versions of Solidity are used:
+	- Version used: ['^0.8.0', '^0.8.1']
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/access/AccessControl.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/access/IAccessControl.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/security/Pausable.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol#4)
+	- ^0.8.1 (node_modules/@openzeppelin/contracts/utils/Address.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Context.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Counters.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Strings.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/cryptography/MerkleProof.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165Checker.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol#4)
+	- ^0.8.0 (contracts/FreeClaim.sol#2)
+	- ^0.8.0 (contracts/LiquidityAmplifier.sol#2)
+	- ^0.8.0 (contracts/MAXXBoost.sol#2)
+	- ^0.8.0 (contracts/MAXXGenesis.sol#2)
+	- ^0.8.0 (contracts/Marketplace.sol#2)
+	- ^0.8.0 (contracts/MaxxFinance.sol#2)
+	- ^0.8.0 (contracts/MaxxStake.sol#2)
+	- ^0.8.0 (contracts/interfaces/ILiquidityAmplifier.sol#2)
+	- ^0.8.0 (contracts/interfaces/IMAXXBoost.sol#2)
+	- ^0.8.0 (contracts/interfaces/IMaxxFinance.sol#2)
+	- ^0.8.0 (contracts/interfaces/IStake.sol#2)
+	- ^0.8.0 (contracts/test/FreeClaimTest.sol#2)
+	- ^0.8.0 (contracts/test/LiquidityAmplifierTest.sol#2)
+	- ^0.8.0 (contracts/test/MarketplaceTest.sol#2)
+	- ^0.8.0 (contracts/test/MaxxFinanceTest.sol#2)
+	- ^0.8.0 (contracts/test/MaxxStakeTest.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used[0m
+[92m
+FreeClaim.stakeClaimsSlice(uint256) (contracts/FreeClaim.sol#318-330) has costly operations inside a loop:
+	- delete unstakedClaims[i] (contracts/FreeClaim.sol#329)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop[0m
+[92m
+FreeClaim.stakeClaimsSlice(uint256) (contracts/FreeClaim.sol#334-347) has costly operations inside a loop:
+	- delete unstakedClaims[i] (contracts/FreeClaim.sol#345)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop[0m
+[92m
+MaxxStake._transfer(address,uint256) (contracts/MaxxStake.sol#718-724) is never used and should be removed
+MaxxStakeTest._transfer(address,uint256) (contracts/test/MaxxStakeTest.sol#691-695) is never used and should be removed
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code[0m
+[92m
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/access/AccessControl.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/access/IAccessControl.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/security/Pausable.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol#4) allows old versions
+Pragma version^0.8.1 (node_modules/@openzeppelin/contracts/utils/Address.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/Context.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/Counters.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/Strings.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/cryptography/MerkleProof.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165Checker.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol#4) allows old versions
+Pragma version^0.8.0 (contracts/FreeClaim.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/LiquidityAmplifier.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/MAXXBoost.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/MAXXGenesis.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/Marketplace.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/MaxxFinance.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/MaxxStake.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/interfaces/ILiquidityAmplifier.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/interfaces/IMAXXBoost.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/interfaces/IMaxxFinance.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/interfaces/IStake.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/test/FreeClaimTest.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/test/LiquidityAmplifierTest.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/test/MarketplaceTest.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/test/MaxxFinanceTest.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/test/MaxxStakeTest.sol#2) allows old versions
+Pragma version>=0.4.22<0.9.0 (node_modules/hardhat/console.sol#2) is too complex
+solc-0.8.16 is not recommended for deployment
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity[0m
+[92m
+Pragma version^0.8.0 (contracts/Deployer.sol#2) allows old versions
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity[0m
+[92m
+Low level call in Address.sendValue(address,uint256) (node_modules/@openzeppelin/contracts/utils/Address.sol#60-65):
+	- (success) = recipient.call{value: amount}() (node_modules/@openzeppelin/contracts/utils/Address.sol#63)
+Low level call in Address.functionCallWithValue(address,bytes,uint256,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#128-139):
+	- (success,returndata) = target.call{value: value}(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#137)
+Low level call in Address.functionStaticCall(address,bytes,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#157-166):
+	- (success,returndata) = target.staticcall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#164)
+Low level call in Address.functionDelegateCall(address,bytes,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#184-193):
+	- (success,returndata) = target.delegatecall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#191)
+Low level call in ERC165Checker._supportsERC165Interface(address,bytes4) (node_modules/@openzeppelin/contracts/utils/introspection/ERC165Checker.sol#107-112):
+	- (success,result) = account.staticcall{gas: 30000}(encodedParams) (node_modules/@openzeppelin/contracts/utils/introspection/ERC165Checker.sol#109)
+Low level call in LiquidityAmplifier.withdraw(address,uint256) (contracts/LiquidityAmplifier.sol#353-357):
+	- (success) = _to.call{value: _amount}() (contracts/LiquidityAmplifier.sol#355-356)
+Low level call in Marketplace.withdraw(address,uint256) (contracts/Marketplace.sol#153-157):
+	- (success) = _to.call{value: _amount}() (contracts/Marketplace.sol#155)
+Low level call in MaxxStake._transfer(address,uint256) (contracts/MaxxStake.sol#718-724):
+	- (success) = _to.call{value: _amount}() (contracts/MaxxStake.sol#722-723)
+Low level call in LiquidityAmplifierTest.withdraw(address,uint256) (contracts/test/LiquidityAmplifierTest.sol#355-359):
+	- (success) = _to.call{value: _amount}() (contracts/test/LiquidityAmplifierTest.sol#357)
+Low level call in MarketplaceTest.withdraw(address,uint256) (contracts/test/MarketplaceTest.sol#155-159):
+	- (success) = _to.call{value: _amount}() (contracts/test/MarketplaceTest.sol#157)
+Low level call in MaxxStakeTest._transfer(address,uint256) (contracts/test/MaxxStakeTest.sol#691-695):
+	- (success) = _to.call{value: _amount}() (contracts/test/MaxxStakeTest.sol#693)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls[0m
+[92m
+Low level call in LiquidityAmplifier.withdraw(address,uint256) (contracts/LiquidityAmplifier.sol#356-362):
+	- (success) = _to.call{value: _amount}() (contracts/LiquidityAmplifier.sol#358)
+Low level call in MaxxStake._transfer(address,uint256) (contracts/MaxxStake.sol#721-725):
+	- (success) = _to.call{value: _amount}() (contracts/MaxxStake.sol#723)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls[0m
+[92m
+MAXXGenesis (contracts/MAXXGenesis.sol#12-141) should inherit from IMAXXBoost (contracts/interfaces/IMAXXBoost.sol#7-13)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance[0m
+[92m
+Function IERC20Permit.DOMAIN_SEPARATOR() (node_modules/@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol#59) is not in mixedCase
+Parameter FreeClaim.freeClaim(uint256,bytes32[],address)._amount (contracts/FreeClaim.sol#114) is not in mixedCase
+Parameter FreeClaim.freeClaim(uint256,bytes32[],address)._proof (contracts/FreeClaim.sol#115) is not in mixedCase
+Parameter FreeClaim.freeClaim(uint256,bytes32[],address)._referrer (contracts/FreeClaim.sol#116) is not in mixedCase
+Parameter FreeClaim.allocateMaxx(uint256)._amount (contracts/FreeClaim.sol#289) is not in mixedCase
+Parameter FreeClaim.setMaxxStake(address)._maxxStake (contracts/FreeClaim.sol#300) is not in mixedCase
+Parameter FreeClaim.setMerkleRoot(bytes32)._merkleRoot (contracts/FreeClaim.sol#305-306) is not in mixedCase
+Parameter FreeClaim.stakeClaimsSlice(uint256)._amount (contracts/FreeClaim.sol#318) is not in mixedCase
+Parameter FreeClaim.verifyMerkleLeaf(address,uint256,bytes32[])._account (contracts/FreeClaim.sol#350) is not in mixedCase
+Parameter FreeClaim.verifyMerkleLeaf(address,uint256,bytes32[])._amount (contracts/FreeClaim.sol#350-351) is not in mixedCase
+Parameter FreeClaim.verifyMerkleLeaf(address,uint256,bytes32[])._proof (contracts/FreeClaim.sol#351) is not in mixedCase
+Parameter LiquidityAmplifier.deposit(address)._referrer (contracts/LiquidityAmplifier.sol#137) is not in mixedCase
+Parameter LiquidityAmplifier.deposit(string)._code (contracts/LiquidityAmplifier.sol#169-170) is not in mixedCase
+Parameter LiquidityAmplifier.deposit(string,address)._code (contracts/LiquidityAmplifier.sol#196) is not in mixedCase
+Parameter LiquidityAmplifier.deposit(string,address)._referrer (contracts/LiquidityAmplifier.sol#196-197) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint16)._daysToStake (contracts/LiquidityAmplifier.sol#260-261) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint16,uint256,IStake.MaxxNFT)._daysToStake (contracts/LiquidityAmplifier.sol#280-281) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint16,uint256,IStake.MaxxNFT)._tokenId (contracts/LiquidityAmplifier.sol#281) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint16,uint256,IStake.MaxxNFT)._maxxNFT (contracts/LiquidityAmplifier.sol#281-282) is not in mixedCase
+Parameter LiquidityAmplifier.setStakeAddress(address)._stake (contracts/LiquidityAmplifier.sol#309) is not in mixedCase
+Parameter LiquidityAmplifier.setDailyAllocations(uint256[60])._dailyAllocation (contracts/LiquidityAmplifier.sol#316) is not in mixedCase
+Parameter LiquidityAmplifier.changeDailyAllocation(uint256,uint256)._day (contracts/LiquidityAmplifier.sol#331) is not in mixedCase
+Parameter LiquidityAmplifier.changeDailyAllocation(uint256,uint256)._maxxAmount (contracts/LiquidityAmplifier.sol#331) is not in mixedCase
+Parameter LiquidityAmplifier.changeLaunchDate(uint256)._launchDate (contracts/LiquidityAmplifier.sol#344) is not in mixedCase
+Parameter LiquidityAmplifier.withdraw(address,uint256)._to (contracts/LiquidityAmplifier.sol#353) is not in mixedCase
+Parameter LiquidityAmplifier.withdraw(address,uint256)._amount (contracts/LiquidityAmplifier.sol#353-354) is not in mixedCase
+Parameter LiquidityAmplifier.getMaxxDailyAllocation(uint8)._day (contracts/LiquidityAmplifier.sol#399-400) is not in mixedCase
+Parameter LiquidityAmplifier.getMaticDailyDeposit(uint8)._day (contracts/LiquidityAmplifier.sol#418-419) is not in mixedCase
+Parameter LiquidityAmplifier.getEffectiveMaticDailyDeposit(uint8)._day (contracts/LiquidityAmplifier.sol#434) is not in mixedCase
+Parameter MAXXBoost.mint(uint256)._randomNumber (contracts/MAXXBoost.sol#49) is not in mixedCase
+Parameter MAXXBoost.setUsed(uint256)._tokenId (contracts/MAXXBoost.sol#66) is not in mixedCase
+Parameter MAXXBoost.getUsedState(uint256)._tokenId (contracts/MAXXBoost.sol#77) is not in mixedCase
+Parameter MAXXBoost.tokensOfOwner(address)._owner (contracts/MAXXBoost.sol#84) is not in mixedCase
+Parameter MAXXBoost.tokenURI(uint256)._tokenId (contracts/MAXXBoost.sol#109) is not in mixedCase
+Parameter MAXXGenesis.mint(string,address)._code (contracts/MAXXGenesis.sol#46) is not in mixedCase
+Parameter MAXXGenesis.mint(string,address)._user (contracts/MAXXGenesis.sol#46) is not in mixedCase
+Parameter MAXXGenesis.setCodes(bytes32[])._codes (contracts/MAXXGenesis.sol#66) is not in mixedCase
+Parameter MAXXGenesis.setUsed(uint256)._tokenId (contracts/MAXXGenesis.sol#76) is not in mixedCase
+Parameter MAXXGenesis.getUsedState(uint256)._tokenId (contracts/MAXXGenesis.sol#87) is not in mixedCase
+Parameter MAXXGenesis.tokensOfOwner(address)._owner (contracts/MAXXGenesis.sol#94) is not in mixedCase
+Parameter MAXXGenesis.tokenURI(uint256)._tokenId (contracts/MAXXGenesis.sol#119) is not in mixedCase
+Parameter Marketplace.listStake(uint256,uint256,uint256)._stakeId (contracts/Marketplace.sol#77) is not in mixedCase
+Parameter Marketplace.listStake(uint256,uint256,uint256)._amount (contracts/Marketplace.sol#78) is not in mixedCase
+Parameter Marketplace.listStake(uint256,uint256,uint256)._duration (contracts/Marketplace.sol#79) is not in mixedCase
+Parameter Marketplace.delistStake(uint256)._stakeId (contracts/Marketplace.sol#99) is not in mixedCase
+Parameter Marketplace.buyStake(uint256)._stakeId (contracts/Marketplace.sol#115) is not in mixedCase
+Parameter Marketplace.setFeePercentage(uint16)._feePercentage (contracts/Marketplace.sol#143) is not in mixedCase
+Parameter Marketplace.withdraw(address,uint256)._to (contracts/Marketplace.sol#153) is not in mixedCase
+Parameter Marketplace.withdraw(address,uint256)._amount (contracts/Marketplace.sol#153) is not in mixedCase
+Parameter MaxxFinance.mint(address,uint256)._to (contracts/MaxxFinance.sol#90) is not in mixedCase
+Parameter MaxxFinance.mint(address,uint256)._amount (contracts/MaxxFinance.sol#90) is not in mixedCase
+Parameter MaxxFinance.addPool(address)._address (contracts/MaxxFinance.sol#100) is not in mixedCase
+Parameter MaxxFinance.setTransferTax(uint16)._transferTax (contracts/MaxxFinance.sol#107) is not in mixedCase
+Parameter MaxxFinance.setBlocksBetweenTransfers(uint256)._blocksBetweenTransfers (contracts/MaxxFinance.sol#119) is not in mixedCase
+Parameter MaxxFinance.updateBlockLimited(bool)._blockLimited (contracts/MaxxFinance.sol#131) is not in mixedCase
+Parameter MaxxFinance.allow(address)._address (contracts/MaxxFinance.sol#140) is not in mixedCase
+Parameter MaxxFinance.disallow(address)._address (contracts/MaxxFinance.sol#146) is not in mixedCase
+Parameter MaxxFinance.blockUser(address)._address (contracts/MaxxFinance.sol#153) is not in mixedCase
+Parameter MaxxFinance.unblock(address)._address (contracts/MaxxFinance.sol#159) is not in mixedCase
+Parameter MaxxFinance.transfer(address,uint256)._to (contracts/MaxxFinance.sol#184) is not in mixedCase
+Parameter MaxxFinance.transfer(address,uint256)._amount (contracts/MaxxFinance.sol#184) is not in mixedCase
+Parameter MaxxFinance.transferFrom(address,address,uint256)._from (contracts/MaxxFinance.sol#218) is not in mixedCase
+Parameter MaxxFinance.transferFrom(address,address,uint256)._to (contracts/MaxxFinance.sol#219) is not in mixedCase
+Parameter MaxxFinance.transferFrom(address,address,uint256)._amount (contracts/MaxxFinance.sol#220) is not in mixedCase
+Parameter MaxxFinance.setGlobalDailySellLimit(uint256)._globalDailySellLimit (contracts/MaxxFinance.sol#246) is not in mixedCase
+Parameter MaxxFinance.setWhaleLimit(uint256)._whaleLimit (contracts/MaxxFinance.sol#258) is not in mixedCase
+Parameter MaxxStake.stake(uint16,uint256)._numDays (contracts/MaxxStake.sol#201-202) is not in mixedCase
+Parameter MaxxStake.stake(uint16,uint256)._amount (contracts/MaxxStake.sol#202) is not in mixedCase
+Parameter MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._numDays (contracts/MaxxStake.sol#214-215) is not in mixedCase
+Parameter MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._amount (contracts/MaxxStake.sol#216) is not in mixedCase
+Parameter MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._tokenId (contracts/MaxxStake.sol#217) is not in mixedCase
+Parameter MaxxStake.stake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._maxxNFT (contracts/MaxxStake.sol#218) is not in mixedCase
+Parameter MaxxStake.unstake(uint256)._stakeId (contracts/MaxxStake.sol#247-248) is not in mixedCase
+Parameter MaxxStake.maxShare(uint256)._stakeId (contracts/MaxxStake.sol#317-318) is not in mixedCase
+Parameter MaxxStake.restake(uint256,uint256)._stakeId (contracts/MaxxStake.sol#352-353) is not in mixedCase
+Parameter MaxxStake.restake(uint256,uint256)._topUpAmount (contracts/MaxxStake.sol#353) is not in mixedCase
+Parameter MaxxStake.transfer(address,uint256)._to (contracts/MaxxStake.sol#396-397) is not in mixedCase
+Parameter MaxxStake.transfer(address,uint256)._stakeId (contracts/MaxxStake.sol#397) is not in mixedCase
+Parameter MaxxStake.transferFrom(address,address,uint256)._from (contracts/MaxxStake.sol#409) is not in mixedCase
+Parameter MaxxStake.transferFrom(address,address,uint256)._to (contracts/MaxxStake.sol#409-410) is not in mixedCase
+Parameter MaxxStake.transferFrom(address,address,uint256)._stakeId (contracts/MaxxStake.sol#410-411) is not in mixedCase
+Parameter MaxxStake.changeStakeName(uint256,string)._stakeId (contracts/MaxxStake.sol#425-426) is not in mixedCase
+Parameter MaxxStake.changeStakeName(uint256,string)._name (contracts/MaxxStake.sol#426) is not in mixedCase
+Parameter MaxxStake.amplifierStake(uint16,uint256)._numDays (contracts/MaxxStake.sol#441-442) is not in mixedCase
+Parameter MaxxStake.amplifierStake(uint16,uint256)._amount (contracts/MaxxStake.sol#442) is not in mixedCase
+Parameter MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._numDays (contracts/MaxxStake.sol#465) is not in mixedCase
+Parameter MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._amount (contracts/MaxxStake.sol#466) is not in mixedCase
+Parameter MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._tokenId (contracts/MaxxStake.sol#467) is not in mixedCase
+Parameter MaxxStake.amplifierStake(uint16,uint256,uint256,MaxxStake.MaxxNFT)._maxxNFT (contracts/MaxxStake.sol#468) is not in mixedCase
+Parameter MaxxStake.freeClaimStake(address,uint256)._owner (contracts/MaxxStake.sol#507-508) is not in mixedCase
+Parameter MaxxStake.freeClaimStake(address,uint256)._amount (contracts/MaxxStake.sol#508) is not in mixedCase
+Parameter MaxxStake.setLiquidityAmplifier(address)._liquidityAmplifier (contracts/MaxxStake.sol#527) is not in mixedCase
+Parameter MaxxStake.setFreeClaim(address)._freeClaim (contracts/MaxxStake.sol#535-536) is not in mixedCase
+Parameter MaxxStake.setNftBonusPercentage(uint8)._nftBonusPercentage (contracts/MaxxStake.sol#542) is not in mixedCase
+Parameter MaxxStake.setMaxxBoost(address)._maxxBoost (contracts/MaxxStake.sol#550-551) is not in mixedCase
+Parameter MaxxStake.setMaxxGenesis(address)._maxxGenesis (contracts/MaxxStake.sol#560-561) is not in mixedCase
+Parameter MaxxStake.approve(address,uint256)._to (contracts/MaxxStake.sol#573-574) is not in mixedCase
+Parameter MaxxStake.approve(address,uint256)._stakeId (contracts/MaxxStake.sol#574) is not in mixedCase
+Parameter MaxxStake.setApprovalForAll(address,bool)._operator (contracts/MaxxStake.sol#592-593) is not in mixedCase
+Parameter MaxxStake.setApprovalForAll(address,bool)._approved (contracts/MaxxStake.sol#593) is not in mixedCase
+Parameter MaxxStake.ownerOf(uint256)._stakeId (contracts/MaxxStake.sol#606-607) is not in mixedCase
+Parameter MaxxStake.getApproved(uint256)._stakeId (contracts/MaxxStake.sol#620-621) is not in mixedCase
+Parameter MaxxStake.isApprovedForAll(address,address)._owner (contracts/MaxxStake.sol#634-635) is not in mixedCase
+Parameter MaxxStake.isApprovedForAll(address,address)._operator (contracts/MaxxStake.sol#635) is not in mixedCase
+Function IMaxxFinance.MINTER_ROLE() (contracts/interfaces/IMaxxFinance.sol#27) is not in mixedCase
+Parameter FreeClaimTest.freeClaim(uint256,bytes32[],address)._amount (contracts/test/FreeClaimTest.sol#100) is not in mixedCase
+Parameter FreeClaimTest.freeClaim(uint256,bytes32[],address)._proof (contracts/test/FreeClaimTest.sol#101) is not in mixedCase
+Parameter FreeClaimTest.freeClaim(uint256,bytes32[],address)._referrer (contracts/test/FreeClaimTest.sol#102) is not in mixedCase
+Parameter FreeClaimTest.allocateMaxx(uint256)._amount (contracts/test/FreeClaimTest.sol#186) is not in mixedCase
+Parameter FreeClaimTest.setMaxxStake(address)._maxxStake (contracts/test/FreeClaimTest.sol#193) is not in mixedCase
+Parameter FreeClaimTest.updateMerkleRoot(bytes32)._merkleRoot (contracts/test/FreeClaimTest.sol#199) is not in mixedCase
+Parameter FreeClaimTest.verifyMerkleLeaf(address,uint256,bytes32[])._account (contracts/test/FreeClaimTest.sol#220) is not in mixedCase
+Parameter FreeClaimTest.verifyMerkleLeaf(address,uint256,bytes32[])._amount (contracts/test/FreeClaimTest.sol#221) is not in mixedCase
+Parameter FreeClaimTest.verifyMerkleLeaf(address,uint256,bytes32[])._proof (contracts/test/FreeClaimTest.sol#222) is not in mixedCase
+Variable FreeClaimTest.MAXX (contracts/test/FreeClaimTest.sol#47) is not in mixedCase
+Parameter LiquidityAmplifierTest.deposit(address)._referrer (contracts/test/LiquidityAmplifierTest.sol#131) is not in mixedCase
+Parameter LiquidityAmplifierTest.claimToStake(uint16)._daysToStake (contracts/test/LiquidityAmplifierTest.sol#194) is not in mixedCase
+Parameter LiquidityAmplifierTest.claimToStake(uint16,uint256,IStake.MaxxNFT)._daysToStake (contracts/test/LiquidityAmplifierTest.sol#212) is not in mixedCase
+Parameter LiquidityAmplifierTest.claimToStake(uint16,uint256,IStake.MaxxNFT)._tokenId (contracts/test/LiquidityAmplifierTest.sol#213) is not in mixedCase
+Parameter LiquidityAmplifierTest.claimToStake(uint16,uint256,IStake.MaxxNFT)._maxxNFT (contracts/test/LiquidityAmplifierTest.sol#214) is not in mixedCase
+Parameter LiquidityAmplifierTest.getMaxxDailyAllocation(uint8)._day (contracts/test/LiquidityAmplifierTest.sol#261) is not in mixedCase
+Parameter LiquidityAmplifierTest.getMaticDailyDeposit(uint8)._day (contracts/test/LiquidityAmplifierTest.sol#277) is not in mixedCase
+Parameter LiquidityAmplifierTest.getEffectiveMaticDailyDeposit(uint8)._day (contracts/test/LiquidityAmplifierTest.sol#289) is not in mixedCase
+Parameter LiquidityAmplifierTest.setStakeAddress(address)._stake (contracts/test/LiquidityAmplifierTest.sol#303) is not in mixedCase
+Parameter LiquidityAmplifierTest.setMaxxGenesisAddress(address)._maxxGenesis (contracts/test/LiquidityAmplifierTest.sol#309) is not in mixedCase
+Parameter LiquidityAmplifierTest.setDailyAllocations(uint256[60])._dailyAllocation (contracts/test/LiquidityAmplifierTest.sol#319) is not in mixedCase
+Parameter LiquidityAmplifierTest.changeDailyAllocation(uint256,uint256)._day (contracts/test/LiquidityAmplifierTest.sol#334) is not in mixedCase
+Parameter LiquidityAmplifierTest.changeDailyAllocation(uint256,uint256)._maxxAmount (contracts/test/LiquidityAmplifierTest.sol#334) is not in mixedCase
+Parameter LiquidityAmplifierTest.changeLaunchDate(uint256)._launchDate (contracts/test/LiquidityAmplifierTest.sol#347) is not in mixedCase
+Parameter LiquidityAmplifierTest.withdraw(address,uint256)._to (contracts/test/LiquidityAmplifierTest.sol#355) is not in mixedCase
+Parameter LiquidityAmplifierTest.withdraw(address,uint256)._amount (contracts/test/LiquidityAmplifierTest.sol#355) is not in mixedCase
+Variable LiquidityAmplifierTest.MAXX (contracts/test/LiquidityAmplifierTest.sol#60) is not in mixedCase
+Variable LiquidityAmplifierTest.MaxxGenesis (contracts/test/LiquidityAmplifierTest.sol#63) is not in mixedCase
+Parameter MarketplaceTest.listStake(uint256,uint256,uint256)._stakeId (contracts/test/MarketplaceTest.sol#78) is not in mixedCase
+Parameter MarketplaceTest.listStake(uint256,uint256,uint256)._amount (contracts/test/MarketplaceTest.sol#79) is not in mixedCase
+Parameter MarketplaceTest.listStake(uint256,uint256,uint256)._duration (contracts/test/MarketplaceTest.sol#80) is not in mixedCase
+Parameter MarketplaceTest.delistStake(uint256)._stakeId (contracts/test/MarketplaceTest.sol#100) is not in mixedCase
+Parameter MarketplaceTest.buyStake(uint256)._stakeId (contracts/test/MarketplaceTest.sol#116) is not in mixedCase
+Parameter MarketplaceTest.setFeePercentage(uint16)._feePercentage (contracts/test/MarketplaceTest.sol#145) is not in mixedCase
+Parameter MarketplaceTest.withdraw(address,uint256)._to (contracts/test/MarketplaceTest.sol#155) is not in mixedCase
+Parameter MarketplaceTest.withdraw(address,uint256)._amount (contracts/test/MarketplaceTest.sol#155) is not in mixedCase
+Parameter MaxxFinanceTest.mint(address,uint256)._to (contracts/test/MaxxFinanceTest.sol#91) is not in mixedCase
+Parameter MaxxFinanceTest.mint(address,uint256)._amount (contracts/test/MaxxFinanceTest.sol#91) is not in mixedCase
+Parameter MaxxFinanceTest.addPool(address)._address (contracts/test/MaxxFinanceTest.sol#101) is not in mixedCase
+Parameter MaxxFinanceTest.setTransferTax(uint16)._transferTax (contracts/test/MaxxFinanceTest.sol#108) is not in mixedCase
+Parameter MaxxFinanceTest.setBlocksBetweenTransfers(uint256)._blocksBetweenTransfers (contracts/test/MaxxFinanceTest.sol#120) is not in mixedCase
+Parameter MaxxFinanceTest.updateBlockLimited(bool)._blockLimited (contracts/test/MaxxFinanceTest.sol#132) is not in mixedCase
+Parameter MaxxFinanceTest.allow(address)._address (contracts/test/MaxxFinanceTest.sol#141) is not in mixedCase
+Parameter MaxxFinanceTest.disallow(address)._address (contracts/test/MaxxFinanceTest.sol#147) is not in mixedCase
+Parameter MaxxFinanceTest.blockUser(address)._address (contracts/test/MaxxFinanceTest.sol#154) is not in mixedCase
+Parameter MaxxFinanceTest.unblock(address)._address (contracts/test/MaxxFinanceTest.sol#160) is not in mixedCase
+Parameter MaxxFinanceTest.transfer(address,uint256)._to (contracts/test/MaxxFinanceTest.sol#185) is not in mixedCase
+Parameter MaxxFinanceTest.transfer(address,uint256)._amount (contracts/test/MaxxFinanceTest.sol#185) is not in mixedCase
+Parameter MaxxFinanceTest.transferFrom(address,address,uint256)._from (contracts/test/MaxxFinanceTest.sol#219) is not in mixedCase
+Parameter MaxxFinanceTest.transferFrom(address,address,uint256)._to (contracts/test/MaxxFinanceTest.sol#220) is not in mixedCase
+Parameter MaxxFinanceTest.transferFrom(address,address,uint256)._amount (contracts/test/MaxxFinanceTest.sol#221) is not in mixedCase
+Parameter MaxxFinanceTest.setGlobalDailySellLimit(uint256)._globalDailySellLimit (contracts/test/MaxxFinanceTest.sol#247) is not in mixedCase
+Parameter MaxxFinanceTest.setWhaleLimit(uint256)._whaleLimit (contracts/test/MaxxFinanceTest.sol#259) is not in mixedCase
+Parameter MaxxStakeTest.stake(uint16,uint256)._numDays (contracts/test/MaxxStakeTest.sol#191) is not in mixedCase
+Parameter MaxxStakeTest.stake(uint16,uint256)._amount (contracts/test/MaxxStakeTest.sol#191) is not in mixedCase
+Parameter MaxxStakeTest.stake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._numDays (contracts/test/MaxxStakeTest.sol#205) is not in mixedCase
+Parameter MaxxStakeTest.stake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._amount (contracts/test/MaxxStakeTest.sol#206) is not in mixedCase
+Parameter MaxxStakeTest.stake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._tokenId (contracts/test/MaxxStakeTest.sol#207) is not in mixedCase
+Parameter MaxxStakeTest.stake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._maxxNFT (contracts/test/MaxxStakeTest.sol#208) is not in mixedCase
+Parameter MaxxStakeTest.unstake(uint256)._stakeId (contracts/test/MaxxStakeTest.sol#233) is not in mixedCase
+Parameter MaxxStakeTest.maxShare(uint256)._stakeId (contracts/test/MaxxStakeTest.sol#297) is not in mixedCase
+Parameter MaxxStakeTest.restake(uint256,uint256)._stakeId (contracts/test/MaxxStakeTest.sol#327) is not in mixedCase
+Parameter MaxxStakeTest.restake(uint256,uint256)._topUpAmount (contracts/test/MaxxStakeTest.sol#327) is not in mixedCase
+Parameter MaxxStakeTest.transfer(address,uint256)._to (contracts/test/MaxxStakeTest.sol#363) is not in mixedCase
+Parameter MaxxStakeTest.transfer(address,uint256)._stakeId (contracts/test/MaxxStakeTest.sol#363) is not in mixedCase
+Parameter MaxxStakeTest.transferFrom(address,address,uint256)._from (contracts/test/MaxxStakeTest.sol#376) is not in mixedCase
+Parameter MaxxStakeTest.transferFrom(address,address,uint256)._to (contracts/test/MaxxStakeTest.sol#377) is not in mixedCase
+Parameter MaxxStakeTest.transferFrom(address,address,uint256)._stakeId (contracts/test/MaxxStakeTest.sol#378) is not in mixedCase
+Parameter MaxxStakeTest.scrapeInterest(uint256)._stakeId (contracts/test/MaxxStakeTest.sol#391) is not in mixedCase
+Parameter MaxxStakeTest.changeStakeName(uint256,string)._stakeId (contracts/test/MaxxStakeTest.sol#435) is not in mixedCase
+Parameter MaxxStakeTest.changeStakeName(uint256,string)._name (contracts/test/MaxxStakeTest.sol#435) is not in mixedCase
+Parameter MaxxStakeTest.amplifierStake(uint16,uint256)._numDays (contracts/test/MaxxStakeTest.sol#448) is not in mixedCase
+Parameter MaxxStakeTest.amplifierStake(uint16,uint256)._amount (contracts/test/MaxxStakeTest.sol#448) is not in mixedCase
+Parameter MaxxStakeTest.amplifierStake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._numDays (contracts/test/MaxxStakeTest.sol#469) is not in mixedCase
+Parameter MaxxStakeTest.amplifierStake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._amount (contracts/test/MaxxStakeTest.sol#470) is not in mixedCase
+Parameter MaxxStakeTest.amplifierStake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._tokenId (contracts/test/MaxxStakeTest.sol#471) is not in mixedCase
+Parameter MaxxStakeTest.amplifierStake(uint16,uint256,uint256,MaxxStakeTest.MaxxNFT)._maxxNFT (contracts/test/MaxxStakeTest.sol#472) is not in mixedCase
+Parameter MaxxStakeTest.freeClaimStake(address,uint256)._owner (contracts/test/MaxxStakeTest.sol#507) is not in mixedCase
+Parameter MaxxStakeTest.freeClaimStake(address,uint256)._amount (contracts/test/MaxxStakeTest.sol#507) is not in mixedCase
+Parameter MaxxStakeTest.setLiquidityAmplifier(address)._liquidityAmplifier (contracts/test/MaxxStakeTest.sol#521) is not in mixedCase
+Parameter MaxxStakeTest.setFreeClaim(address)._freeClaim (contracts/test/MaxxStakeTest.sol#530) is not in mixedCase
+Parameter MaxxStakeTest.setNftBonusPercentage(uint8)._nftBonusPercentage (contracts/test/MaxxStakeTest.sol#536) is not in mixedCase
+Parameter MaxxStakeTest.setMaxxBoost(address)._maxxBoost (contracts/test/MaxxStakeTest.sol#545) is not in mixedCase
+Parameter MaxxStakeTest.setMaxxGenesis(address)._maxxGenesis (contracts/test/MaxxStakeTest.sol#554) is not in mixedCase
+Parameter MaxxStakeTest.approve(address,uint256)._to (contracts/test/MaxxStakeTest.sol#564) is not in mixedCase
+Parameter MaxxStakeTest.approve(address,uint256)._stakeId (contracts/test/MaxxStakeTest.sol#564) is not in mixedCase
+Parameter MaxxStakeTest.setApprovalForAll(address,bool)._operator (contracts/test/MaxxStakeTest.sol#580) is not in mixedCase
+Parameter MaxxStakeTest.setApprovalForAll(address,bool)._approved (contracts/test/MaxxStakeTest.sol#580) is not in mixedCase
+Parameter MaxxStakeTest.ownerOf(uint256)._stakeId (contracts/test/MaxxStakeTest.sol#598) is not in mixedCase
+Parameter MaxxStakeTest.getApproved(uint256)._stakeId (contracts/test/MaxxStakeTest.sol#609) is not in mixedCase
+Parameter MaxxStakeTest.isApprovedForAll(address,address)._owner (contracts/test/MaxxStakeTest.sol#623) is not in mixedCase
+Parameter MaxxStakeTest.isApprovedForAll(address,address)._operator (contracts/test/MaxxStakeTest.sol#623) is not in mixedCase
+Contract console (node_modules/hardhat/console.sol#4-1532) is not in CapWords
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions[0m
+[92m
+Parameter LiquidityAmplifier.claim(uint8)._day (contracts/LiquidityAmplifier.sol#242) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint8,uint16)._day (contracts/LiquidityAmplifier.sol#271) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint8,uint16)._daysToStake (contracts/LiquidityAmplifier.sol#271) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint8,uint16,uint256,IStake.MaxxNFT)._day (contracts/LiquidityAmplifier.sol#286) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint8,uint16,uint256,IStake.MaxxNFT)._daysToStake (contracts/LiquidityAmplifier.sol#287) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint8,uint16,uint256,IStake.MaxxNFT)._tokenId (contracts/LiquidityAmplifier.sol#288) is not in mixedCase
+Parameter LiquidityAmplifier.claimToStake(uint8,uint16,uint256,IStake.MaxxNFT)._maxxNFT (contracts/LiquidityAmplifier.sol#289) is not in mixedCase
+Parameter LiquidityAmplifier.claimReferrals(uint8)._day (contracts/LiquidityAmplifier.sol#301) is not in mixedCase
+Parameter LiquidityAmplifier.getUserAmpReferrals(address)._user (contracts/LiquidityAmplifier.sol#448) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions[0m
+[92m
+Reentrancy in Marketplace.buyStake(uint256) (contracts/Marketplace.sol#115-139):
+	External calls:
+	- address(stakeOwner).transfer(amount) (contracts/Marketplace.sol#134)
+	State variables written after the call(s):
+	- delete sellPrice[_stakeId] (contracts/Marketplace.sol#136)
+	Event emitted after the call(s):
+	- Purchase(msg.sender,_stakeId,msg.value) (contracts/Marketplace.sol#138)
+Reentrancy in MarketplaceTest.buyStake(uint256) (contracts/test/MarketplaceTest.sol#116-141):
+	External calls:
+	- address(stakeOwner).transfer(amount) (contracts/test/MarketplaceTest.sol#135)
+	State variables written after the call(s):
+	- delete sellPrice[_stakeId] (contracts/test/MarketplaceTest.sol#138)
+	Event emitted after the call(s):
+	- Purchase(msg.sender,_stakeId,msg.value) (contracts/test/MarketplaceTest.sol#140)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4[0m
+[92m
+Variable FreeClaim.freeClaim(uint256,bytes32[],address).userClaim_scope_0 (contracts/FreeClaim.sol#217-224) is too similar to FreeClaim.freeClaim(uint256,bytes32[],address).userClaim_scope_4 (contracts/FreeClaim.sol#273-276)
+Variable FreeClaim.freeClaim(uint256,bytes32[],address).userClaim_scope_0 (contracts/FreeClaim.sol#217-224) is too similar to FreeClaim.freeClaim(uint256,bytes32[],address).userClaim_scope_1 (contracts/FreeClaim.sol#236-241)
+Variable FreeClaim.freeClaim(uint256,bytes32[],address).userClaim_scope_1 (contracts/FreeClaim.sol#236-241) is too similar to FreeClaim.freeClaim(uint256,bytes32[],address).userClaim_scope_4 (contracts/FreeClaim.sol#273-276)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#variable-names-are-too-similar[0m
+[92m
+FreeClaim.slitherConstructorConstantVariables() (contracts/FreeClaim.sol#36-365) uses literals with too many digits:
+	- MAX_CLAIM_AMOUNT = 1000000 * (10 ** 8) (contracts/FreeClaim.sol#57)
+MaxxFinance.slitherConstructorConstantVariables() (contracts/MaxxFinance.sol#23-311) uses literals with too many digits:
+	- GLOBAL_DAILY_SELL_LIMIT_MINIMUM = 1000000000 (contracts/MaxxFinance.sol#50)
+MaxxFinance.slitherConstructorConstantVariables() (contracts/MaxxFinance.sol#23-311) uses literals with too many digits:
+	- WHALE_LIMIT_MINIMUM = 1000000 (contracts/MaxxFinance.sol#51)
+MaxxFinance.slitherConstructorConstantVariables() (contracts/MaxxFinance.sol#23-311) uses literals with too many digits:
+	- INITIAL_SUPPLY = 100000000000 (contracts/MaxxFinance.sol#54)
+MaxxStake._calcShares(uint16,uint256) (contracts/MaxxStake.sol#752-768) uses literals with too many digits:
+	- bpbBonus = _amount / 10000000 (contracts/MaxxStake.sol#760-761)
+MaxxStake.slitherConstructorConstantVariables() (contracts/MaxxStake.sol#68-806) uses literals with too many digits:
+	- PERCENT_FACTOR = 10000000000 (contracts/MaxxStake.sol#93)
+FreeClaimTest.slitherConstructorConstantVariables() (contracts/test/FreeClaimTest.sol#31-247) uses literals with too many digits:
+	- MAX_CLAIM_AMOUNT = 1000000 * (10 ** 8) (contracts/test/FreeClaimTest.sol#44)
+MaxxFinanceTest.slitherConstructorConstantVariables() (contracts/test/MaxxFinanceTest.sol#23-316) uses literals with too many digits:
+	- GLOBAL_DAILY_SELL_LIMIT_MINIMUM = 1000000000 (contracts/test/MaxxFinanceTest.sol#51)
+MaxxFinanceTest.slitherConstructorConstantVariables() (contracts/test/MaxxFinanceTest.sol#23-316) uses literals with too many digits:
+	- WHALE_LIMIT_MINIMUM = 1000000 (contracts/test/MaxxFinanceTest.sol#52)
+MaxxFinanceTest.slitherConstructorConstantVariables() (contracts/test/MaxxFinanceTest.sol#23-316) uses literals with too many digits:
+	- INITIAL_SUPPLY = 100000000000 (contracts/test/MaxxFinanceTest.sol#55)
+MaxxStakeTest._calcShares(uint16,uint256) (contracts/test/MaxxStakeTest.sol#723-740) uses literals with too many digits:
+	- bpbBonus = _amount / 10000000 (contracts/test/MaxxStakeTest.sol#731)
+MaxxStakeTest.slitherConstructorConstantVariables() (contracts/test/MaxxStakeTest.sol#54-778) uses literals with too many digits:
+	- PERCENT_FACTOR = 10000000000 (contracts/test/MaxxStakeTest.sol#67)
+console.slitherConstructorConstantVariables() (node_modules/hardhat/console.sol#4-1532) uses literals with too many digits:
+	- CONSOLE_ADDRESS = address(0x000000000000000000636F6e736F6c652e6c6f67) (node_modules/hardhat/console.sol#5)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits[0m
+[92m
+MaxxStake._calcShares(uint16,uint256) (contracts/MaxxStake.sol#753-770) uses literals with too many digits:
+	- bpbBonus = _amount / 10000000 (contracts/MaxxStake.sol#761)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits[0m
+[92m
+FreeClaimTest.remainingBalance (contracts/test/FreeClaimTest.sol#63) should be constant
+LiquidityAmplifier.maxxGenesis (contracts/LiquidityAmplifier.sol#51-53) should be constant
+MaxxStake.totalStakedOutstandingInterest (contracts/MaxxStake.sol#114) should be constant
+MaxxStake.totalStakesMatured (contracts/MaxxStake.sol#112) should be constant
+MaxxStakeTest.totalStakedOutstandingInterest (contracts/test/MaxxStakeTest.sol#88) should be constant
+MaxxStakeTest.totalStakesMatured (contracts/test/MaxxStakeTest.sol#86) should be constant
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant[0m
+[92m
+grantRole(bytes32,address) should be declared external:
+	- AccessControl.grantRole(bytes32,address) (node_modules/@openzeppelin/contracts/access/AccessControl.sol#144-146)
+revokeRole(bytes32,address) should be declared external:
+	- AccessControl.revokeRole(bytes32,address) (node_modules/@openzeppelin/contracts/access/AccessControl.sol#159-161)
+renounceRole(bytes32,address) should be declared external:
+	- AccessControl.renounceRole(bytes32,address) (node_modules/@openzeppelin/contracts/access/AccessControl.sol#179-183)
+renounceOwnership() should be declared external:
+	- Ownable.renounceOwnership() (node_modules/@openzeppelin/contracts/access/Ownable.sol#61-63)
+transferOwnership(address) should be declared external:
+	- Ownable.transferOwnership(address) (node_modules/@openzeppelin/contracts/access/Ownable.sol#69-72)
+name() should be declared external:
+	- ERC20.name() (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#62-64)
+symbol() should be declared external:
+	- ERC20.symbol() (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#70-72)
+totalSupply() should be declared external:
+	- ERC20.totalSupply() (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#94-96)
+balanceOf(address) should be declared external:
+	- ERC20.balanceOf(address) (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#101-103)
+approve(address,uint256) should be declared external:
+	- ERC20.approve(address,uint256) (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#136-140)
+increaseAllowance(address,uint256) should be declared external:
+	- ERC20.increaseAllowance(address,uint256) (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#181-185)
+decreaseAllowance(address,uint256) should be declared external:
+	- ERC20.decreaseAllowance(address,uint256) (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#201-210)
+name() should be declared external:
+	- ERC721.name() (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#79-81)
+symbol() should be declared external:
+	- ERC721.symbol() (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#86-88)
+tokenURI(uint256) should be declared external:
+	- ERC721.tokenURI(uint256) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#93-98)
+	- MAXXBoost.tokenURI(uint256) (contracts/MAXXBoost.sol#109-125)
+	- MAXXGenesis.tokenURI(uint256) (contracts/MAXXGenesis.sol#119-135)
+approve(address,uint256) should be declared external:
+	- ERC721.approve(address,uint256) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#112-122)
+setApprovalForAll(address,bool) should be declared external:
+	- ERC721.setApprovalForAll(address,bool) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#136-138)
+transferFrom(address,address,uint256) should be declared external:
+	- ERC721.transferFrom(address,address,uint256) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#150-159)
+safeTransferFrom(address,address,uint256) should be declared external:
+	- ERC721.safeTransferFrom(address,address,uint256) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#164-170)
+tokensOfOwner(address) should be declared external:
+	- MAXXBoost.tokensOfOwner(address) (contracts/MAXXBoost.sol#84-104)
+totalSupply() should be declared external:
+	- MAXXBoost.totalSupply() (contracts/MAXXBoost.sol#128-130)
+tokensOfOwner(address) should be declared external:
+	- MAXXGenesis.tokensOfOwner(address) (contracts/MAXXGenesis.sol#94-114)
+totalSupply() should be declared external:
+	- MAXXGenesis.totalSupply() (contracts/MAXXGenesis.sol#138-140)
+approve(address,uint256) should be declared external:
+	- MaxxStake.approve(address,uint256) (contracts/MaxxStake.sol#573-586)
+setApprovalForAll(address,bool) should be declared external:
+	- MaxxStake.setApprovalForAll(address,bool) (contracts/MaxxStake.sol#592-594)
+approve(address,uint256) should be declared external:
+	- MaxxStakeTest.approve(address,uint256) (contracts/test/MaxxStakeTest.sol#564-574)
+setApprovalForAll(address,bool) should be declared external:
+	- MaxxStakeTest.setApprovalForAll(address,bool) (contracts/test/MaxxStakeTest.sol#580-582)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#public-function-that-could-be-declared-external[0m
+. analyzed (82 contracts with 78 detectors), 571 result(s) found

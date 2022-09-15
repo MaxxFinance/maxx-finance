@@ -24,6 +24,9 @@ error ClaimExpired();
 /// Invalid input day
 /// @param day The amplifier day 1-60
 error InvalidDay(uint256 day);
+/// User has already claimed for this day
+/// @param day The amplifier day 1-60
+error AlreadyClaimed(uint8 day);
 /// The Maxx allocation has already been initialized
 error AlreadyInitialized();
 /// The Maxx Finance Staking contract hasn't been initialized
@@ -36,6 +39,8 @@ error WithdrawFailed();
 error MaxxGenesisNotSet();
 /// MaxxGenesis NFT not minted
 error MaxxGenesisMintFailed();
+/// Maxx transfer failed
+error MaxxTransferFailed();
 
 /// @title Maxx Finance Liquidity Amplifier
 /// @author Alta Web3 Labs - SonOfMosiah
@@ -80,6 +85,8 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     mapping(address => uint256[60]) public effectiveUserReferrals;
     /// @notice tracks if address has participated in the amplifier
     mapping(address => bool) public participated;
+    mapping(address => mapping(uint256 => bool)) public dayClaimed;
+    mapping(address => mapping(uint256 => bool)) public dayClaimedReferrals;
 
     mapping(address => uint256[]) public userAmpReferral;
 
@@ -233,17 +240,16 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     }
 
     /// @notice Function to claim MAXX directly to user wallet
-    function claim() external {
-        if (block.timestamp <= launchDate + AMPLIFIER_PERIOD * 1 days) {
-            revert AmplifierNotComplete();
-        }
+    /// @param _day The day to claim MAXX for
+    function claim(uint8 _day) external {
+        _checkDayRange(_day);
         if (
             address(stake) == address(0) || block.timestamp < stake.launchDate()
         ) {
             revert StakingNotInitialized();
         }
 
-        uint256 amount = _getClaimAmount();
+        uint256 amount = _getClaimAmount(_day);
 
         if (block.timestamp > stake.launchDate() + CLAIM_PERIOD * 1 days) {
             // assess late penalty
@@ -257,46 +263,51 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             }
         }
 
-        IMaxxFinance(maxx).transfer(msg.sender, amount);
+        bool success = IMaxxFinance(maxx).transfer(msg.sender, amount);
+        if (!success) {
+            revert MaxxTransferFailed();
+        }
+
         emit Claim(msg.sender, amount);
     }
 
     /// @notice Function to claim MAXX and directly stake
-    function claimToStake(uint16 _daysToStake) external {
-        if (block.timestamp <= launchDate + CLAIM_PERIOD * 1 days) {
-            revert AmplifierNotComplete();
-        }
-        uint256 amount = _getClaimAmount();
+    /// @param _day The day to claim MAXX for
+    /// @param _daysToStake The number of days to stake
+    function claimToStake(uint8 _day, uint16 _daysToStake) external {
+        _checkDayRange(_day);
+
+        uint256 amount = _getClaimAmount(_day);
         IMaxxFinance(maxx).approve(address(stake), amount);
         stake.amplifierStake(_daysToStake, amount);
         emit Claim(msg.sender, amount);
     }
 
     /// @notice Function to claim MAXX and directly stake
+    /// @param _day The day to claim MAXX for
     /// @param _daysToStake The number of days to stake
     /// @param _tokenId The token id of the NFT to use for a staking boost
     /// @param _maxxNFT The NFT collection (0 - MaxxGenesis, 1 - MaxxBoost)
     function claimToStake(
+        uint8 _day,
         uint16 _daysToStake,
         uint256 _tokenId,
         IStake.MaxxNFT _maxxNFT
     ) external {
-        if (block.timestamp <= launchDate + CLAIM_PERIOD * 1 days) {
-            revert AmplifierNotComplete();
-        }
-        uint256 amount = _getClaimAmount();
+        _checkDayRange(_day);
+
+        uint256 amount = _getClaimAmount(_day);
         IMaxxFinance(maxx).approve(address(stake), amount);
         stake.amplifierStake(_daysToStake, amount, _tokenId, _maxxNFT);
         emit Claim(msg.sender, amount);
     }
 
     /// @notice Function to claim referral amount and directly stake
-    function claimReferrals() external {
-        if (block.timestamp <= launchDate + CLAIM_PERIOD * 1 days) {
-            revert AmplifierNotComplete();
-        }
-        uint256 amount = _getReferralAmount();
-        IMaxxFinance(maxx).approve(address(stake), amount);
+    /// @param _day The day to claim MAXX for
+    function claimReferrals(uint8 _day) external {
+        _checkDayRange(_day);
+
+        uint256 amount = _getReferralAmountAndApprove(_day);
         stake.amplifierStake(14, amount);
         emit Claim(msg.sender, amount);
     }
@@ -305,6 +316,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @param _stake Address of the Maxx Finance staking contract
     function setStakeAddress(address _stake) external onlyOwner {
         stake = IStake(_stake);
+    }
+
+    /// @notice Function to set the Maxx Genesis NFT contract address
+    /// @param _maxxGenesis Address of the Maxx Genesis NFT contract
+    function setMaxxGenesis(address _maxxGenesis) external onlyOwner {
+        maxxGenesis = _maxxGenesis;
     }
 
     /// @notice Function to initialize the daily allocations
@@ -370,7 +387,10 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             revert AmplifierNotComplete();
         }
         uint256 extraMaxx = IMaxxFinance(maxx).balanceOf(address(this));
-        IMaxxFinance(maxx).transfer(maxxVault, extraMaxx);
+        bool success = IMaxxFinance(maxx).transfer(maxxVault, extraMaxx);
+        if (!success) {
+            revert MaxxTransferFailed();
+        }
     }
 
     /// @inheritdoc ILiquidityAmplifier
@@ -470,22 +490,39 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     }
 
     /// @return amount The amount of MAXX tokens to be claimed
-    function _getClaimAmount() internal view returns (uint256 amount) {
-        for (uint8 i = 0; i < 60; i++) {
-            amount +=
-                (_maxxDailyAllocation[i] *
-                    effectiveUserDailyDeposits[msg.sender][i]) /
-                _effectiveMaticDailyDeposits[i];
+    function _getClaimAmount(uint8 _day) internal returns (uint256) {
+        if (dayClaimed[msg.sender][_day]) {
+            revert AlreadyClaimed(_day);
         }
+        dayClaimed[msg.sender][_day] = true;
+        uint256 amount = (_maxxDailyAllocation[_day] *
+            effectiveUserDailyDeposits[msg.sender][_day]) /
+            _effectiveMaticDailyDeposits[_day];
+        return amount;
     }
 
     /// @return amount The amount of MAXX tokens to be claimed
-    function _getReferralAmount() internal view returns (uint256 amount) {
-        for (uint8 i = 0; i < 60; i++) {
-            amount +=
-                (_maxxDailyAllocation[i] *
-                    effectiveUserReferrals[msg.sender][i]) /
-                _effectiveMaticDailyDeposits[i];
+    function _getReferralAmountAndApprove(uint8 _day)
+        internal
+        returns (uint256)
+    {
+        if (dayClaimedReferrals[msg.sender][_day]) {
+            revert AlreadyClaimed(_day);
+        }
+        dayClaimedReferrals[msg.sender][_day] = true;
+        uint256 amount = (_maxxDailyAllocation[_day] *
+            effectiveUserReferrals[msg.sender][_day]) /
+            _effectiveMaticDailyDeposits[_day];
+        IMaxxFinance(maxx).approve(address(stake), amount);
+        return amount;
+    }
+
+    function _checkDayRange(uint8 _day) internal view {
+        if (_day >= AMPLIFIER_PERIOD) {
+            revert InvalidDay(_day);
+        }
+        if (block.timestamp <= launchDate + CLAIM_PERIOD * 1 days) {
+            revert AmplifierNotComplete();
         }
     }
 }
