@@ -11,7 +11,7 @@ async function main() {
         'MaxxStake'
     )) as MaxxStake__factory;
 
-    const maxxStake = await MaxxStake.attach(maxxStakeAddress);
+    const maxxStake = MaxxStake.attach(maxxStakeAddress);
     log.yellow('maxxStake.address: ', maxxStake.address);
 
     const setMaxxBoost = await maxxStake.setMaxxBoost(maxxBoostAddress);

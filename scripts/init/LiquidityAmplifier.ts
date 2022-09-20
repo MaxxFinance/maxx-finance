@@ -2,6 +2,7 @@ import hre, { ethers } from 'hardhat';
 import {
     LiquidityAmplifier__factory,
     MaxxFinance__factory,
+    MaxxStake__factory,
 } from '../../typechain-types';
 import log from 'ololog';
 
@@ -124,6 +125,17 @@ async function main() {
     );
     await setDailyAllocations.wait();
     log.green('setDailyAllocations: ', setDailyAllocations.hash);
+
+    const MaxxStake = (await ethers.getContractFactory(
+        'MaxxStake'
+    )) as MaxxStake__factory;
+
+    const maxxStake = MaxxStake.attach(maxxStakeAddress);
+    const stakeAmplifierAddress = await maxxStake.setLiquidityAmplifier(
+        maxxLiquidityAmplifierAddress
+    );
+    await stakeAmplifierAddress.wait();
+    log.green('stakeAmplifierAddress: ', stakeAmplifierAddress.hash);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
