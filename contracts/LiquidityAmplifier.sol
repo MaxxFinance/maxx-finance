@@ -103,12 +103,30 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         address indexed referrer
     );
 
-    /// @notice Emitted when MAXX is claimed
+    /// @notice Emitted when MAXX is claimed from a deposit
     /// @param user The user claiming MAXX
     /// @param amount The amount of MAXX claimed
     event Claim(address indexed user, uint256 amount);
 
-    // TODO add more events
+    /// @notice Emitted when MAXX is claimed from a referral
+    /// @param user The user claiming MAXX
+    /// @param amount The amount of MAXX claimed
+    event ClaimReferral(address indexed user, uint256 amount);
+
+    /// @notice Emitted when a deposit is made with a referral
+    event Referral(
+        address indexed user,
+        address indexed referrer,
+        uint256 amount
+    );
+    /// @notice Emitted when the Maxx Stake contract address is set
+    event StakeAddressSet(address indexed stake);
+    /// @notice Emitted when the Maxx Genesis NFT contract address is set
+    event MaxxGenesisSet(address indexed maxxGenesis);
+    /// @notice Emitted when the launch date is updated
+    event LaunchDateUpdated(uint256 newLaunchDate);
+    /// @notice Emitted when a Maxx Genesis NFT is minted
+    event MaxxGenesisMinted(address indexed user, string code);
 
     constructor(
         address _maxxVault,
@@ -172,6 +190,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         userAmpReferral[msg.sender].push(amount);
         userAmpReferral[msg.sender].push(referrerAmount);
 
+        emit Referral(msg.sender, _referrer, amount);
         emit Deposit(msg.sender, amount, _referrer);
     }
 
@@ -236,6 +255,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         userAmpReferral[msg.sender].push(amount);
         userAmpReferral[msg.sender].push(referrerAmount);
 
+        emit Referral(msg.sender, _referrer, amount);
         emit Deposit(msg.sender, amount, _referrer);
     }
 
@@ -309,19 +329,21 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
         uint256 amount = _getReferralAmountAndApprove(_day);
         stake.amplifierStake(14, amount);
-        emit Claim(msg.sender, amount);
+        emit ClaimReferral(msg.sender, amount);
     }
 
     /// @notice Function to set the Maxx Finance staking contract address
     /// @param _stake Address of the Maxx Finance staking contract
     function setStakeAddress(address _stake) external onlyOwner {
         stake = IStake(_stake);
+        emit StakeAddressSet(_stake);
     }
 
     /// @notice Function to set the Maxx Genesis NFT contract address
     /// @param _maxxGenesis Address of the Maxx Genesis NFT contract
     function setMaxxGenesis(address _maxxGenesis) external onlyOwner {
         maxxGenesis = _maxxGenesis;
+        emit MaxxGenesisSet(_maxxGenesis);
     }
 
     /// @notice Function to initialize the daily allocations
@@ -360,6 +382,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             revert LaunchDatePassed();
         }
         launchDate = _launchDate;
+        emit LaunchDateUpdated(_launchDate);
     }
 
     /// @notice Function to transfer Matic from this contract to address from input
@@ -487,6 +510,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         if (!success) {
             revert MaxxGenesisMintFailed();
         }
+        emit MaxxGenesisMinted(msg.sender, code);
     }
 
     /// @return amount The amount of MAXX tokens to be claimed
