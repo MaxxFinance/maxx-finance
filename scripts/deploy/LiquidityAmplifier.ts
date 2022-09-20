@@ -8,7 +8,12 @@ import log from 'ololog';
 async function main() {
     const maxxVaultAddress = process.env.MAXX_VAULT_ADDRESS!;
     const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
-    const amplifierLaunchDate = '1659420000'; // Tue Aug 02 2022 06:00:00 GMT+0000
+
+    const blockNumBefore = await ethers.provider.getBlockNumber();
+    const blockBefore = await ethers.provider.getBlock(blockNumBefore);
+    const timestampBefore = blockBefore.timestamp;
+    const amplifierLaunchDate = timestampBefore + 1;
+    // const amplifierLaunchDate = '1659420000'; // Tue Aug 02 2022 06:00:00 GMT+0000
     const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
 
     const totalAllocation = ethers.utils.parseEther('40000000000'); // // 40 billion tokens
