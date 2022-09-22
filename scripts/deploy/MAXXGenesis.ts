@@ -1,21 +1,38 @@
 import hre, { ethers } from 'hardhat';
 import { MAXXGenesis__factory } from '../../typechain-types';
-import log from 'ololog';
+import { Deployment } from '../utils/contractDeploy';
 
-async function main() {
-    const amplifierAddress = process.env.LIQUIDITY_AMPLIFIER_ADDRESS!; // Mumbai Testnet address
-
+export async function deployMaxxGenesis(
+    amplifierAddress: string
+): Promise<Deployment> {
     const MAXXGenesis = (await ethers.getContractFactory(
         'MAXXGenesis'
     )) as MAXXGenesis__factory;
 
     const maxxGenesis = await MAXXGenesis.deploy(amplifierAddress);
-    log.yellow('maxxGenesis.address: ', maxxGenesis.address);
+    await maxxGenesis.deployed();
+
+    const network = hre.network.name;
+    if (network === 'polygon') {
+        try {
+            await hre.run('verify:verify', {
+                address: maxxGenesis.address,
+                constructorArguments: [amplifierAddress],
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    return {
+        address: maxxGenesis.address,
+        block: maxxGenesis.deployTransaction.blockNumber!,
+    };
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+const amplifierAddress = process.env.LIQUIDITY_AMPLIFIER_ADDRESS!;
+
+// deployMaxxGenesis(amplifierAddress).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

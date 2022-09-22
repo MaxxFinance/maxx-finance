@@ -1,12 +1,13 @@
 import hre, { ethers } from 'hardhat';
+import { BigNumber } from 'ethers';
 import { MaxxFinance__factory } from '../../typechain-types';
-import log from 'ololog';
+import { Deployment } from '../utils/contractDeploy';
 
-async function main() {
+export async function deployMaxxFinance(): Promise<Deployment> {
     const maxxVaultAddress = process.env.MAXX_VAULT_ADDRESS!;
-    const transferTax = '500'; // 5%
-    const whaleLimit = '1000000'; // 1 million
-    const globalSellLimit = '1000000000'; // 1 billion
+    const transferTax = BigNumber.from(process.env.TRANSFER_TAX!);
+    const whaleLimit = BigNumber.from(process.env.WHALE_LIMIT!);
+    const globalSellLimit = BigNumber.from(process.env.GLOBAL_SELL_LIMIT!);
 
     const MaxxFinance = (await ethers.getContractFactory(
         'MaxxFinance'
@@ -18,36 +19,58 @@ async function main() {
         whaleLimit,
         globalSellLimit
     );
-
-    // const maxxFinance = MaxxFinance.attach(process.env.MAXX_FINANCE_ADDRESS!);
-
-    log.yellow('maxxFinance.address: ', maxxFinance.address);
+    await maxxFinance.deployed();
 
     const blocksBetweenTransfers = await maxxFinance.setBlocksBetweenTransfers(
         2
     );
     await blocksBetweenTransfers.wait();
-    log.yellow('blocksBetweenTransfers: ', blocksBetweenTransfers.hash);
 
     const blockLimited = await maxxFinance.updateBlockLimited(true);
     await blockLimited.wait();
-    log.yellow('blockLimited: ', blockLimited.hash);
 
     const allowVault = await maxxFinance.allow(maxxVaultAddress);
     await allowVault.wait();
-    log.yellow('allowVault: ', allowVault.hash);
 
     const omegaAddress = process.env.OMEGA_ADDRESS!;
     const omegaAmount = ethers.utils.parseEther('15000000000'); // 15 billion
 
     const transferOmega = await maxxFinance.transfer(omegaAddress, omegaAmount);
     await transferOmega.wait();
-    log.yellow('transferOmega: ', transferOmega.hash);
+
+    const omegaAddress2 = process.env.OMEGA_ADDRESS2!;
+    const omegaAmount2 = ethers.utils.parseEther('150000000'); // 150 million
+
+    const transferOmega2 = await maxxFinance.transfer(
+        omegaAddress2,
+        omegaAmount2
+    );
+    await transferOmega2.wait();
+
+    const network = hre.network.name;
+    if (network === 'polygon') {
+        try {
+            await hre.run('verify:verify', {
+                address: maxxFinance.address,
+                constructorArguments: [
+                    maxxVaultAddress,
+                    transferTax,
+                    whaleLimit,
+                    globalSellLimit,
+                ],
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    return {
+        address: maxxFinance.address,
+        block: maxxFinance.deployTransaction.blockNumber!,
+    };
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+// deployMaxxFinance().catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

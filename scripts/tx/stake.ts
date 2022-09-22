@@ -1,39 +1,36 @@
-import hre, { ethers } from 'hardhat';
-import {
-    MaxxFinance__factory,
-    MaxxStake__factory,
-} from '../../typechain-types';
+import { ethers } from 'hardhat';
 import log from 'ololog';
 
-async function main() {
-    const MaxxFinance = (await ethers.getContractFactory(
-        'MaxxFinance'
-    )) as MaxxFinance__factory;
+import { getMaxxFinance, getMaxxStake } from '../utils/getContractInstance';
 
-    const maxxFinance = MaxxFinance.attach(process.env.MAXX_FINANCE_ADDRESS!);
+export async function stakeTx(
+    maxxFinanceAddress: string,
+    maxxStakeAddress: string
+): Promise<boolean> {
+    try {
+        const maxxFinance = await getMaxxFinance(maxxFinanceAddress);
+        const maxxStake = await getMaxxStake(maxxStakeAddress);
 
-    const MaxxStake = (await ethers.getContractFactory(
-        'MaxxStake'
-    )) as MaxxStake__factory;
+        const amount = ethers.utils.parseEther('1000000'); // 1 million
 
-    const maxxStake = MaxxStake.attach(process.env.MAXX_STAKE_ADDRESS!);
+        const approval = await maxxFinance.approve(maxxStake.address, amount);
+        await approval.wait();
 
-    const amount = ethers.utils.parseEther('1000000'); // 1 million
+        const numDays = 365;
 
-    const approval = await maxxFinance.approve(maxxStake.address, amount);
-    await approval.wait();
-    log.yellow('approval: ', approval.hash);
-
-    const numDays = 365;
-
-    const stake = await maxxStake['stake(uint16,uint256)'](numDays, amount);
-    await stake.wait();
-    log.yellow('stake: ', stake.hash);
+        const stake = await maxxStake['stake(uint16,uint256)'](numDays, amount);
+        await stake.wait();
+        return true;
+    } catch (e) {
+        log.red(e);
+        return false;
+    }
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+// const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
+// const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
+
+// stakeTx(maxxFinanceAddress, maxxStakeAddress).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

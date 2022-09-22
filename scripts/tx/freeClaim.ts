@@ -1,18 +1,141 @@
-import hre, { ethers } from 'hardhat';
-import {
-    FreeClaim__factory,
-    MaxxFinance__factory,
-    MaxxStake__factory,
-} from '../../typechain-types';
+import { ethers } from 'hardhat';
 import { MerkleTree } from 'merkletreejs';
 import { BytesLike, utils } from 'ethers';
 import keccak256 from 'keccak256';
 import log from 'ololog';
 
+import {
+    getMaxxFinance,
+    getMaxxStake,
+    getFreeClaim,
+} from '../utils/getContractInstance';
+
 interface input {
     address: string;
     amount: string;
 }
+
+export async function freeClaimTx(
+    maxxFinanceAddress: string,
+    maxxStakeAddress: string,
+    freeClaimAddress: string,
+    inputs: input[]
+): Promise<boolean> {
+    try {
+        const signers = await ethers.getSigners();
+        const signer = signers[0].address;
+
+        const maxxFinance = await getMaxxFinance(maxxFinanceAddress);
+        const maxxStake = await getMaxxStake(maxxStakeAddress);
+        const freeClaim = await getFreeClaim(freeClaimAddress);
+
+        let index = 1;
+        const [leaf, proof] = await getMerkleProof(index);
+        let referrer;
+        if (index > 0) {
+            referrer = inputs[index - 1].address;
+        } else {
+            referrer = inputs[1].address;
+        }
+
+        const address = inputs[index].address;
+        const amount = inputs[index].amount;
+
+        let selfReferral = referrer === address;
+
+        const freeClaimBalance = await maxxFinance.balanceOf(freeClaimAddress);
+        const remainingBalance = await freeClaim.remainingBalance();
+        const hasClaimed = await freeClaim.hasClaimed(address);
+
+        const stakeLaunchDate = await maxxStake.launchDate();
+        const blockNumber = await ethers.provider.getBlockNumber();
+        const block = await ethers.provider.getBlock(blockNumber);
+        const timestamp = block.timestamp;
+        const claimLaunchDate = await freeClaim.launchDate();
+        const started = claimLaunchDate.lte(timestamp);
+        if (started) {
+            const timePassed = timestamp - claimLaunchDate.toNumber();
+            const timePassedInDays = timePassed / 86400;
+        }
+
+        const allowance = await maxxFinance.allowance(
+            freeClaimAddress,
+            maxxStakeAddress
+        );
+
+        let claimStakeAddress = await freeClaim.maxxStake();
+        let stakeSet = claimStakeAddress === maxxStakeAddress;
+        if (!stakeSet) {
+            let setStakeTx = await freeClaim.setMaxxStake(maxxStakeAddress);
+            await setStakeTx.wait();
+            stakeSet = true;
+        }
+        claimStakeAddress = await freeClaim.maxxStake();
+
+        let stakeStarted = stakeSet && stakeLaunchDate.lte(timestamp);
+
+        if (
+            typeof proof !== 'string' &&
+            address === signer &&
+            !freeClaimBalance.eq(0) &&
+            !remainingBalance.eq(0) &&
+            !hasClaimed &&
+            started &&
+            !selfReferral
+        ) {
+            const v = await freeClaim.verifyMerkleLeaf(address, amount, proof);
+
+            const hasClaimed = await freeClaim.hasClaimed(address);
+
+            if (v && !hasClaimed) {
+                const claim = await freeClaim.freeClaim(
+                    amount,
+                    proof,
+                    referrer,
+                    {
+                        gasLimit: 1_000_000,
+                    }
+                );
+                await claim.wait();
+            }
+        }
+        return true;
+    } catch (e) {
+        log.red(e);
+        return false;
+    }
+}
+
+async function getMerkleProof(index: number) {
+    const leaves = createLeaves(inputs);
+
+    const merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+    const rootHash = merkleTree.getHexRoot();
+
+    const address = inputs[index].address;
+    const amount = inputs[index].amount;
+
+    const hashedLeaf = utils.solidityKeccak256(
+        ['address', 'uint256'],
+        [address, amount]
+    );
+
+    const proof: BytesLike[] = merkleTree.getHexProof(hashedLeaf);
+
+    return [hashedLeaf, proof];
+}
+
+function createLeaves(inputs: input[]) {
+    const leaves = inputs.map((x) =>
+        utils.solidityKeccak256(['address', 'uint256'], [x.address, x.amount])
+    );
+    return leaves;
+}
+
+const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
+const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
+const freeClaimAddress = process.env.FREE_CLAIM_ADDRESS!;
 
 const inputs: input[] = [
     {
@@ -33,152 +156,12 @@ const inputs: input[] = [
     },
 ];
 
-async function main() {
-    const signers = await ethers.getSigners();
-    const signer = signers[0].address;
-
-    const freeClaimAddress = process.env.FREE_CLAIM_ADDRESS!;
-    const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
-    const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
-
-    const MaxxFinance = (await ethers.getContractFactory(
-        'MaxxFinance'
-    )) as MaxxFinance__factory;
-
-    const maxxFinance = MaxxFinance.attach(maxxFinanceAddress);
-
-    const MaxxStake = (await ethers.getContractFactory(
-        'MaxxStake'
-    )) as MaxxStake__factory;
-
-    const maxxStake = MaxxStake.attach(maxxStakeAddress);
-
-    const FreeClaim = (await ethers.getContractFactory(
-        'FreeClaim'
-    )) as FreeClaim__factory;
-
-    const freeClaim = FreeClaim.attach(freeClaimAddress);
-
-    const [leaf, proof] = await getMerkleProof(1);
-    const referrer = inputs[0].address;
-    log.magenta('referrer:', referrer);
-    const address = inputs[1].address;
-    log.magenta('address:', address);
-    const amount = inputs[1].amount;
-
-    let selfReferral = referrer === address;
-    log.magenta('selfReferral:', selfReferral);
-
-    const freeClaimBalance = await maxxFinance.balanceOf(freeClaimAddress);
-    log.yellow('freeClaimBalance: ', freeClaimBalance.toString());
-    const remainingBalance = await freeClaim.remainingBalance();
-    log.yellow('remainingBalance: ', remainingBalance.toString());
-    log.magenta('amount > remainingBalance: ', remainingBalance.lt(amount));
-    const hasClaimed = await freeClaim.hasClaimed(address);
-    log.cyan('hasClaimed: ', hasClaimed);
-
-    const stakeLaunchDate = await maxxStake.launchDate();
-    log.cyan('stakeLaunchDate: ', stakeLaunchDate.toString());
-    const blockNumber = await ethers.provider.getBlockNumber();
-    const block = await ethers.provider.getBlock(blockNumber);
-    const timestamp = block.timestamp;
-    log.cyan('timestamp: ', timestamp.toString());
-    log.cyan('stake has launched:', stakeLaunchDate.lte(timestamp));
-    const claimLaunchDate = await freeClaim.launchDate();
-    log.cyan('claimLaunchDate: ', claimLaunchDate.toString());
-    const started = claimLaunchDate.lte(timestamp);
-    if (started) {
-        log.cyan('claim has started');
-        const timePassed = timestamp - claimLaunchDate.toNumber();
-        log.cyan('timePassed in seconds: ', timePassed);
-        const timePassedInDays = timePassed / 86400;
-        log.cyan('timePassed in days: ', timePassedInDays);
-    }
-
-    const allowance = await maxxFinance.allowance(
-        freeClaimAddress,
-        maxxStakeAddress
-    );
-    log.yellow('allowance: ', allowance.toString());
-
-    const claimStakeAddress = await freeClaim.maxxStake();
-    log.cyan('stake address set:', claimStakeAddress === maxxStakeAddress);
-
-    const stakeFreeClaimAddress = await maxxStake.freeClaim();
-    log.cyan('claim address set:', stakeFreeClaimAddress === freeClaimAddress);
-
-    if (
-        typeof proof !== 'string' &&
-        address === signer &&
-        !freeClaimBalance.eq(0) &&
-        !remainingBalance.eq(0) &&
-        !hasClaimed &&
-        started &&
-        !selfReferral
-    ) {
-        const v = await freeClaim.verifyMerkleLeaf(address, amount, proof);
-        log.magenta('verify:', v);
-
-        const hasClaimed = await freeClaim.hasClaimed(address);
-        log.cyan('hasClaimed: ', hasClaimed);
-
-        if (v && !hasClaimed) {
-            const balanceBefore = await maxxFinance.balanceOf(address);
-            log.yellow('balanceBefore:', balanceBefore.toString());
-            const claim = await freeClaim.freeClaim(amount, proof, referrer, {
-                gasLimit: 1_000_000,
-            });
-            await claim.wait();
-            log.yellow('claim:', claim.hash);
-
-            const balanceAfter = await maxxFinance.balanceOf(inputs[1].address);
-            log.yellow('balanceAfter:', balanceAfter.toString());
-
-            const balanceDiff = balanceAfter.sub(balanceBefore);
-            log.yellow('balanceDiff:', balanceDiff.toString());
-
-            const eq = balanceDiff.toString() === inputs[1].amount;
-            log.yellow('eq:', eq);
-        }
-    }
-}
-
-async function getMerkleProof(index: number) {
-    const leaves = createLeaves(inputs);
-
-    const merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
-
-    log.yellow('merkleTree:', merkleTree.toString());
-
-    const rootHash = merkleTree.getHexRoot();
-    log.yellow('rootHash: ', rootHash);
-
-    const address = inputs[index].address;
-    const amount = inputs[index].amount;
-
-    const hashedLeaf = utils.solidityKeccak256(
-        ['address', 'uint256'],
-        [address, amount]
-    );
-
-    const proof: BytesLike[] = merkleTree.getHexProof(hashedLeaf);
-    log.yellow('proof: ', proof);
-
-    log.yellow('isBytesLike:', utils.isBytesLike(proof));
-
-    return [hashedLeaf, proof];
-}
-
-function createLeaves(inputs: input[]) {
-    const leaves = inputs.map((x) =>
-        utils.solidityKeccak256(['address', 'uint256'], [x.address, x.amount])
-    );
-    return leaves;
-}
-
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+// freeClaimTx(
+//     maxxFinanceAddress,
+//     maxxStakeAddress,
+//     freeClaimAddress,
+//     inputs
+// ).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

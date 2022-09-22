@@ -1,19 +1,13 @@
 import hre, { ethers } from 'hardhat';
-import { FreeClaim__factory, MaxxStake__factory } from '../../typechain-types';
-import log from 'ololog';
+import { FreeClaim__factory } from '../../typechain-types';
+import { Deployment } from '../utils/contractDeploy';
 
-async function main() {
-    const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
-    const MaxxStake = (await ethers.getContractFactory(
-        'MaxxStake'
-    )) as MaxxStake__factory;
-    const maxxStake = MaxxStake.attach(maxxStakeAddress);
-
-    const startDate = (await maxxStake.launchDate()).add(1);
-
-    // const claimLaunchDate = '1661407200'; // Thu Aug 25 2022 06:00:00 GMT+0000
+export async function deployFreeClaim(
+    maxxFinanceAddress: string,
+    startDate: string
+): Promise<Deployment> {
     const maxx = {
-        address: process.env.MAXX_FINANCE_ADDRESS!,
+        address: maxxFinanceAddress,
     };
 
     const FreeClaim = (await ethers.getContractFactory(
@@ -23,19 +17,28 @@ async function main() {
     const freeClaim = await FreeClaim.deploy(startDate, maxx.address);
     await freeClaim.deployed();
 
-    log.yellow('freeClaim.address: ', freeClaim.address);
+    const network = hre.network.name;
+    if (network === 'polygon') {
+        try {
+            await hre.run('verify:verify', {
+                address: freeClaim.address,
+                constructorArguments: [startDate, maxx.address],
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
 
-    // let freeClaimAddress = process.env.FREE_CLAIM_ADDRESS!;
-
-    // await hre.run('verify:verify', {
-    //     address: freeClaimAddress,
-    //     constructorArguments: [claimLaunchDate, maxxFinance.address],
-    // });
+    return {
+        address: freeClaim.address,
+        block: freeClaim.deployTransaction.blockNumber!,
+    };
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
+const startDate = process.env.FREE_CLAIM_START_DATE!;
+
+// deployFreeClaim(maxxFinanceAddress, startDate).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

@@ -1,22 +1,37 @@
 import hre, { ethers } from 'hardhat';
 import { Marketplace__factory } from '../../typechain-types';
-import log from 'ololog';
+import { Deployment } from '../utils/contractDeploy';
 
-async function main() {
-    const maxxVaultAddress = process.env.MAXX_VAULT_ADDRESS!;
-    const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
-
+export async function deployMarketplace(
+    maxxStakeAddress: string
+): Promise<Deployment> {
     const Marketplace = (await ethers.getContractFactory(
         'Marketplace'
     )) as Marketplace__factory;
 
     const marketplace = await Marketplace.deploy(maxxStakeAddress);
-    log.yellow('marketplace.address: ', marketplace.address);
+
+    const network = hre.network.name;
+    if (network === 'polygon') {
+        try {
+            await hre.run('verify:verify', {
+                address: marketplace.address,
+                constructorArguments: [maxxStakeAddress],
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    return {
+        address: marketplace.address,
+        block: marketplace.deployTransaction.blockNumber!,
+    };
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
+
+// deployMarketplace(maxxStakeAddress).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

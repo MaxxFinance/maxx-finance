@@ -1,51 +1,46 @@
-import hre, { ethers } from 'hardhat';
-import {
-    LiquidityAmplifier__factory,
-    MaxxFinance__factory,
-} from '../../typechain-types';
+import { ethers } from 'hardhat';
+import { BigNumber } from 'ethers';
 import log from 'ololog';
 
-async function main() {
-    const LiquidityAmplifier = (await ethers.getContractFactory(
-        'LiquidityAmplifier'
-    )) as LiquidityAmplifier__factory;
+import { getLiquidityAmplifier } from '../utils/getContractInstance';
 
-    const liquidityAmplifier = LiquidityAmplifier.attach(
-        process.env.LIQUIDITY_AMPLIFIER_ADDRESS!
-    );
+export async function amplifierDepositTx(
+    amplifierAddress: string,
+    referrer: string,
+    depositAmount: BigNumber
+): Promise<boolean> {
+    try {
+        const liquidityAmplifier = await getLiquidityAmplifier(
+            amplifierAddress
+        );
 
-    const amount = ethers.utils.parseEther('0.001');
-    const referrer = '0x661Cd43A26B92995C5eE8A21Cc3D715FE830576e';
-
-    const launchDate = await liquidityAmplifier.launchDate();
-    log.yellow('launchDate:', launchDate.toString());
-
-    const getDay = await liquidityAmplifier.getDay();
-    log.yellow('currentDay:', getDay);
-
-    const deposit = await liquidityAmplifier['deposit()']({
-        value: amount,
-        gasLimit: 250_000,
-    });
-
-    await deposit.wait();
-    log.yellow('deposit: ', deposit.hash);
-
-    const depositReferral = await liquidityAmplifier['deposit(address)'](
-        referrer,
-        {
-            value: amount,
+        const deposit = await liquidityAmplifier['deposit()']({
+            value: depositAmount,
             gasLimit: 250_000,
-        }
-    );
+        });
+        await deposit.wait();
 
-    await depositReferral.wait();
-    log.yellow('depositReferral: ', depositReferral.hash);
+        const depositReferral = await liquidityAmplifier['deposit(address)'](
+            referrer,
+            {
+                value: depositAmount,
+                gasLimit: 250_000,
+            }
+        );
+
+        await depositReferral.wait();
+        return true;
+    } catch (e) {
+        log.red(e);
+        return false;
+    }
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+// const amplifierAddress = process.env.LIQUIDITY_AMPLIFIER_ADDRESS!;
+// const referrer = '0x661Cd43A26B92995C5eE8A21Cc3D715FE830576e';
+// const depositAmount = ethers.utils.parseEther('0.001');
+
+// amplifierDepositTx(amplifierAddress, referrer, depositAmount).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

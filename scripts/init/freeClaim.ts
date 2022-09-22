@@ -1,95 +1,81 @@
 import { ethers } from 'hardhat';
-import {
-    FreeClaim__factory,
-    MaxxFinance__factory,
-    MaxxStake__factory,
-} from '../../typechain-types';
+import { BigNumber } from 'ethers';
 import log from 'ololog';
 
-async function main() {
-    const signers = await ethers.getSigners();
-    const signer = signers[0];
-    const freeClaimAddress = process.env.FREE_CLAIM_ADDRESS!;
-    log.magenta('freeClaimAddress: ', freeClaimAddress);
-    const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
-    log.magenta('maxxStakeAddress: ', maxxStakeAddress);
-    const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
-    log.magenta('maxxFinanceAddress: ', maxxFinanceAddress);
-    const merkleRoot =
-        '0xe6415e7304a8dc76e9415eca8345e3f1602ce4a67cdbc311450589b62f8c485c';
+import {
+    getMaxxFinance,
+    getMaxxStake,
+    getFreeClaim,
+} from '../utils/getContractInstance';
 
-    const MaxxFinance = (await ethers.getContractFactory(
-        'MaxxFinance'
-    )) as MaxxFinance__factory;
+import { freeClaimLeafInputs } from '../utils/freeClaimLeaves';
+import { getMerkleRoot } from '../utils/merkleTree';
 
-    const maxxFinance = MaxxFinance.attach(maxxFinanceAddress);
-    const totalClaimAmount = ethers.utils.parseEther('100000000'); // 100 million
+export async function initFreeClaim(
+    maxxFinanceAddress: string,
+    maxxStakeAddress: string,
+    freeClaimAddress: string,
+    totalClaimAmount: BigNumber
+): Promise<boolean> {
+    try {
+        const signers = await ethers.getSigners();
+        const signer = signers[0];
 
-    const approve = await maxxFinance.approve(
-        freeClaimAddress,
-        totalClaimAmount
-    );
-    await approve.wait();
-    log.green('approve: ', approve.hash);
+        const freeClaim = await getFreeClaim(freeClaimAddress);
 
-    const allowSigner = await maxxFinance.allow(signer.address);
-    await allowSigner.wait();
-    log.yellow('allowSigner: ', allowSigner.hash);
+        const merkleRoot = getMerkleRoot(freeClaimLeafInputs);
 
-    const FreeClaim = (await ethers.getContractFactory(
-        'FreeClaim'
-    )) as FreeClaim__factory;
+        const setRoot = await freeClaim.setMerkleRoot(merkleRoot);
+        await setRoot.wait();
 
-    const freeClaim = FreeClaim.attach(freeClaimAddress);
+        const setMaxxStake = await freeClaim.setMaxxStake(maxxStakeAddress);
+        await setMaxxStake.wait();
 
-    const setRoot = await freeClaim.setMerkleRoot(merkleRoot);
-    await setRoot.wait();
-    log.green('setRoot: ', setRoot.hash);
+        const maxxFinance = await getMaxxFinance(maxxFinanceAddress);
 
-    const allowance = await maxxFinance.allowance(
-        signer.address,
-        freeClaimAddress
-    );
-    log.yellow('allowance: ', allowance.toString());
-    log.yellow('totalClaimAmount: ', totalClaimAmount.toString());
+        const allowSigner = await maxxFinance.allow(signer.address);
+        await allowSigner.wait();
 
-    if (allowance.gte(totalClaimAmount)) {
-        const senderBalance = await maxxFinance.balanceOf(signer.address);
-        log.cyan('sender balance:', senderBalance.toString());
+        const allowFreeClaim = await maxxFinance.allow(freeClaimAddress);
+        await allowFreeClaim.wait();
+
+        const approve = await maxxFinance.approve(
+            freeClaimAddress,
+            totalClaimAmount
+        );
+        await approve.wait();
+
         const allocateMaxx = await freeClaim.allocateMaxx(totalClaimAmount, {
             gasLimit: 1_000_000,
         });
         await allocateMaxx.wait();
-        log.green('allocateMaxx: ', allocateMaxx.hash);
-        const newBalance = await maxxFinance.balanceOf(freeClaim.address);
-        log.yellow('newBalance: ', newBalance.toString());
-    } else {
-        log.red('Allowance is not enough');
+
+        const maxxStake = await getMaxxStake(maxxStakeAddress);
+        const stakeFreeClaimAddress = await maxxStake.setFreeClaim(
+            freeClaimAddress
+        );
+        await stakeFreeClaimAddress.wait();
+
+        return true;
+    } catch (e) {
+        log.red(e);
+        return false;
     }
-
-    // const setMaxxStake = await freeClaim.setMaxxStake(maxxStakeAddress);
-    // await setMaxxStake.wait();
-    // log.green('setMaxxStake: ', setMaxxStake.hash);
-
-    const allow = await maxxFinance.allow(freeClaimAddress);
-    await allow.wait();
-    log.yellow('allow: ', allow.hash);
-
-    const MaxxStake = (await ethers.getContractFactory(
-        'MaxxStake'
-    )) as MaxxStake__factory;
-
-    const maxxStake = MaxxStake.attach(maxxStakeAddress);
-    const stakeFreeClaimAddress = await maxxStake.setFreeClaim(
-        freeClaimAddress
-    );
-    await stakeFreeClaimAddress.wait();
-    log.green('stakeFreeClaimAddress: ', stakeFreeClaimAddress.hash);
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+// const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
+// const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
+// const freeClaimAddress = process.env.FREE_CLAIM_ADDRESS!;
+// const totalClaimAmount = ethers.utils.parseEther(
+//     process.env.TOTAL_FREE_CLAIM_AMOUNT!
+// );
+
+// initFreeClaim(
+//     maxxFinanceAddress,
+//     maxxStakeAddress,
+//     freeClaimAddress,
+//     totalClaimAmount
+// ).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

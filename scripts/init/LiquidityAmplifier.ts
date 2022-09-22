@@ -1,4 +1,4 @@
-import hre, { ethers } from 'hardhat';
+import { ethers } from 'hardhat';
 import {
     LiquidityAmplifier__factory,
     MaxxFinance__factory,
@@ -6,141 +6,139 @@ import {
 } from '../../typechain-types';
 import log from 'ololog';
 
-async function main() {
+import {
+    getMaxxFinance,
+    getMaxxStake,
+    getLiquidityAmplifier,
+} from '../utils/getContractInstance';
+
+export async function initLiquidityAmplifier(
+    maxxFinanceAddress: string,
+    maxxStakeAddress: string,
+    amplifierAddress: string
+): Promise<boolean> {
     const maxxVaultAddress = process.env.MAXX_VAULT_ADDRESS!;
-    const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
-    const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
-    const maxxLiquidityAmplifierAddress =
-        process.env.LIQUIDITY_AMPLIFIER_ADDRESS!;
 
-    const totalAllocation = ethers.utils.parseEther('40000000000'); // // 40 billion tokens
-    const dailyAllocation = totalAllocation.div(60); // totalAllocation divided equally for 60 days
+    try {
+        const totalAllocation = ethers.utils.parseEther('40000000000'); // // 40 billion tokens
+        const dailyAllocation = totalAllocation.div(60); // totalAllocation divided equally for 60 days
 
-    const MaxxFinance = (await ethers.getContractFactory(
-        'MaxxFinance'
-    )) as MaxxFinance__factory;
-    const maxxFinance = MaxxFinance.attach(maxxFinanceAddress);
+        const maxxFinance = await getMaxxFinance(maxxFinanceAddress);
 
-    const LiquidityAmplifier = (await ethers.getContractFactory(
-        'LiquidityAmplifier'
-    )) as LiquidityAmplifier__factory;
+        const liquidityAmplifier = await getLiquidityAmplifier(
+            amplifierAddress
+        );
 
-    const liquidityAmplifier = LiquidityAmplifier.attach(
-        maxxLiquidityAmplifierAddress
-    );
-
-    const vaultAllowed = await maxxFinance.isAllowed(maxxVaultAddress);
-    if (!vaultAllowed) {
-        const allowVault = await maxxFinance.allow(maxxVaultAddress);
-        await allowVault.wait();
-        log.green('allowVault: ', allowVault.hash);
-    }
-
-    const maxxTransfer = await maxxFinance.transfer(
-        liquidityAmplifier.address,
-        totalAllocation,
-        {
-            gasLimit: 1000000,
+        const vaultAllowed = await maxxFinance.isAllowed(maxxVaultAddress);
+        if (!vaultAllowed) {
+            const allowVault = await maxxFinance.allow(maxxVaultAddress);
+            await allowVault.wait();
         }
-    );
-    await maxxTransfer.wait();
-    log.yellow(
-        'maxx total allocation (' +
-            totalAllocation.toString() +
-            ') transferred: ',
-        maxxTransfer.hash
-    );
 
-    const setStakeAddress = await liquidityAmplifier.setStakeAddress(
-        maxxStakeAddress
-    );
-    await setStakeAddress.wait();
-    log.green('setStakeAddress: ', setStakeAddress.hash);
+        const maxxTransfer = await maxxFinance.transfer(
+            liquidityAmplifier.address,
+            totalAllocation,
+            {
+                gasLimit: 1000000,
+            }
+        );
+        await maxxTransfer.wait();
 
-    const dailyAllocations = [
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-        dailyAllocation,
-    ];
+        const setStakeAddress = await liquidityAmplifier.setStakeAddress(
+            maxxStakeAddress
+        );
+        await setStakeAddress.wait();
 
-    const setDailyAllocations = await liquidityAmplifier.setDailyAllocations(
-        dailyAllocations
-    );
-    await setDailyAllocations.wait();
-    log.green('setDailyAllocations: ', setDailyAllocations.hash);
+        const dailyAllocations = [
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+            dailyAllocation,
+        ];
 
-    const MaxxStake = (await ethers.getContractFactory(
-        'MaxxStake'
-    )) as MaxxStake__factory;
+        const setDailyAllocations =
+            await liquidityAmplifier.setDailyAllocations(dailyAllocations, {
+                gasLimit: 5_000_000,
+            });
+        await setDailyAllocations.wait();
 
-    const maxxStake = MaxxStake.attach(maxxStakeAddress);
-    const stakeAmplifierAddress = await maxxStake.setLiquidityAmplifier(
-        maxxLiquidityAmplifierAddress
-    );
-    await stakeAmplifierAddress.wait();
-    log.green('stakeAmplifierAddress: ', stakeAmplifierAddress.hash);
+        const maxxStake = await getMaxxStake(maxxStakeAddress);
+        const stakeAmplifierAddress = await maxxStake.setLiquidityAmplifier(
+            amplifierAddress
+        );
+        await stakeAmplifierAddress.wait();
+        return true;
+    } catch (e) {
+        log.red(e);
+        return false;
+    }
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+// const maxxFinanceAddress = process.env.MAXX_FINANCE_ADDRESS!;
+// const maxxStakeAddress = process.env.MAXX_STAKE_ADDRESS!;
+// const amplifierAddress = process.env.LIQUIDITY_AMPLIFIER_ADDRESS!;
+
+// initLiquidityAmplifier(
+//     maxxFinanceAddress,
+//     maxxStakeAddress,
+//     amplifierAddress
+// ).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });

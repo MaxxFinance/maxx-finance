@@ -1,22 +1,40 @@
 import hre, { ethers } from 'hardhat';
 import { MAXXBoost__factory } from '../../typechain-types';
-import log from 'ololog';
+import { Deployment } from '../utils/contractDeploy';
 
-async function main() {
-    const amplifierAddress = process.env.LIQUIDITY_AMPLIFIER_ADDRESS!; // Mumbai Testnet address
-    const stakingAddress = process.env.MAXX_STAKE_ADDRESS!; // Mumbai Testnet address
-
+export async function deployMaxxBoost(
+    amplifierAddress: string,
+    stakingAddress: string
+): Promise<Deployment> {
     const MAXXBoost = (await ethers.getContractFactory(
         'MAXXBoost'
     )) as MAXXBoost__factory;
 
     const maxxBoost = await MAXXBoost.deploy(amplifierAddress, stakingAddress);
-    log.yellow('maxxBoost.address: ', maxxBoost.address);
+    await maxxBoost.deployed();
+
+    const network = hre.network.name;
+    if (network === 'polygon') {
+        try {
+            await hre.run('verify:verify', {
+                address: maxxBoost.address,
+                constructorArguments: [amplifierAddress, stakingAddress],
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    return {
+        address: maxxBoost.address,
+        block: maxxBoost.deployTransaction.blockNumber!,
+    };
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+const amplifierAddress = process.env.LIQUIDITY_AMPLIFIER_ADDRESS!;
+const stakingAddress = process.env.MAXX_STAKE_ADDRESS!;
+
+// deployMaxxBoost(amplifierAddress, stakingAddress).catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });
