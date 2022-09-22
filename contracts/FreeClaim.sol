@@ -18,6 +18,9 @@ error InvalidProof();
 /// No more MAXX left to claim
 error FreeClaimEnded();
 
+/// Free Claim has not started yet
+error FreeClaimNotStarted();
+
 /// User cannot refer themselves
 error SelfReferral();
 
@@ -133,7 +136,13 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         if (_amount > MAX_CLAIM_AMOUNT) {
             _amount = MAX_CLAIM_AMOUNT; // cannot claim more than the MAX_CLAIM_AMOUNT
         }
-        uint256 timePassed = block.timestamp - launchDate;
+        uint256 timePassed;
+        if (block.timestamp < launchDate) {
+            revert FreeClaimNotStarted();
+        }
+        unchecked {
+            timePassed = block.timestamp - launchDate;
+        }
 
         _amount =
             (_amount * (FREE_CLAIM_DURATION - timePassed)) /
