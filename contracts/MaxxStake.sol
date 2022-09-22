@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -14,15 +15,6 @@ import {IMAXXBoost} from "./interfaces/IMAXXBoost.sol";
 
 /// Not authorized to control the stake
 error NotAuthorized();
-
-/// The stake is already approved
-error AlreadyApproved();
-
-/// Stake owner is attempting to approve themselves
-error SelfApproval();
-
-/// The spender is not approved to transfer the stake
-error UnauthorizedTransfer();
 
 /// Cannot stake less than {MIN_STAKE_DAYS} days
 error StakeTooShort();
@@ -36,20 +28,11 @@ error InsufficientMaxx();
 /// Stake has not yet completed
 error StakeNotComplete();
 
-/// Stake has already matured
-error StakeMatured();
-
-/// Stake does not exist
-error StakeDoesNotExist();
-
 /// Stake has already been claimed
 error StakeAlreadyWithdrawn();
 
-/// Cannot transfer stake to zero address
-error TransferToTheZeroAddress();
-
 /// User does not own the NFT
-error NotNFTOwner();
+error IncorrectOwner();
 
 /// NFT boost has already been used
 error UsedNFT();
@@ -69,22 +52,32 @@ error InterfaceNotSupported(address _nft);
 
 /// @title Maxx Finance staking contract
 /// @author Alta Web3 Labs - SonOfMosiah
-contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
+contract MaxxStake is
+    ERC721,
+    ERC721Enumerable,
+    Ownable,
+    Pausable,
+    ReentrancyGuard
+{
     using ERC165Checker for address;
     using Counters for Counters.Counter;
 
     struct StakeData {
         string name; // 32 letters max
+        address owner;
         uint256 amount;
         uint256 shares;
         uint256 duration;
         uint256 startDate;
+        bool withdrawn;
     }
 
     enum MaxxNFT {
         MaxxGenesis,
         MaxxBoost
     }
+
+    // TODO mapping(address => bool) public acceptedNfts;
 
     // Calculation variables
     uint256 public immutable launchDate;
@@ -131,20 +124,9 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
 
     /// @notice Array of all stakes
     StakeData[] public stakes;
-    // StakeData[] public activeStakes;
-    // StakeData[] public withdrawnStakes;
 
-    /// @notice mapping of withdrawn (unstaked) stakes
-    mapping(uint256 => bool) public withdrawnStakes;
-
-    // Mapping of stake to owner
-    mapping(uint256 => address) private _owners;
-
-    // Mapping from token ID to approved address
-    mapping(uint256 => address) private _stakeApprovals;
-
-    // Mapping from owner to operator approvals
-    mapping(address => mapping(address => bool)) private _operatorApprovals;
+    // Base URI
+    string private _baseUri; // TODO
 
     /// @notice Emitted when MAXX is staked
     /// @param user The user staking MAXX
@@ -157,41 +139,23 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
     /// @param amount The amount of MAXX unstaked
     event Unstake(address indexed user, uint256 amount);
 
-    /// @notice Emitted when stake is transferred
-    /// @param oldOwner The user transferring the stake
-    /// @param newOwner The user receiving the stake
-    event Transfer(address indexed oldOwner, address indexed newOwner);
-
-    /// @dev Emitted when `owner` enables `approved` to manage the `stakeId` token.
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 stakeId
-    );
-
-    /// @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
-
     /// @notice Emitted when the name of a stake is changed
     /// @param stakeId The id of the stake
     /// @param name The new name of the stake
     event StakeNameChange(uint256 stakeId, string name);
 
+    /// @dev Sets the `maxxVault` and `maxx` addresses and the `launchDate`
     constructor(
         address _maxxVault,
         address _maxx,
         uint256 _launchDate
-    ) {
+    ) ERC721("MaxxStake", "SMAXX") {
         maxxVault = _maxxVault;
         maxx = IMaxxFinance(_maxx);
         launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date
         // start stake ID at 1
         idCounter.increment();
-        stakes.push(StakeData("", 0, 0, 0, 0)); // index 0 is null stake;
+        stakes.push(StakeData("", address(0), 0, 0, 0, 0, false)); // index 0 is null stake;
     }
 
     /// @notice Function to stake MAXX
@@ -201,8 +165,7 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
     function stake(uint16 _numDays, uint256 _amount) external {
         uint256 shares = _calcShares(_numDays, _amount);
 
-        uint256 stakeId = _stake(_numDays, _amount, shares);
-        _owners[stakeId] = msg.sender;
+        _stake(msg.sender, _numDays, _amount, shares);
     }
 
     /// @notice Function to stake MAXX
@@ -229,7 +192,7 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
         }
 
         if (msg.sender != nft.ownerOf(_tokenId)) {
-            revert NotNFTOwner();
+            revert IncorrectOwner();
         } else if (nft.getUsedState(_tokenId)) {
             revert UsedNFT();
         }
@@ -238,25 +201,20 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
         uint256 shares = _calcShares(_numDays, _amount);
         shares += shares / 10; // add 10% to the shares for the nft bonus
 
-        uint256 stakeId = _stake(_numDays, _amount, shares);
-        _owners[stakeId] = msg.sender;
+        _stake(msg.sender, _numDays, _amount, shares);
     }
 
     /// @notice Function to unstake MAXX
     /// @param _stakeId The id of the stake to unstake
     function unstake(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
-        address stakeOwner = ownerOf(_stakeId);
-        if (
-            msg.sender != stakeOwner &&
-            !isApprovedForAll(stakeOwner, msg.sender)
-        ) {
+        if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
             revert NotAuthorized();
         }
-        if (withdrawnStakes[_stakeId]) {
+        if (tStake.withdrawn) {
             revert StakeAlreadyWithdrawn();
         }
-        withdrawnStakes[_stakeId] = true;
+        stakes[_stakeId].withdrawn = true;
         totalStakesWithdrawn.increment();
         totalStakesActive.decrement();
 
@@ -360,10 +318,7 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
     {
         StakeData memory tStake = stakes[_stakeId];
         address stakeOwner = ownerOf(_stakeId);
-        if (
-            msg.sender != stakeOwner &&
-            !isApprovedForAll(stakeOwner, msg.sender)
-        ) {
+        if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
             revert NotAuthorized();
         }
         uint256 maturation = tStake.startDate + tStake.duration;
@@ -400,35 +355,19 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
     /// @param _to The new owner of the stake
     /// @param _stakeId The id of the stake
     function transfer(address _to, uint256 _stakeId) external {
-        if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
+        address stakeOwner = ownerOf(_stakeId);
+        if (msg.sender != stakeOwner) {
             revert NotAuthorized();
         }
-        _transferStake(_stakeId, _to);
-    }
-
-    /// @notice Function for an external address to transfer stake ownership with an allowance
-    /// @dev Only removes the allowance from the calling address, if multiple addresses were given an allowance, they will persist
-    /// @param _from The address of the old owner of the stake
-    /// @param _to The address to the new owner of the stake
-    /// @param _stakeId The id of the stake
-    function transferFrom(
-        address _from,
-        address _to,
-        uint256 _stakeId
-    ) external {
-        if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
-            revert NotAuthorized();
-        }
-        if (_from != ownerOf(_stakeId)) {
-            revert NotAuthorized();
-        }
-        _transferStake(_stakeId, _to);
+        _transfer(msg.sender, _to, _stakeId);
     }
 
     /// @notice This function changes the name of a stake
     /// @param _stakeId The id of the stake
-    /// @param _name The new name of the stake
-    function changeStakeName(uint256 _stakeId, string memory _name) external {
+    /// @param _stakeName The new name of the stake
+    function changeStakeName(uint256 _stakeId, string memory _stakeName)
+        external
+    {
         address stakeOwner = ownerOf(_stakeId);
         if (
             msg.sender != stakeOwner &&
@@ -437,73 +376,28 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
             revert NotAuthorized();
         }
 
-        stakes[_stakeId].name = _name;
-        emit StakeNameChange(_stakeId, _name);
+        stakes[_stakeId].name = _stakeName;
+        emit StakeNameChange(_stakeId, _stakeName);
     }
 
     /// @notice Function to stake MAXX from liquidity amplifier contract
     /// @param _numDays The number of days to stake for
     /// @param _amount The amount of MAXX to stake
-    function amplifierStake(uint16 _numDays, uint256 _amount)
-        external
-        returns (uint256 stakeId, uint256 shares)
-    {
-        if (msg.sender != liquidityAmplifier) {
-            revert NotAuthorized();
-        }
-
-        shares = _calcShares(_numDays, _amount);
-        if (_numDays >= DAYS_IN_YEAR) {
-            shares = (shares * 11) / 10;
-        }
-
-        stakeId = _stake(_numDays, _amount, shares);
-        _owners[stakeId] = tx.origin;
-        return (stakeId, shares);
-    }
-
-    /// @notice Function to stake MAXX from liquidity amplifier contract
-    /// @param _numDays The number of days to stake for
-    /// @param _amount The amount of MAXX to stake
-    /// @param _tokenId // The token Id of the nft to use
-    /// @param _maxxNFT // The nft collection to use
     function amplifierStake(
+        address _owner,
         uint16 _numDays,
-        uint256 _amount,
-        uint256 _tokenId,
-        MaxxNFT _maxxNFT
+        uint256 _amount
     ) external returns (uint256 stakeId, uint256 shares) {
         if (msg.sender != liquidityAmplifier) {
             revert NotAuthorized();
         }
 
-        IMAXXBoost nft;
-        if (_maxxNFT == MaxxNFT.MaxxGenesis) {
-            nft = maxxGenesis;
-        } else {
-            nft = maxxBoost;
-        }
-
-        if (address(nft) == address(0)) {
-            revert NftNotInitialized();
-        }
-
-        if (msg.sender != nft.ownerOf(_tokenId)) {
-            revert NotNFTOwner();
-        } else if (nft.getUsedState(_tokenId)) {
-            revert UsedNFT();
-        }
-        nft.setUsed(_tokenId);
-
         shares = _calcShares(_numDays, _amount);
-        shares += shares / 10; // add 10% to the shares for the nft bonus
         if (_numDays >= DAYS_IN_YEAR) {
             shares = (shares * 11) / 10;
         }
 
-        stakeId = _stake(_numDays, _amount, shares);
-
-        _owners[stakeId] = tx.origin;
+        stakeId = _stake(_owner, _numDays, _amount, shares);
         return (stakeId, shares);
     }
 
@@ -520,9 +414,7 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
 
         shares = _calcShares(DAYS_IN_YEAR, _amount);
 
-        stakeId = _stake(DAYS_IN_YEAR, _amount, shares);
-
-        _owners[stakeId] = _owner;
+        stakeId = _stake(_owner, DAYS_IN_YEAR, _amount, shares);
 
         return (stakeId, shares);
     }
@@ -573,36 +465,38 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
         maxxGenesis = IMAXXBoost(_maxxGenesis);
     }
 
+    function setBaseURI(string memory baseURI_) external onlyOwner {
+        _baseUri = baseURI_;
+    }
+
+    // function setTokenURI(uint256 _stakeId, string memory _uri)
+    //     external
+    //     onlyOwner
+    // {
+    //     _setTokenURI(_stakeId, _uri);
+    // }
+
     /// @notice Get the stakes array
     /// @return stakes The stakes array
     function getAllStakes() external view returns (StakeData[] memory) {
         return stakes;
     }
 
-    /// @dev Gives permission to `_to` to transfer `_stakeId` token to another account.
-    /// @param _to The address given approval
-    /// @param _stakeId The id of the stake to be approved for transfer
-    function approve(address _to, uint256 _stakeId) public {
-        address stakeOwner = ownerOf(_stakeId);
-        if (_to == stakeOwner) {
-            revert SelfApproval();
+    /// @notice Get the `count` stakes starting from `index`
+    /// @param index The index to start from
+    /// @param count The number of stakes to return
+    /// @return result An array of StakeData
+    function getStakes(uint256 index, uint256 count)
+        external
+        view
+        returns (StakeData[] memory result)
+    {
+        uint256 inserts;
+        for (uint256 i = index; i < index + count; i++) {
+            result[inserts] = (stakes[i]);
+            ++inserts;
         }
-        if (
-            msg.sender != stakeOwner &&
-            !isApprovedForAll(stakeOwner, msg.sender)
-        ) {
-            revert NotAuthorized();
-        }
-
-        _approve(_to, _stakeId);
-    }
-
-    /// @notice Approve or remove `operator` as an operator for the caller.
-    /// @dev Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.
-    /// @param _operator The account that will be added or removed as an operator.
-    /// @param _approved Whether the account is added or removed as an operator.
-    function setApprovalForAll(address _operator, bool _approved) public {
-        _setApprovalForAll(msg.sender, _operator, _approved);
+        return result;
     }
 
     /// @notice This function will return day `day` since the launch date
@@ -612,64 +506,26 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
         return day;
     }
 
-    /// @dev Returns the owner of the `_stakeId` token.
-    /// @param _stakeId The id of the stake
-    /// @return stakeOwner The owner of the stake
-    function ownerOf(uint256 _stakeId)
+    function supportsInterface(bytes4 interfaceId)
         public
         view
-        returns (address stakeOwner)
-    {
-        stakeOwner = _owners[_stakeId];
-        if (stakeOwner == address(0)) {
-            revert StakeDoesNotExist();
-        }
-    }
-
-    /// @notice Returns the account approved for `_stakeId` token.
-    /// @param _stakeId The id of the stake
-    /// @return operator The account approved for `_stakeId` token.
-    function getApproved(uint256 _stakeId)
-        public
-        view
-        returns (address operator)
-    {
-        _requireStaked(_stakeId);
-
-        return _stakeApprovals[_stakeId];
-    }
-
-    /// @notice Returns if the `operator` is allowed to manage all of the assets of `owner`.
-    /// @param _owner The account owning the stakes.
-    /// @param _operator The account to check for operating approval.
-    /// @return True if `operator` is allowed to manage all of the stakes of `owner`.
-    function isApprovedForAll(address _owner, address _operator)
-        public
-        view
+        override(ERC721, ERC721Enumerable)
         returns (bool)
     {
-        return _operatorApprovals[_owner][_operator];
+        return super.supportsInterface(interfaceId);
     }
 
-    function _approve(address _to, uint256 _stakeId) internal {
-        _stakeApprovals[_stakeId] = _to;
-        emit Approval(ownerOf(_stakeId), _to, _stakeId);
-    }
-
-    /// @dev Approve `_operator` to operate on all of `_owner` stakes
-    function _setApprovalForAll(
-        address _owner,
-        address _operator,
-        bool _approved
-    ) internal {
-        if (_owner == _operator) {
-            revert SelfApproval();
-        }
-        _operatorApprovals[_owner][_operator] = _approved;
-        emit ApprovalForAll(_owner, _operator, _approved);
+    /**
+     * @dev Base URI for computing {tokenURI}. If set, the resulting URI for each
+     * token will be the concatenation of the `baseURI` and the `tokenId`. Empty
+     * by default, can be overridden in child contracts.
+     */
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _baseUri;
     }
 
     function _stake(
+        address _owner,
         uint16 _numDays,
         uint256 _amount,
         uint256 _shares
@@ -704,61 +560,25 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
         uint256 duration = uint256(_numDays) * 1 days;
         stakeId = idCounter.current();
         assert(stakeId == stakes.length);
-        stakes.push(StakeData("", _amount, _shares, duration, block.timestamp));
-        // stakes[stakeId] = StakeData(
-        //     "",
-        //     _amount,
-        //     _shares,
-        //     duration,
-        //     block.timestamp
-        // );
+        stakes.push(
+            StakeData(
+                "",
+                _owner,
+                _amount,
+                _shares,
+                duration,
+                block.timestamp,
+                false
+            )
+        );
+
         endTimes[stakeId] = block.timestamp + duration;
+
+        _mint(_owner, stakeId);
+
         idCounter.increment();
-        emit Stake(msg.sender, _numDays, _amount);
+        emit Stake(_owner, _numDays, _amount);
         return stakeId;
-    }
-
-    function _transferStake(uint256 _stakeId, address _to) internal {
-        if (_to == address(0)) {
-            revert TransferToTheZeroAddress();
-        }
-
-        delete _stakeApprovals[_stakeId];
-
-        _owners[_stakeId] = _to;
-        emit Transfer(msg.sender, _to);
-    }
-
-    function _transfer(address payable _to, uint256 _amount) internal {
-        // Note that "to" is declared as payable
-        (bool success, ) = _to.call{value: _amount}("");
-        if (!success) {
-            revert TransferFailed();
-        }
-    }
-
-    /// @dev Reverts if the `_stakeId` has not been minted yet.
-    function _requireStaked(uint256 _stakeId) internal view {
-        if (!_exists(_stakeId)) {
-            revert StakeDoesNotExist();
-        }
-    }
-
-    /// @dev Returns whether `_stakeId` exists.
-    function _exists(uint256 _stakeId) internal view returns (bool) {
-        return _owners[_stakeId] != address(0);
-    }
-
-    /// @dev Returns whether `_spender` is allowed to manage `_stakeId`.
-    function _isApprovedOrOwner(address _spender, uint256 _stakeId)
-        internal
-        view
-        returns (bool)
-    {
-        address stakeOwner = ownerOf(_stakeId);
-        return (_spender == stakeOwner ||
-            isApprovedForAll(stakeOwner, _spender) ||
-            getApproved(_stakeId) == _spender);
     }
 
     /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
@@ -817,5 +637,14 @@ contract MaxxStake is Ownable, Pausable, ReentrancyGuard {
             interestToDate = currentDurationInterest;
         }
         return interestToDate;
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override(ERC721, ERC721Enumerable) {
+        stakes[tokenId].owner = to;
+        super._beforeTokenTransfer(from, to, tokenId);
     }
 }
