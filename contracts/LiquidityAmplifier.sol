@@ -75,7 +75,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     uint16 public constant MAX_LATE_DAYS = 100;
     uint16 public constant CLAIM_PERIOD = 60;
     uint16 public constant AMPLIFIER_PERIOD = 60;
-    uint256 public constant MIN_GENESIS_AMOUNT = 1e24; //1 million MAXX // QUESTION: Is this the right amount?
+    uint256 public constant MIN_GENESIS_AMOUNT = 5e19; //50 matic // QUESTION: Is this the right amount?
 
     /// @notice maps address to day (indexed at 0) to amount of tokens deposited
     mapping(address => uint256[60]) public userDailyDeposits;
@@ -186,9 +186,9 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         _effectiveMaticDailyDeposits[day] += effectiveDeposit;
         dailyDepositors[day] += 1;
 
-        userAmpReferral[msg.sender].push(block.timestamp);
-        userAmpReferral[msg.sender].push(amount);
-        userAmpReferral[msg.sender].push(referrerAmount);
+        userAmpReferral[_referrer].push(block.timestamp);
+        userAmpReferral[_referrer].push(amount);
+        userAmpReferral[_referrer].push(referrerAmount);
 
         emit Referral(msg.sender, _referrer, amount);
         emit Deposit(msg.sender, amount, _referrer);
@@ -251,9 +251,9 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         _effectiveMaticDailyDeposits[day] += effectiveDeposit;
         dailyDepositors[day] += 1;
 
-        userAmpReferral[msg.sender].push(block.timestamp);
-        userAmpReferral[msg.sender].push(amount);
-        userAmpReferral[msg.sender].push(referrerAmount);
+        userAmpReferral[_referrer].push(block.timestamp);
+        userAmpReferral[_referrer].push(amount);
+        userAmpReferral[_referrer].push(referrerAmount);
 
         emit Referral(msg.sender, _referrer, amount);
         emit Deposit(msg.sender, amount, _referrer);
@@ -299,26 +299,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
         uint256 amount = _getClaimAmount(_day);
         IMaxxFinance(maxx).approve(address(stake), amount);
-        stake.amplifierStake(_daysToStake, amount);
-        emit Claim(msg.sender, amount);
-    }
-
-    /// @notice Function to claim MAXX and directly stake
-    /// @param _day The day to claim MAXX for
-    /// @param _daysToStake The number of days to stake
-    /// @param _tokenId The token id of the NFT to use for a staking boost
-    /// @param _maxxNFT The NFT collection (0 - MaxxGenesis, 1 - MaxxBoost)
-    function claimToStake(
-        uint8 _day,
-        uint16 _daysToStake,
-        uint256 _tokenId,
-        IStake.MaxxNFT _maxxNFT
-    ) external {
-        _checkDayRange(_day);
-
-        uint256 amount = _getClaimAmount(_day);
-        IMaxxFinance(maxx).approve(address(stake), amount);
-        stake.amplifierStake(_daysToStake, amount, _tokenId, _maxxNFT);
+        stake.amplifierStake(msg.sender, _daysToStake, amount);
         emit Claim(msg.sender, amount);
     }
 
@@ -328,7 +309,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         _checkDayRange(_day);
 
         uint256 amount = _getReferralAmountAndApprove(_day);
-        stake.amplifierStake(14, amount);
+        stake.amplifierStake(msg.sender, 14, amount);
         emit ClaimReferral(msg.sender, amount);
     }
 
