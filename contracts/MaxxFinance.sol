@@ -290,14 +290,14 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
 
         if (_from != address(0) && _to != address(0)) {
             // transfer | transferFrom
-            if (_amount > whaleLimit && !allowed) {
-                revert WhaleLimit();
-            }
-
             if (isPool[_from]) {
                 // Also occurs if user is withdrawing their liquidity tokens.
                 lastPurchase[_to] = block.number;
             } else if (isPool[_to]) {
+                if (_amount > whaleLimit && !allowed) {
+                    revert WhaleLimit();
+                }
+
                 uint32 day = getCurrentDay();
                 dailyAmountSold[day] += _amount;
                 if (dailyAmountSold[day] > globalDailySellLimit && !allowed) {
