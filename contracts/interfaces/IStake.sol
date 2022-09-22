@@ -33,9 +33,11 @@ interface IStake {
         external
         returns (uint256 stakeId, uint256 shares);
 
-    function amplifierStake(uint16 numDays, uint256 amount)
-        external
-        returns (uint256 stakeId, uint256 shares);
+    function amplifierStake(
+        address owner,
+        uint16 numDays,
+        uint256 amount
+    ) external returns (uint256 stakeId, uint256 shares);
 
     function amplifierStake(
         uint16 numDays,
