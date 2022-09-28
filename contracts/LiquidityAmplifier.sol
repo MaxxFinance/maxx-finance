@@ -27,6 +27,8 @@ error InvalidDay(uint256 day);
 /// User has already claimed for this day
 /// @param day The amplifier day 1-60
 error AlreadyClaimed(uint8 day);
+/// User has already claimed referral rewards
+error AlreadyClaimedReferrals();
 /// The Maxx allocation has already been initialized
 error AlreadyInitialized();
 /// The Maxx Finance Staking contract hasn't been initialized
@@ -86,7 +88,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice tracks if address has participated in the amplifier
     mapping(address => bool) public participated;
     mapping(address => mapping(uint256 => bool)) public dayClaimed;
-    mapping(address => mapping(uint256 => bool)) public dayClaimedReferrals;
+    mapping(address => bool) public claimedReferrals;
 
     mapping(address => uint256[]) public userAmpReferral;
 
@@ -303,13 +305,9 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         emit Claim(msg.sender, amount);
     }
 
-    /// @notice Function to claim referral amount and directly stake
-    /// @param _day The day to claim MAXX for
-    function claimReferrals(uint8 _day) external {
-        _checkDayRange(_day);
-
-        uint256 amount = _getReferralAmountAndApprove(_day);
-        stake.amplifierStake(msg.sender, 14, amount);
+    /// @notice Function to claim referral amount as liquid MAXX tokens
+    function claimReferrals() external {
+        uint256 amount = _getReferralAmountAndTransfer();
         emit ClaimReferral(msg.sender, amount);
     }
 
@@ -507,18 +505,19 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     }
 
     /// @return amount The amount of MAXX tokens to be claimed
-    function _getReferralAmountAndApprove(uint8 _day)
-        internal
-        returns (uint256)
-    {
-        if (dayClaimedReferrals[msg.sender][_day]) {
-            revert AlreadyClaimed(_day);
+    function _getReferralAmountAndTransfer() internal returns (uint256) {
+        if (claimedReferrals[msg.sender]) {
+            revert AlreadyClaimedReferrals();
         }
-        dayClaimedReferrals[msg.sender][_day] = true;
-        uint256 amount = (_maxxDailyAllocation[_day] *
-            effectiveUserReferrals[msg.sender][_day]) /
-            _effectiveMaticDailyDeposits[_day];
-        IMaxxFinance(maxx).approve(address(stake), amount);
+        claimedReferrals[msg.sender] = true;
+        uint256 amount;
+        for (uint256 i = 0; i < AMPLIFIER_PERIOD; i++) {
+            amount +=
+                (_maxxDailyAllocation[i] *
+                    effectiveUserDailyDeposits[msg.sender][i]) /
+                _effectiveMaticDailyDeposits[i];
+        }
+        IMaxxFinance(maxx).transfer(msg.sender, amount);
         return amount;
     }
 
