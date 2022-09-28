@@ -37,8 +37,8 @@ error IncorrectOwner();
 /// NFT boost has already been used
 error UsedNFT();
 
-/// NFT address has not been initialized
-error NftNotInitialized();
+/// NFT collection is not accepted
+error NftNotAccepted();
 
 /// Token transfer returned false (failed)
 error TransferFailed();
@@ -77,7 +77,9 @@ contract MaxxStake is
         MaxxBoost
     }
 
-    // TODO mapping(address => bool) public acceptedNfts;
+    mapping(address => bool) public isAcceptedNft;
+    /// @dev 10 = 10% boost
+    mapping(address => uint256) public nftBonus;
 
     // Calculation variables
     uint256 public immutable launchDate;
@@ -173,33 +175,26 @@ contract MaxxStake is
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
     /// @param _tokenId // The token Id of the nft to use
-    /// @param _maxxNFT // The nft collection to use
+    /// @param _maxxNFT // The address of the nft collection to use
     function stake(
         uint16 _numDays,
         uint256 _amount,
         uint256 _tokenId,
-        MaxxNFT _maxxNFT
+        address _maxxNFT
     ) external {
-        IMAXXBoost nft;
-        if (_maxxNFT == MaxxNFT.MaxxGenesis) {
-            nft = maxxGenesis;
-        } else {
-            nft = maxxBoost;
+        if (!isAcceptedNft[_maxxNFT]) {
+            revert NftNotAccepted();
         }
 
-        if (address(nft) == address(0)) {
-            revert NftNotInitialized();
-        }
-
-        if (msg.sender != nft.ownerOf(_tokenId)) {
+        if (msg.sender != IMAXXBoost(_maxxNFT).ownerOf(_tokenId)) {
             revert IncorrectOwner();
-        } else if (nft.getUsedState(_tokenId)) {
+        } else if (IMAXXBoost(_maxxNFT).getUsedState(_tokenId)) {
             revert UsedNFT();
         }
-        nft.setUsed(_tokenId);
+        IMAXXBoost(_maxxNFT).setUsed(_tokenId);
 
         uint256 shares = _calcShares(_numDays, _amount);
-        shares += shares / 10; // add 10% to the shares for the nft bonus
+        shares += shares / nftBonus[_maxxNFT] / 100; // add nft bonus to the shares
 
         _stake(msg.sender, _numDays, _amount, shares);
     }
@@ -279,7 +274,6 @@ contract MaxxStake is
     function maxShare(uint256 _stakeId) external {
         StakeData memory tStake = stakes[_stakeId];
         address stakeOwner = ownerOf(_stakeId);
-        // TODO: slither says == is a dangerous strict equality
         if (tStake.duration >= uint256(MAX_STAKE_DAYS) * 1 days) {
             revert AlreadyMaxDuration();
         }
@@ -317,7 +311,6 @@ contract MaxxStake is
         nonReentrant
     {
         StakeData memory tStake = stakes[_stakeId];
-        address stakeOwner = ownerOf(_stakeId);
         if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
             revert NotAuthorized();
         }
@@ -403,18 +396,20 @@ contract MaxxStake is
 
     /// @notice Function to stake MAXX from FreeClaim contract
     /// @param _owner The owner of the stake
+    /// @param _numDays The number of days to stake for
     /// @param _amount The amount of MAXX to stake
-    function freeClaimStake(address _owner, uint256 _amount)
-        external
-        returns (uint256 stakeId, uint256 shares)
-    {
+    function freeClaimStake(
+        address _owner,
+        uint16 _numDays,
+        uint256 _amount
+    ) external returns (uint256 stakeId, uint256 shares) {
         if (msg.sender != freeClaim) {
             revert NotAuthorized();
         }
 
-        shares = _calcShares(DAYS_IN_YEAR, _amount);
+        shares = _calcShares(_numDays, _amount);
 
-        stakeId = _stake(_owner, DAYS_IN_YEAR, _amount, shares);
+        stakeId = _stake(_owner, _numDays, _amount, shares);
 
         return (stakeId, shares);
     }
@@ -465,6 +460,27 @@ contract MaxxStake is
         maxxGenesis = IMAXXBoost(_maxxGenesis);
     }
 
+    /// @notice Add an accepted NFT
+    /// @param _nft The address of the NFT contract
+    function addAcceptedNft(address _nft) external onlyOwner {
+        isAcceptedNft[_nft] = true;
+    }
+
+    /// @notice Remove an accepted NFT
+    /// @param _nft The address of the NFT to remove
+    function removeAcceptedNft(address _nft) external onlyOwner {
+        isAcceptedNft[_nft] = false;
+    }
+
+    /// @notice Set the staking bonus for `_nft` to `_bonus`
+    /// @param _nft The NFT contract address
+    /// @param _bonus The bonus percentage (e.g. 20 = 20%)
+    function setNftBonus(address _nft, uint256 _bonus) external onlyOwner {
+        nftBonus[_nft] = _bonus;
+    }
+
+    /// @notice Set the baseURI for the token collection
+    /// @param baseURI_ The baseURI for the token collection
     function setBaseURI(string memory baseURI_) external onlyOwner {
         _baseUri = baseURI_;
     }
@@ -537,20 +553,18 @@ contract MaxxStake is
         }
 
         // TODO: compare the gas usage of minting 1 wei before the transfer
+        if (
+            maxx.hasRole(maxx.MINTER_ROLE(), msg.sender) &&
+            maxx.balanceOf(_owner) == _amount &&
+            msg.sender != freeClaim &&
+            msg.sender != liquidityAmplifier
+        ) {
+            maxx.mint(msg.sender, 1);
+        }
 
         // transfer tokens to this contract -- removed from circulating supply
         if (!maxx.transferFrom(msg.sender, address(this), _amount)) {
             revert TransferFailed();
-        }
-
-        if (
-            maxx.hasRole(maxx.MINTER_ROLE(), msg.sender) &&
-            maxx.balanceOf(msg.sender) == 0 &&
-            msg.sender != freeClaim &&
-            msg.sender != liquidityAmplifier
-        ) {
-            // if the sender has no tokens left, mint 1 wei
-            maxx.mint(msg.sender, 1);
         }
 
         totalShares += _shares;
