@@ -257,6 +257,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         if (_amount <= remainingBalance) {
             if (_referrer != address(0)) {
                 _referralClaim(_amount, _referrer, true);
+                _amount += _amount / 10;
             }
         } else {
             _amount = remainingBalance;
@@ -267,7 +268,11 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         uint256 shares;
         if (stake) {
             stakedClaims.push(claimCounter.current());
-            (stakeId, shares) = maxxStake.freeClaimStake(msg.sender, _amount);
+            (stakeId, shares) = maxxStake.freeClaimStake(
+                msg.sender,
+                365,
+                _amount
+            );
         } else {
             unstakedClaims.push(claimCounter.current());
         }
@@ -307,6 +312,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             stakedClaims.push(claimCounter.current());
             (stakeId, shares) = maxxStake.freeClaimStake(
                 _referrer,
+                14,
                 referralAmount
             );
         } else {
@@ -315,7 +321,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
 
         Claim memory referralClaim = Claim({
             user: msg.sender,
-            amount: _amount,
+            amount: referralAmount,
             shares: shares,
             stakeId: stakeId,
             timestamp: block.timestamp
