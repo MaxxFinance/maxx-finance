@@ -29,9 +29,11 @@ interface IStake {
 
     function unstake(uint256 stakeId) external;
 
-    function freeClaimStake(address owner, uint256 amount)
-        external
-        returns (uint256 stakeId, uint256 shares);
+    function freeClaimStake(
+        address owner,
+        uint16 numDays,
+        uint256 amount
+    ) external returns (uint256 stakeId, uint256 shares);
 
     function amplifierStake(
         address owner,
