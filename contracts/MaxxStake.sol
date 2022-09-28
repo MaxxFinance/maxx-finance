@@ -228,8 +228,7 @@ contract MaxxStake is
             // fee assessed
             withdrawableAmount =
                 ((tStake.amount + interestToDate) * daysServed) /
-                tStake.duration /
-                1 days;
+                (tStake.duration / 1 days);
         } else if (daysServed > (tStake.duration / 1 days) + LATE_DAYS) {
             // unstaking late
             // fee assessed
