@@ -18,7 +18,7 @@ describe('Stake', () => {
     let otherAddress: any;
     const nft: any = '0x8634666bA15AdA4bbC83B9DbF285F73D9e46e4C2'; // Polygon Chicken Derby Collection
     const maxxVault = '0xBF7BF3d445aEc7B0c357163d5594DB8ca7C12D31';
-    let stakeCounter = -1;
+    let stakeCounter = 0;
     let days = 0;
     const amount = ethers.utils.parseEther('1');
     let signers: any[];
@@ -41,7 +41,7 @@ describe('Stake', () => {
         Stake = (await ethers.getContractFactory(
             'MaxxStake'
         )) as MaxxStake__factory;
-        stake = await Stake.deploy(maxxVault, maxx.address, timestamp, nft);
+        stake = await Stake.deploy(maxxVault, maxx.address, timestamp);
 
         await maxx.grantRole(await maxx.MINTER_ROLE(), stake.address);
     });
@@ -60,6 +60,8 @@ describe('Stake', () => {
             await maxx.approve(stake.address, amount);
             await stake['stake(uint16,uint256)'](30, amount);
             stakeCounter++;
+            let owner = await stake.ownerOf(stakeCounter);
+            expect(owner).to.equal(deployer.address);
             const balanceAfter = await maxx.balanceOf(deployer.address);
             const stakedBalanceAfter = await maxx.balanceOf(stake.address);
             const supplyAfter = await maxx.totalSupply();
@@ -112,8 +114,10 @@ describe('Stake', () => {
 
             days += 30;
 
-            const userStake = await stake.stakes(0);
-            const userStakeOwner = await stake.ownerOf(0);
+            const userStake = await stake.stakes(stakeCounter);
+            const userStakeOwner = await stake.ownerOf(stakeCounter);
+            log.yellow('userStakeOwner:', userStakeOwner);
+            log.yellow('deployer.address:', deployer.address);
             expect(userStakeOwner.toString()).to.equal(deployer.address);
 
             const shares = userStake.shares;
@@ -122,7 +126,7 @@ describe('Stake', () => {
                 .parseEther('1')
                 .add(fullInterest.toString());
 
-            await stake.unstake(0);
+            await stake.unstake(stakeCounter);
             const balanceAfter = await maxx.balanceOf(deployer.address);
             const balanceDifference = balanceAfter.sub(balanceBefore);
             expect(Number(balanceDifference)).to.be.gt(Number(amount));
@@ -247,7 +251,7 @@ describe('Stake', () => {
 
             await expect(
                 stake.connect(otherAddress).restake(stakeCounter, 0)
-            ).to.be.revertedWith('NotOwner()');
+            ).to.be.revertedWithCustomError(stake, 'NotAuthorized');
         });
 
         it('should not restake a stake that has not matured', async () => {
@@ -268,9 +272,9 @@ describe('Stake', () => {
 
             days += 120;
 
-            await expect(stake.restake(stakeCounter, 0)).to.be.revertedWith(
-                'StakeNotComplete()'
-            );
+            await expect(
+                stake.restake(stakeCounter, 0)
+            ).to.be.revertedWithCustomError(stake, 'StakeNotComplete');
         });
 
         it('should top up the restake amount', async () => {
@@ -328,9 +332,7 @@ describe('Stake', () => {
             await maxx.approve(stake.address, amount);
             await expect(
                 stake.restake(stakeCounter, amount)
-            ).to.be.revertedWith(
-                'You cannot restake a stake that is not matured'
-            );
+            ).to.be.revertedWithCustomError(stake, 'StakeNotComplete');
         });
     });
 
@@ -485,13 +487,15 @@ describe('Stake', () => {
             stakeCounter++;
 
             const ownerBefore = await stake.ownerOf(stakeCounter);
-            await stake.setApprovalForAll(signers[3].address, true);
+            await stake.setApprovalForAll(otherAddress.address, true);
 
-            await stake.transferFrom(
-                signers[3].address,
-                otherAddress.address,
-                stakeCounter
-            );
+            await stake
+                .connect(otherAddress)
+                .transferFrom(
+                    deployer.address,
+                    otherAddress.address,
+                    stakeCounter
+                );
             const ownerAfter = await stake.ownerOf(stakeCounter);
             expect(ownerAfter).to.not.be.equal(ownerBefore);
             expect(ownerAfter).to.be.equal(otherAddress.address);

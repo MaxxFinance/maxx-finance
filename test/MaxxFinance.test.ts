@@ -9,7 +9,7 @@ import {
     LiquidityAmplifier__factory,
 } from '../typechain-types/';
 
-describe.only('Maxx Token', () => {
+describe('Maxx Token', () => {
     let Maxx: MaxxFinance__factory;
     let maxx: MaxxFinance;
     let signers: any;
@@ -126,7 +126,6 @@ describe.only('Maxx Token', () => {
             expect(balanceDifference).to.not.eq(amount);
         });
         it('should transfer tokens from an authorized wallet', async () => {
-            // TODO passes when ran by itself, fails when ran with other tests
             const amount = ethers.utils.parseEther('1');
 
             await maxx.approve(signers[1].address, amount);
@@ -310,10 +309,15 @@ describe.only('Maxx Token', () => {
 
                 // sell tokens (transfer to pool)
                 const sellAmount = ethers.utils.parseEther('5');
+                const amountBefore0 = await maxx.balanceOf(signers[0].address);
+                const amountBefore1 = await maxx.balanceOf(signers[1].address);
                 const transferSuccess = await maxx
                     .connect(signers[0])
                     .transfer(signers[1].address, sellAmount);
-                expect(transferSuccess).to.eq(false);
+                const amountAfter0 = await maxx.balanceOf(signers[0].address);
+                const amountAfter1 = await maxx.balanceOf(signers[1].address);
+                expect(amountAfter0).to.eq(amountBefore0);
+                expect(amountAfter1).to.eq(amountBefore1);
             });
             it('should transfer tokens for allowlist addresses', async () => {
                 await maxx.allow(signers[0].address);
@@ -349,40 +353,39 @@ describe.only('Maxx Token', () => {
             });
         });
         describe('Sell Limits', () => {
-            it('should not allow transfers greater than the whale limit', async () => {
-                const to = signers[1].address;
+            it('should allow transfers to LP greater than the whale limit', async () => {
+                const to = signers[8].address;
+                await maxx.addPool(to);
                 const amount = (await maxx.whaleLimit()).add(1);
-                const balanceBefore = await maxx.balanceOf(deployer.address);
-                await expect(maxx.transfer(to, amount)).to.be.revertedWith(
-                    'ERC20: Transfer amount exceeds whale limit'
-                );
-                const balanceAfter = await maxx.balanceOf(deployer.address);
+                await maxx.disallow(to);
+                const balanceBefore = await maxx.balanceOf(to);
+                await expect(maxx.transfer(to, amount)).to.not.be.reverted;
+                const balanceAfter = await maxx.balanceOf(to);
                 const balanceDifference = balanceAfter.sub(balanceBefore);
-                expect(balanceDifference).to.eq(0);
+                expect(amount).to.be.gt(balanceDifference);
             });
-            it('should not allow transfers greater than the global daily sell limit', async () => {
+            it('should allow transfers to LP greater than the global daily sell limit', async () => {
                 await maxx.setGlobalDailySellLimit(1000000000); // 1 billion
                 await maxx.setWhaleLimit(1000000001); // 1 billion + 1 -> more than the daily sell limit
-                const to = signers[1].address;
+                const to = signers[8].address;
                 await maxx.addPool(to);
                 const dailySellLimit = await maxx.globalDailySellLimit();
                 const day = await maxx.getCurrentDay();
-                const dailtAmountSold = await maxx.dailyAmountSold(day);
-                const amount = dailySellLimit.sub(dailtAmountSold);
+                const dailyAmountSold = await maxx.dailyAmountSold(day);
+                const amount = dailySellLimit.sub(dailyAmountSold);
                 // less than the global daily sell limit
                 await maxx.transfer(to, amount);
 
                 log.yellow('after first transfer');
 
-                const balanceBefore = await maxx.balanceOf(deployer.address);
+                const balanceBefore = await maxx.balanceOf(to);
 
                 // amount exceeds the global daily sell limit
-                await expect(
-                    maxx.transfer(to, dailySellLimit)
-                ).to.be.revertedWith('ERC20: Daily sell limit exceeded');
-                const balanceAfter = await maxx.balanceOf(deployer.address);
+                await expect(maxx.transfer(to, dailySellLimit)).to.not.be
+                    .reverted;
+                const balanceAfter = await maxx.balanceOf(to);
                 const balanceDifference = balanceAfter.sub(balanceBefore);
-                expect(balanceDifference).to.eq(0);
+                expect(balanceDifference).to.be.lt(dailySellLimit);
             });
         });
     });
