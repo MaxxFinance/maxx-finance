@@ -18,10 +18,21 @@ error DailyLimit();
 /// New value is out of bounds for consumer protection
 error ConsumerProtection();
 
+/// The Maxx Vault address has already been initialized or attempting to set to the zero address
+error InitializationFailed();
+
+/// MinTransferTax must be <= MaxTransferTax
+error InvalidTax();
+
+/// MinTaxAmount must be <= MaxTaxAmount
+error InvalidTaxAmount();
+
+error ZeroAddress();
+
 /// @title Maxx Finance -- MAXX ERC20 token contract
 /// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE"); // TODO may need to change to private + getter function for inclusion in interface
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     /// @notice The amount of MAXX tokens burned
     uint256 public burnedAmount;
@@ -44,8 +55,15 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice The number of blocks required
     uint256 public blocksBetweenTransfers;
 
-    /// @notice Tax rate when calling transfer() or transferFrom()
-    uint16 public transferTax; // 1000 = 10%
+    /// @notice Max tax rate when calling transfer() or transferFrom()
+    uint16 public maxTransferTax; // 1000 = 10%
+    /// @notice Min tax rate when calling transfer() or transferFrom()
+    uint16 public minTransferTax; // 1000 = 10%
+
+    /// @notice Threshold for the maximum tax rate
+    uint256 public maxTaxAmount;
+    /// @notice Ceiling amount qualified for the minimum tax rate
+    uint256 public minTaxAmount;
 
     uint64 public constant GLOBAL_DAILY_SELL_LIMIT_MINIMUM = 1000000000; // 1 billion
     uint64 public constant WHALE_LIMIT_MINIMUM = 1000000; // 1 million
@@ -68,17 +86,38 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice The amount of tokens sold each day
     mapping(uint32 => uint256) public dailyAmountSold;
 
-    constructor(
-        address _maxxVault,
+    event PoolAdded(address indexed pool);
+    event MinTransferTaxUpdated(uint16 minTransferTax);
+    event MaxTransferTaxUpdated(uint16 maxTransferTax);
+    event MinTaxAmountUpdated(uint256 minTaxAmount); // TODO
+    event MaxTaxAmountUpdated(uint256 maxTaxAmount); // TODO
+    event BlocksBetweenTransfersUpdated(uint256 blocksBetweenTransfers);
+    event BlockLimitedUpdated(bool blockLimited);
+    event AddressAllowed(address indexed account);
+    event AddressDisallowed(address indexed account);
+    event AddressBlocked(address indexed account);
+    event AddressUnblocked(address indexed account);
+    event GlobalDailySellLimitUpdated(uint256 globalDailySellLimit);
+    event WhaleLimitUpdated(uint256 whaleLimit);
+
+    constructor() ERC20("Maxx Finance", "MAXX") {
+        _grantRole(DEFAULT_ADMIN_ROLE, tx.origin);
+        initialTimestamp = block.timestamp;
+    }
+
+    function init(
+        address _vault,
         uint16 _transferTax,
         uint256 _whaleLimit,
         uint256 _globalSellLimit
-    ) ERC20("Maxx Finance", "MAXX") {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        initialTimestamp = block.timestamp;
-        maxxVault = _maxxVault;
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (maxxVault != address(0) || _vault == address(0)) {
+            revert InitializationFailed();
+        }
+        maxxVault = _vault;
         _mint(maxxVault, INITIAL_SUPPLY * 10**decimals()); // Initial supply: 100 billion MAXX
-        setTransferTax(_transferTax);
+        setMaxTransferTax(_transferTax);
+        setMinTransferTax(_transferTax);
         setWhaleLimit(_whaleLimit);
         setGlobalDailySellLimit(_globalSellLimit);
     }
@@ -98,20 +137,72 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice identify an address as a liquidity pool
     /// @param _address The pool address
     function addPool(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
         isPool[_address] = true;
         isAllowed[_address] = true;
+        emit PoolAdded(_address);
     }
 
-    /// @notice Set the transfer tax percentage
-    /// @param _transferTax The transfer tax to set
-    function setTransferTax(uint16 _transferTax)
+    /// @notice Set the min transfer tax percentage
+    /// @dev Set minTransferTax to maxTransferTax for a flat tax
+    /// @param _minTransferTax The minimum transfer tax to set
+    function setMinTransferTax(uint16 _minTransferTax)
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (_transferTax > 2000) {
+        if (_minTransferTax > maxTransferTax) {
+            revert InvalidTax();
+        }
+        if (_minTransferTax > 2000 || _minTransferTax > maxTransferTax) {
             revert ConsumerProtection();
         }
-        transferTax = _transferTax;
+        minTransferTax = _minTransferTax;
+        emit MinTransferTaxUpdated(_minTransferTax);
+    }
+
+    /// @notice Set the max transfer tax percentage
+    /// @dev Set maxTransferTax to minTransferTax for a flat tax
+    /// @param _maxTransferTax The transfer tax to set
+    function setMaxTransferTax(uint16 _maxTransferTax)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_maxTransferTax < minTransferTax) {
+            revert InvalidTax();
+        }
+        if (_maxTransferTax > 2000) {
+            revert ConsumerProtection();
+        }
+        maxTransferTax = _maxTransferTax;
+        emit MaxTransferTaxUpdated(_maxTransferTax);
+    }
+
+    /// @notice Set the min tax amount
+    /// @param _minTaxAmount The minimum tax amount to set
+    function setMinTaxAmount(uint256 _minTaxAmount)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_minTaxAmount > maxTaxAmount) {
+            revert InvalidTaxAmount();
+        }
+        minTaxAmount = _minTaxAmount;
+        emit MinTaxAmountUpdated(_minTaxAmount);
+    }
+
+    /// @notice Set the max tax amount
+    /// @param _maxTaxAmount The max tax amount to set
+    function setMaxTaxAmount(uint256 _maxTaxAmount)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_maxTaxAmount < minTaxAmount) {
+            revert InvalidTaxAmount();
+        }
+        maxTaxAmount = _maxTaxAmount;
+        emit MaxTaxAmountUpdated(_maxTaxAmount);
     }
 
     /// @notice Set the blocks required between transfers
@@ -124,6 +215,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
             revert ConsumerProtection();
         }
         blocksBetweenTransfers = _blocksBetweenTransfers;
+        emit BlocksBetweenTransfersUpdated(_blocksBetweenTransfers);
     }
 
     /// @notice Update blockLimited
@@ -133,31 +225,48 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         isBlockLimited = _blockLimited;
+        emit BlockLimitedUpdated(_blockLimited);
     }
 
     /// @notice add an address to the allowlist
     /// @param _address The address to add to the allowlist
     function allow(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
         isAllowed[_address] = true;
+        emit AddressAllowed(_address);
     }
 
     /// @notice remove an address from the allowlist
     /// @param _address The address to remove from the allowlist
     function disallow(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
         isAllowed[_address] = false;
+        emit AddressDisallowed(_address);
     }
 
     /// @notice add an address to the blocklist
     /// @dev "block" is a reserved symbol in Solidity, so we use "blockUser" instead
     /// @param _address The address to add to the blocklist
     function blockUser(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
         isBlocked[_address] = true;
+        emit AddressBlocked(_address);
     }
 
     /// @notice remove an address from the blocklist
     /// @param _address The address to remove from the blocklist
     function unblock(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
         isBlocked[_address] = false;
+        emit AddressUnblocked(_address);
     }
 
     /// @notice Pause the contract
@@ -199,10 +308,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         }
 
         if (isPool[_to] || isPool[msg.sender]) {
-            uint256 netAmount = (_amount *
-                (TRANSFER_TAX_FACTOR - transferTax)) / TRANSFER_TAX_FACTOR;
-            uint256 tax = _amount - netAmount;
-            _amount = netAmount;
+            uint256 tax = _getTaxAmount(_amount);
+            _amount -= tax;
             require(super.transfer(maxxVault, tax / 2));
             burn(tax / 2);
         }
@@ -231,10 +338,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         }
 
         if (isPool[_from] || isPool[_to]) {
-            uint256 netAmount = (_amount *
-                (TRANSFER_TAX_FACTOR - transferTax)) / TRANSFER_TAX_FACTOR;
-            uint256 tax = _amount - netAmount;
-            _amount = netAmount;
+            uint256 tax = _getTaxAmount(_amount);
+            _amount -= tax;
             require(super.transferFrom(msg.sender, maxxVault, tax / 2));
             burn(tax / 2);
         }
@@ -251,6 +356,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
             revert ConsumerProtection();
         }
         globalDailySellLimit = _globalDailySellLimit * 10**decimals();
+        emit GlobalDailySellLimitUpdated(_globalDailySellLimit);
     }
 
     /// @notice Set the whale limit
@@ -263,6 +369,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
             revert ConsumerProtection();
         }
         whaleLimit = _whaleLimit * 10**decimals();
+        emit WhaleLimitUpdated(_whaleLimit);
     }
 
     /// @notice This functions gets the current day since the initial timestamp
@@ -270,6 +377,36 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     function getCurrentDay() public view returns (uint32 day) {
         day = uint32((block.timestamp - initialTimestamp) / 24 / 60 / 60);
         return day;
+    }
+
+    function _getTaxAmount(uint256 _amount)
+        internal
+        view
+        returns (uint256 tax)
+    {
+        uint256 netAmount;
+
+        if (_amount < minTaxAmount) {
+            netAmount =
+                (_amount * (TRANSFER_TAX_FACTOR - minTransferTax)) /
+                TRANSFER_TAX_FACTOR;
+        } else if (_amount > maxTaxAmount) {
+            netAmount =
+                (_amount * (TRANSFER_TAX_FACTOR - maxTransferTax)) /
+                TRANSFER_TAX_FACTOR;
+        } else {
+            uint256 amountDiff = maxTaxAmount - minTaxAmount;
+            uint256 taxDiff = maxTransferTax - minTransferTax;
+            uint256 dynamicPoint = _amount - minTaxAmount;
+            uint256 dynamicTransferTax = minTaxAmount +
+                (dynamicPoint * taxDiff) /
+                amountDiff;
+            netAmount =
+                (_amount * (TRANSFER_TAX_FACTOR - dynamicTransferTax)) /
+                TRANSFER_TAX_FACTOR;
+        }
+        tax = _amount - netAmount;
+        return tax;
     }
 
     function _beforeTokenTransfer(
