@@ -512,10 +512,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         claimedReferrals[msg.sender] = true;
         uint256 amount;
         for (uint256 i = 0; i < AMPLIFIER_PERIOD; i++) {
-            amount +=
-                (_maxxDailyAllocation[i] *
-                    effectiveUserDailyDeposits[msg.sender][i]) /
-                _effectiveMaticDailyDeposits[i];
+            if (_effectiveMaticDailyDeposits[i] > 0) {
+                amount +=
+                    (_maxxDailyAllocation[i] *
+                        effectiveUserDailyDeposits[msg.sender][i]) /
+                    _effectiveMaticDailyDeposits[i];
+            }
         }
         IMaxxFinance(maxx).transfer(msg.sender, amount);
         return amount;
