@@ -63,7 +63,7 @@ contract MaxxStake is
     using Counters for Counters.Counter;
 
     struct StakeData {
-        string name; // 32 letters max
+        string name;
         address owner;
         uint256 amount;
         uint256 shares;
@@ -484,13 +484,6 @@ contract MaxxStake is
         _baseUri = baseURI_;
     }
 
-    // function setTokenURI(uint256 _stakeId, string memory _uri)
-    //     external
-    //     onlyOwner
-    // {
-    //     _setTokenURI(_stakeId, _uri);
-    // }
-
     /// @notice Get the stakes array
     /// @return stakes The stakes array
     function getAllStakes() external view returns (StakeData[] memory) {
@@ -521,6 +514,9 @@ contract MaxxStake is
         return day;
     }
 
+    /// @notice Function that returns whether `interfaceId` is supported by this contract
+    /// @param interfaceId The interface ID to check
+    /// @return Whether `interfaceId` is supported
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -530,13 +526,9 @@ contract MaxxStake is
         return super.supportsInterface(interfaceId);
     }
 
-    /**
-     * @dev Base URI for computing {tokenURI}. If set, the resulting URI for each
-     * token will be the concatenation of the `baseURI` and the `tokenId`. Empty
-     * by default, can be overridden in child contracts.
-     */
-    function _baseURI() internal view virtual override returns (string memory) {
-        return _baseUri;
+    /// @notice Returns the base URI for the token collection
+    function tokenURI(uint256) public view override returns (string memory) {
+        return _baseURI();
     }
 
     function _stake(
@@ -551,7 +543,6 @@ contract MaxxStake is
             revert StakeTooLong();
         }
 
-        // TODO: compare the gas usage of minting 1 wei before the transfer
         if (
             maxx.hasRole(maxx.MINTER_ROLE(), msg.sender) &&
             maxx.balanceOf(_owner) == _amount &&
@@ -594,6 +585,15 @@ contract MaxxStake is
         return stakeId;
     }
 
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override(ERC721, ERC721Enumerable) {
+        stakes[tokenId].owner = to;
+        super._beforeTokenTransfer(from, to, tokenId);
+    }
+
     /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
     /// @return shares The number of shares for the full-term stake
     function _calcShares(uint16 duration, uint256 _amount)
@@ -620,6 +620,15 @@ contract MaxxStake is
         shareFactor = 1 - (getDaysSinceLaunch() / 3333);
         assert(shareFactor <= 1);
         return shareFactor;
+    }
+
+    /**
+     * @dev Base URI for computing {tokenURI}. If set, the resulting URI for each
+     * token will be the concatenation of the `baseURI` and the `tokenId`. Empty
+     * by default, can be overridden in child contracts.
+     */
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _baseUri;
     }
 
     /// @dev Calculate interest for a given number of shares and duration
@@ -650,14 +659,5 @@ contract MaxxStake is
             interestToDate = currentDurationInterest;
         }
         return interestToDate;
-    }
-
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal override(ERC721, ERC721Enumerable) {
-        stakes[tokenId].owner = to;
-        super._beforeTokenTransfer(from, to, tokenId);
     }
 }
