@@ -31,7 +31,8 @@ describe('Stake', () => {
         Maxx = (await ethers.getContractFactory(
             'MaxxFinance'
         )) as MaxxFinance__factory;
-        maxx = await Maxx.deploy(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
+        maxx = await Maxx.deploy();
+        await maxx.init(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
 
         const blockNumBefore = await ethers.provider.getBlockNumber();
         const blockBefore = await ethers.provider.getBlock(blockNumBefore);
