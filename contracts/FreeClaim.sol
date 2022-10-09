@@ -15,6 +15,12 @@ error AlreadyClaimed();
 /// Merkle proof is invalid
 error InvalidProof();
 
+/// Maxx cannot be the zero address
+error InvalidMaxxAddress();
+
+/// Merkle root cannot be zero
+error InvalidMerkleRoot();
+
 /// No more MAXX left to claim
 error FreeClaimEnded();
 
@@ -33,6 +39,9 @@ error OnlyMaxxStake();
 /// MAXX tokens not transferred to this contract
 error MaxxAllocationFailed();
 
+/// Launch date must be in the future
+error LaunchDateUpdateFailed();
+
 /// @title Maxx Finance Free Claim
 /// @author Alta Web3 Labs - SonOfMosiah
 contract FreeClaim is Ownable, ReentrancyGuard {
@@ -47,32 +56,33 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         uint256 timestamp;
     }
 
-    /// Merkle root for the free claim whitelist
-    bytes32 public merkleRoot; // TODO: may need to create multiple merkle roots depending on Merkle Tree size.
+    /// @notice Merkle root for the free claim whitelist
+    bytes32 public merkleRoot;
 
-    /// Free claim start date
-    uint256 public immutable launchDate;
+    /// @notice Free claim start date
+    uint256 public launchDate;
     uint256 public constant FREE_CLAIM_DURATION = 365 days;
 
-    /// Max number of MAXX tokens that can be claimed by a user
-    uint256 public constant MAX_CLAIM_AMOUNT = 1000000 * (10**8); // 1 million MAXX
+    /// @notice Max number of MAXX tokens that can be claimed by a user
+    uint256 public constant MAX_CLAIM_AMOUNT = 1_000_000 * (1e18); // 1 million MAXX
 
-    /// MAXX token contract
+    /// @notice MAXX token contract
     IERC20 public maxx;
 
-    /// MAXX staking contract
+    /// @notice MAXX staking contract
     IStake public maxxStake;
 
-    /// Mapping of claims by user address
+    /// @notice Mapping of claims by user address
     mapping(address => Claim[]) public userClaims;
     mapping(address => uint256[]) public userFreeReferral;
 
-    /// True if user has already claimed MAXX
+    /// @notice True if user has already claimed MAXX
     mapping(address => bool) public hasClaimed;
 
-    /// Mapping claims to owners
+    /// @notice Mapping claims to owners
     mapping(address => uint256) public claimOwners;
 
+    /// @notice Mapping of claims
     mapping(uint256 => Claim) public claims;
 
     /// Array of ids for staked claims
@@ -103,9 +113,20 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(uint256 _launchDate, address _maxx) {
-        launchDate = _launchDate;
-        maxx = IERC20(_maxx);
+    /// @notice Emitted when the maxx token address is set
+    /// @param maxx The address of the maxx token
+    event MaxxSet(address indexed maxx);
+
+    /// @notice Emitted when the merkle root is set
+    /// @param merkleRoot The merkle root
+    event MerkleRootSet(bytes32 indexed merkleRoot);
+
+    /// @notice Emitted when the launch date is updated
+    /// @param launchDate The new launch date
+    event LaunchDateUpdated(uint256 indexed launchDate);
+
+    constructor() {
+        _transferOwnership(tx.origin);
     }
 
     /// @notice Function to retrive free claim
@@ -175,10 +196,39 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         maxx.approve(_maxxStake, type(uint256).max);
     }
 
-    /// @notice Set the merkle root
+    /// @notice Function to update the launch date
+    /// @dev Launch date must be set to UTC 00:00:00 to work properly with the front end
+    /// @param _launchDate The new launch date
+    function updateLaunchDate(uint256 _launchDate) external onlyOwner {
+        if (
+            (launchDate != uint256(0) && block.timestamp >= launchDate) ||
+            block.timestamp >= _launchDate
+        ) {
+            revert LaunchDateUpdateFailed();
+        }
+        launchDate = _launchDate;
+        emit LaunchDateUpdated(_launchDate);
+    }
+
+    /// @notice Function to set the MAXX token address
+    /// @param _maxx The maxx token contract address
+    function setMaxx(address _maxx) external onlyOwner {
+        if (_maxx == address(0)) {
+            revert InvalidMaxxAddress();
+        }
+        maxx = IERC20(_maxx);
+        emit MaxxSet(_maxx);
+    }
+
+    /// @notice Add a new merkle root
+    /// @dev Emits a MerkleRootSet event
     /// @param _merkleRoot new merkle root
     function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        if (_merkleRoot == bytes32(0)) {
+            revert InvalidMerkleRoot();
+        }
         merkleRoot = _merkleRoot;
+        emit MerkleRootSet(_merkleRoot);
     }
 
     /// @notice Stake the unstaked claims
