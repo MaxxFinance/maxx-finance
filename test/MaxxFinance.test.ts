@@ -21,7 +21,8 @@ describe('Maxx Token', () => {
         Maxx = (await ethers.getContractFactory(
             'MaxxFinance'
         )) as MaxxFinance__factory;
-        maxx = await Maxx.deploy(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
+        maxx = await Maxx.deploy();
+        await maxx.init(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
     });
 
     describe('deploy', () => {
@@ -52,11 +53,37 @@ describe('Maxx Token', () => {
             await maxx.addPool(pool);
             expect(await maxx.isPool(pool)).to.be.true;
         });
-        it('should set transfer tax', async () => {
+        it('should set min transfer tax', async () => {
+            const taxBefore = 500;
             const tax = 100;
-            expect(await maxx.transferTax()).to.be.equal(500);
-            await maxx.setTransferTax(tax);
-            expect(await maxx.transferTax()).to.be.be.equal(tax);
+            expect(await maxx.minTransferTax()).to.be.equal(taxBefore);
+            await maxx.setMinTransferTax(tax);
+            expect(await maxx.minTransferTax()).to.be.be.equal(tax);
+        });
+        it('should set max transfer tax', async () => {
+            const taxBefore = 500;
+            const tax = 1000;
+            expect(await maxx.maxTransferTax()).to.be.equal(taxBefore);
+            await maxx.setMaxTransferTax(tax);
+            expect(await maxx.maxTransferTax()).to.be.be.equal(tax);
+        });
+        it('should not set min transfer tax greater than max transfer tax', async () => {
+            const taxBefore = 100;
+            const tax = 2000;
+            expect(await maxx.minTransferTax()).to.be.equal(taxBefore);
+            await expect(
+                maxx.setMinTransferTax(tax)
+            ).to.be.revertedWithCustomError(maxx, 'InvalidTax');
+            expect(await maxx.minTransferTax()).to.be.be.equal(taxBefore);
+        });
+        it('should not set max transfer tax less than min transfer tax', async () => {
+            const taxBefore = 1000;
+            const tax = 50;
+            expect(await maxx.maxTransferTax()).to.be.equal(taxBefore);
+            await expect(
+                maxx.setMaxTransferTax(tax)
+            ).to.be.revertedWithCustomError(maxx, 'InvalidTax');
+            expect(await maxx.maxTransferTax()).to.be.be.equal(taxBefore);
         });
         it('should set global daily sell limit', async () => {
             const limit = 2000000000;
