@@ -89,8 +89,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     event PoolAdded(address indexed pool);
     event MinTransferTaxUpdated(uint16 minTransferTax);
     event MaxTransferTaxUpdated(uint16 maxTransferTax);
-    event MinTaxAmountUpdated(uint256 minTaxAmount); // TODO
-    event MaxTaxAmountUpdated(uint256 maxTaxAmount); // TODO
+    event MinTaxAmountUpdated(uint256 minTaxAmount);
+    event MaxTaxAmountUpdated(uint256 maxTaxAmount);
     event BlocksBetweenTransfersUpdated(uint256 blocksBetweenTransfers);
     event BlockLimitedUpdated(bool blockLimited);
     event AddressAllowed(address indexed account);
@@ -143,66 +143,6 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         isPool[_address] = true;
         isAllowed[_address] = true;
         emit PoolAdded(_address);
-    }
-
-    /// @notice Set the min transfer tax percentage
-    /// @dev Set minTransferTax to maxTransferTax for a flat tax
-    /// @param _minTransferTax The minimum transfer tax to set
-    function setMinTransferTax(uint16 _minTransferTax)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        if (_minTransferTax > maxTransferTax) {
-            revert InvalidTax();
-        }
-        if (_minTransferTax > 2000 || _minTransferTax > maxTransferTax) {
-            revert ConsumerProtection();
-        }
-        minTransferTax = _minTransferTax;
-        emit MinTransferTaxUpdated(_minTransferTax);
-    }
-
-    /// @notice Set the max transfer tax percentage
-    /// @dev Set maxTransferTax to minTransferTax for a flat tax
-    /// @param _maxTransferTax The transfer tax to set
-    function setMaxTransferTax(uint16 _maxTransferTax)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        if (_maxTransferTax < minTransferTax) {
-            revert InvalidTax();
-        }
-        if (_maxTransferTax > 2000) {
-            revert ConsumerProtection();
-        }
-        maxTransferTax = _maxTransferTax;
-        emit MaxTransferTaxUpdated(_maxTransferTax);
-    }
-
-    /// @notice Set the min tax amount
-    /// @param _minTaxAmount The minimum tax amount to set
-    function setMinTaxAmount(uint256 _minTaxAmount)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        if (_minTaxAmount > maxTaxAmount) {
-            revert InvalidTaxAmount();
-        }
-        minTaxAmount = _minTaxAmount;
-        emit MinTaxAmountUpdated(_minTaxAmount);
-    }
-
-    /// @notice Set the max tax amount
-    /// @param _maxTaxAmount The max tax amount to set
-    function setMaxTaxAmount(uint256 _maxTaxAmount)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        if (_maxTaxAmount < minTaxAmount) {
-            revert InvalidTaxAmount();
-        }
-        maxTaxAmount = _maxTaxAmount;
-        emit MaxTaxAmountUpdated(_maxTaxAmount);
     }
 
     /// @notice Set the blocks required between transfers
@@ -284,6 +224,66 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     function getNextDayTimestamp() external view returns (uint256 timestamp) {
         uint256 day = uint256(getCurrentDay() + 1);
         timestamp = initialTimestamp + (day * 1 days);
+    }
+
+    /// @notice Set the min transfer tax percentage
+    /// @dev Set minTransferTax to maxTransferTax for a flat tax
+    /// @param _minTransferTax The minimum transfer tax to set
+    function setMinTransferTax(uint16 _minTransferTax)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_minTransferTax > maxTransferTax) {
+            revert InvalidTax();
+        }
+        if (_minTransferTax > 2000 || _minTransferTax > maxTransferTax) {
+            revert ConsumerProtection();
+        }
+        minTransferTax = _minTransferTax;
+        emit MinTransferTaxUpdated(_minTransferTax);
+    }
+
+    /// @notice Set the max transfer tax percentage
+    /// @dev Set maxTransferTax to minTransferTax for a flat tax
+    /// @param _maxTransferTax The transfer tax to set
+    function setMaxTransferTax(uint16 _maxTransferTax)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_maxTransferTax < minTransferTax) {
+            revert InvalidTax();
+        }
+        if (_maxTransferTax > 2000) {
+            revert ConsumerProtection();
+        }
+        maxTransferTax = _maxTransferTax;
+        emit MaxTransferTaxUpdated(_maxTransferTax);
+    }
+
+    /// @notice Set the min tax amount
+    /// @param _minTaxAmount The minimum tax amount to set
+    function setMinTaxAmount(uint256 _minTaxAmount)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_minTaxAmount > maxTaxAmount) {
+            revert InvalidTaxAmount();
+        }
+        minTaxAmount = _minTaxAmount;
+        emit MinTaxAmountUpdated(_minTaxAmount);
+    }
+
+    /// @notice Set the max tax amount
+    /// @param _maxTaxAmount The max tax amount to set
+    function setMaxTaxAmount(uint256 _maxTaxAmount)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (_maxTaxAmount < minTaxAmount) {
+            revert InvalidTaxAmount();
+        }
+        maxTaxAmount = _maxTaxAmount;
+        emit MaxTaxAmountUpdated(_maxTaxAmount);
     }
 
     /// @dev Overrides the transfer() function and implements a transfer tax on lp pools
@@ -379,36 +379,6 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         return day;
     }
 
-    function _getTaxAmount(uint256 _amount)
-        internal
-        view
-        returns (uint256 tax)
-    {
-        uint256 netAmount;
-
-        if (_amount < minTaxAmount) {
-            netAmount =
-                (_amount * (TRANSFER_TAX_FACTOR - minTransferTax)) /
-                TRANSFER_TAX_FACTOR;
-        } else if (_amount > maxTaxAmount) {
-            netAmount =
-                (_amount * (TRANSFER_TAX_FACTOR - maxTransferTax)) /
-                TRANSFER_TAX_FACTOR;
-        } else {
-            uint256 amountDiff = maxTaxAmount - minTaxAmount;
-            uint256 taxDiff = maxTransferTax - minTransferTax;
-            uint256 dynamicPoint = _amount - minTaxAmount;
-            uint256 dynamicTransferTax = minTaxAmount +
-                (dynamicPoint * taxDiff) /
-                amountDiff;
-            netAmount =
-                (_amount * (TRANSFER_TAX_FACTOR - dynamicTransferTax)) /
-                TRANSFER_TAX_FACTOR;
-        }
-        tax = _amount - netAmount;
-        return tax;
-    }
-
     function _beforeTokenTransfer(
         address _from,
         address _to,
@@ -444,5 +414,35 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         }
 
         super._beforeTokenTransfer(_from, _to, _amount);
+    }
+
+    function _getTaxAmount(uint256 _amount)
+        internal
+        view
+        returns (uint256 tax)
+    {
+        uint256 netAmount;
+
+        if (_amount < minTaxAmount) {
+            netAmount =
+                (_amount * (TRANSFER_TAX_FACTOR - minTransferTax)) /
+                TRANSFER_TAX_FACTOR;
+        } else if (_amount > maxTaxAmount) {
+            netAmount =
+                (_amount * (TRANSFER_TAX_FACTOR - maxTransferTax)) /
+                TRANSFER_TAX_FACTOR;
+        } else {
+            uint256 amountDiff = maxTaxAmount - minTaxAmount;
+            uint256 taxDiff = maxTransferTax - minTransferTax;
+            uint256 dynamicPoint = _amount - minTaxAmount;
+            uint256 dynamicTransferTax = minTaxAmount +
+                (dynamicPoint * taxDiff) /
+                amountDiff;
+            netAmount =
+                (_amount * (TRANSFER_TAX_FACTOR - dynamicTransferTax)) /
+                TRANSFER_TAX_FACTOR;
+        }
+        tax = _amount - netAmount;
+        return tax;
     }
 }
