@@ -10,6 +10,14 @@ interface ILiquidityAmplifier {
     /// @return participants Array of addresses that have participated in the Liquidity Amplifier
     function getParticipants() external view returns (address[] memory);
 
+    /// @notice This function will return all liquidity amplifier participants for `day` day
+    /// @param day The day for which to return the participants
+    /// @return participants Array of addresses that have participated in the Liquidity Amplifier
+    function getParticipantsByDay(uint8 day)
+        external
+        view
+        returns (address[] memory);
+
     /// @notice This function will return a slice of the participants array
     /// @dev This function is used to paginate the participants array
     /// @param start The starting index of the slice
