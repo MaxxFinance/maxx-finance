@@ -204,7 +204,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
         uint256 amount = msg.value;
         if (amount >= MIN_GENESIS_AMOUNT) {
-            _mintMaxxGenesis(_code); // QUESTION: should revert if amount is less than MIN_GENESIS_AMOUNT?
+            _mintMaxxGenesis(_code);
         }
 
         uint8 day = getDay();
@@ -228,11 +228,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         if (_referrer == address(0) || _referrer == msg.sender) {
             revert InvalidReferrer(_referrer);
         }
+
         if (block.timestamp >= launchDate + AMPLIFIER_PERIOD * 1 days) {
             revert AmplifierComplete();
         }
-        uint256 amount = msg.value;
 
+        uint256 amount = msg.value;
         if (amount >= MIN_GENESIS_AMOUNT) {
             _mintMaxxGenesis(_code);
         }
