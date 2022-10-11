@@ -66,6 +66,9 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     /// @notice Array of addresses that have participated in the liquidity amplifier
     address[] public participants;
 
+    /// @notice Array of address that participated in the liquidity amplifier for each day
+    mapping(uint8 => address[]) public participantsByDay;
+
     /// @notice Liquidity amplifier start date
     uint256 public launchDate;
 
@@ -90,6 +93,8 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     mapping(address => uint256[60]) public effectiveUserReferrals;
     /// @notice tracks if address has participated in the amplifier
     mapping(address => bool) public participated;
+    /// @notice tracks if address has claimed for a given day
+    mapping(address => mapping(uint8 => bool)) public participatedByDay;
     mapping(address => mapping(uint256 => bool)) public dayClaimed;
     mapping(address => bool) public claimedReferrals;
 
@@ -150,6 +155,11 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             participants.push(msg.sender);
         }
 
+        if (!participatedByDay[msg.sender][day]) {
+            participatedByDay[msg.sender][day] = true;
+            participantsByDay[day].push(msg.sender);
+        }
+
         userDailyDeposits[msg.sender][day] += amount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         _maticDailyDeposits[day] += amount;
@@ -176,10 +186,17 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         uint256 referrerAmount = msg.value / 20; // 5% bonus for referrer
         uint256 effectiveDeposit = amount + referrerAmount;
         uint8 day = getDay();
+
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
             participants.push(msg.sender);
         }
+
+        if (!participatedByDay[msg.sender][day]) {
+            participatedByDay[msg.sender][day] = true;
+            participantsByDay[day].push(msg.sender);
+        }
+
         userDailyDeposits[msg.sender][day] += amount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
@@ -216,6 +233,11 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             participants.push(msg.sender);
         }
 
+        if (!participatedByDay[msg.sender][day]) {
+            participatedByDay[msg.sender][day] = true;
+            participantsByDay[day].push(msg.sender);
+        }
+
         userDailyDeposits[msg.sender][day] += amount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         _maticDailyDeposits[day] += amount;
@@ -248,10 +270,17 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         uint256 referrerAmount = msg.value / 20; // 5% bonus for referrer
         uint256 effectiveDeposit = amount + referrerAmount;
         uint8 day = getDay();
+
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
             participants.push(msg.sender);
         }
+
+        if (!participatedByDay[msg.sender][day]) {
+            participatedByDay[msg.sender][day] = true;
+            participantsByDay[day].push(msg.sender);
+        }
+
         userDailyDeposits[msg.sender][day] += amount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
@@ -416,12 +445,29 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         return day;
     }
 
-    /// @inheritdoc ILiquidityAmplifier
+    /// @notice This function will return all liquidity amplifier participants
+    /// @return participants Array of addresses that have participated in the Liquidity Amplifier
     function getParticipants() external view returns (address[] memory) {
         return participants;
     }
 
-    /// @inheritdoc ILiquidityAmplifier
+    /// @notice This function will return all liquidity amplifier participants for `day` day
+    /// @param day The day for which to return the participants
+    /// @return participants Array of addresses that have participated in the Liquidity Amplifier
+    function getParticipantsByDay(uint8 day)
+        external
+        view
+        returns (address[] memory)
+    {
+        return participantsByDay[day];
+    }
+
+    /// @notice This function will return a slice of the participants array
+    /// @dev This function is used to paginate the participants array
+    /// @param start The starting index of the slice
+    /// @param length The amount of participants to return
+    /// @return participantsSlice Array slice of addresses that have participated in the Liquidity Amplifier
+    /// @return newStart The new starting index for the next slice
     function getParticipantsSlice(uint256 start, uint256 length)
         external
         view
