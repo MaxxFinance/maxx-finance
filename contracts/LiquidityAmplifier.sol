@@ -90,6 +90,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     mapping(address => uint256[60]) public effectiveUserReferrals;
     /// @notice tracks if address has participated in the amplifier
     mapping(address => bool) public participated;
+    /// @notice tracks if address has claimed for a given day
     mapping(address => mapping(uint8 => bool)) public participatedByDay;
     mapping(address => mapping(uint256 => bool)) public dayClaimed;
     mapping(address => bool) public claimedReferrals;
