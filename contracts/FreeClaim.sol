@@ -231,37 +231,48 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         emit MerkleRootSet(_merkleRoot);
     }
 
-    /// @notice Stake the unstaked claims
-    function stakeClaims() external {
+    function stakeClaim(uint256 _unstakedClaimId, uint256 _claimId) external {
         if (msg.sender != address(maxxStake) || msg.sender == address(0)) {
             revert OnlyMaxxStake();
         }
-
-        for (uint256 i = 0; i < unstakedClaims.length; i++) {
-            stakedClaims.push(unstakedClaims[i]);
-        }
-        delete unstakedClaims;
-    }
-
-    function stakeClaimsSlice(uint256 _amount) external {
-        if (msg.sender != address(maxxStake) || msg.sender == address(0)) {
-            revert OnlyMaxxStake();
-        }
-
-        for (
-            uint256 i = unstakedClaims.length;
-            i > unstakedClaims.length - _amount;
-            i--
-        ) {
-            stakedClaims.push(unstakedClaims[i]);
-            delete unstakedClaims[i];
-        }
+        Claim storage claim = claims[_claimId];
+        stakedClaims.push(_claimId);
+        (uint256 stakeId, uint256 shares) = maxxStake.freeClaimStake(
+            claim.user,
+            365,
+            claim.amount
+        );
+        claim.stakeId = stakeId;
+        claim.shares = shares;
+        delete unstakedClaims[_unstakedClaimId];
     }
 
     /// @notice Get the number of total claimers
     /// @return The number of total claimers
     function getTotalClaimers() external view returns (uint256) {
         return stakedClaims.length + unstakedClaims.length;
+    }
+
+    /// @notice Get all unstaked claims
+    /// @return The array of unstaked claim ids
+    function getAllUnstakedClaims() external view returns (uint256[] memory) {
+        return unstakedClaims;
+    }
+
+    /// @notice Get the unstaked claims slice from `_start` to `_end`
+    /// @param _start The start index
+    /// @param _end The end index
+    /// @return The array of unstaked claim ids
+    function getUnstakedClaimsSlice(uint256 _start, uint256 _end)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        uint256[] memory slice = new uint256[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            slice[i - _start] = unstakedClaims[i];
+        }
+        return slice;
     }
 
     /// @notice Get the referrals by user
@@ -306,7 +317,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
     ) internal {
         if (_amount <= remainingBalance) {
             if (_referrer != address(0)) {
-                _referralClaim(_amount, _referrer, true);
+                _referralClaim(_amount, _referrer, stake);
                 _amount += _amount / 10;
             }
         } else {
