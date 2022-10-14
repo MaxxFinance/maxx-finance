@@ -77,7 +77,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     bool private _allocationInitialized;
 
-    uint16 public constant MAX_LATE_DAYS = 100;
+    uint16 public constant MAX_LATE_DAYS = 60;
     uint16 public constant CLAIM_PERIOD = 60;
     uint16 public constant AMPLIFIER_PERIOD = 60;
     uint256 public constant MIN_GENESIS_AMOUNT = 5e19; // 50 matic
