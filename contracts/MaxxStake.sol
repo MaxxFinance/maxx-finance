@@ -46,6 +46,9 @@ error TransferFailed();
 /// Tokens already staked for maximum duration
 error AlreadyMaxDuration();
 
+/// Current or proposed launch date has already passed
+error LaunchDatePassed();
+
 /// `_nft` does not support the IERC721 interface
 /// @param _nft the address of the NFT contract
 error InterfaceNotSupported(address _nft);
@@ -82,15 +85,17 @@ contract MaxxStake is
     mapping(address => uint256) public nftBonus;
 
     // Calculation variables
-    uint256 public immutable launchDate;
-    uint8 public constant LATE_DAYS = 14;
-    uint8 public constant MIN_STAKE_DAYS = 7;
-    uint16 public constant MAX_STAKE_DAYS = 3333;
-    uint8 public constant BASE_INFLATION = 10; // 10%
-    uint8 public constant BASE_INFLATION_FACTOR = 100;
-    uint16 public constant DAYS_IN_YEAR = 365;
-    uint256 public constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
+    uint256 public constant LATE_DAYS = 14;
+    uint256 public constant MIN_STAKE_DAYS = 7;
+    uint256 public constant MAX_STAKE_DAYS = 3333;
+    uint256 public constant BASE_INFLATION = 18_185; // 18.185%
+    uint256 public constant BASE_INFLATION_FACTOR = 100_000;
+    uint256 public constant DAYS_IN_YEAR = 365;
+    uint256 public constant PERCENT_FACTOR = 10_000_000_000; // was 10,000 now 1,000,000,000
     uint256 public constant MAGIC_NUMBER = 1111;
+    uint256 public constant BPB_FACTOR = 10_000_000;
+
+    uint256 public launchDate;
 
     /// @notice Maxx Finance Vault address
     address public maxxVault;
@@ -128,23 +133,46 @@ contract MaxxStake is
     StakeData[] public stakes;
 
     // Base URI
-    string private _baseUri; // TODO
+    string private _baseUri;
 
     /// @notice Emitted when MAXX is staked
     /// @param user The user staking MAXX
     /// @param numDays The number of days staked
     /// @param amount The amount of MAXX staked
-    event Stake(address indexed user, uint16 numDays, uint256 amount);
+    event Stake(
+        uint256 indexed stakeId,
+        address indexed user,
+        uint16 numDays,
+        uint256 amount
+    );
 
     /// @notice Emitted when MAXX is unstaked
     /// @param user The user unstaking MAXX
     /// @param amount The amount of MAXX unstaked
-    event Unstake(address indexed user, uint256 amount);
+    event Unstake(
+        uint256 indexed stakeId,
+        address indexed user,
+        uint256 amount
+    );
 
     /// @notice Emitted when the name of a stake is changed
     /// @param stakeId The id of the stake
     /// @param name The new name of the stake
     event StakeNameChange(uint256 stakeId, string name);
+
+    /// @notice Emitted when the launch date is updated
+    event LaunchDateUpdated(uint256 newLaunchDate);
+    /// @notice Emitted when the liquidityAmplifier address is updated
+    event LiquidityAmplifierSet(address _liquidityAmplifier);
+    /// @notice Emitted when the freeClaim address is updated
+    event FreeClaimSet(address _freeClaim);
+    event MaxxGenesisSet(address _maxxGenesis);
+    event MaxxBoostSet(address _maxxBoost);
+    event NftBonusPercentageSet(uint8 _nftBonusPercentage);
+    event NftBonusSet(address _nft, uint256 _bonus);
+    event BaseURISet(string _baseUri);
+    event AcceptedNftAdded(address _nft);
+    event AcceptedNftRemoved(address _nft);
 
     /// @dev Sets the `maxxVault` and `maxx` addresses and the `launchDate`
     constructor(
@@ -215,7 +243,7 @@ contract MaxxStake is
 
         uint256 withdrawableAmount;
         uint256 penaltyAmount;
-        uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
+        uint256 daysServed = ((block.timestamp - tStake.startDate) / 1 days);
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
             daysServed,
@@ -265,7 +293,7 @@ contract MaxxStake is
             maxx.burn(penaltyAmount / 2); // burn the other half of the penalty amount
         }
 
-        emit Unstake(msg.sender, withdrawableAmount);
+        emit Unstake(_stakeId, msg.sender, withdrawableAmount);
     }
 
     /// @notice Function to change stake to maximum duration without penalties
@@ -283,7 +311,7 @@ contract MaxxStake is
         ) {
             revert NotAuthorized();
         }
-        uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
+        uint256 daysServed = ((block.timestamp - tStake.startDate) / 1 days);
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
             daysServed,
@@ -299,7 +327,7 @@ contract MaxxStake is
 
         totalShares += tStake.shares;
         stakes[_stakeId] = tStake; // Update the stake in storage
-        emit Stake(msg.sender, durationInDays, tStake.amount);
+        emit Stake(_stakeId, msg.sender, durationInDays, tStake.amount);
     }
 
     /// @notice Function to restake without penalties
@@ -320,7 +348,7 @@ contract MaxxStake is
         if (_topUpAmount > maxx.balanceOf(msg.sender)) {
             revert InsufficientMaxx();
         }
-        uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
+        uint256 daysServed = ((block.timestamp - tStake.startDate) / 1 days);
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
             daysServed,
@@ -340,7 +368,7 @@ contract MaxxStake is
             revert TransferFailed();
         }
 
-        emit Stake(msg.sender, durationInDays, tStake.amount);
+        emit Stake(_stakeId, msg.sender, durationInDays, tStake.amount);
     }
 
     /// @notice Function to transfer stake ownership
@@ -420,12 +448,14 @@ contract MaxxStake is
         onlyOwner
     {
         liquidityAmplifier = _liquidityAmplifier;
+        emit LiquidityAmplifierSet(_liquidityAmplifier);
     }
 
     /// @notice Function to set freeClaim contract address
     /// @param _freeClaim The address of the freeClaim contract
     function setFreeClaim(address _freeClaim) external onlyOwner {
         freeClaim = _freeClaim;
+        emit FreeClaimSet(_freeClaim);
     }
 
     /// @notice Function to set the NFT bonus percentage
@@ -435,6 +465,7 @@ contract MaxxStake is
         onlyOwner
     {
         nftBonusPercentage = _nftBonusPercentage;
+        emit NftBonusPercentageSet(_nftBonusPercentage);
     }
 
     /// @notice Function to set the MaxxBoost NFT contract address
@@ -445,6 +476,7 @@ contract MaxxStake is
             revert InterfaceNotSupported(_maxxBoost);
         }
         maxxBoost = IMAXXBoost(_maxxBoost);
+        emit MaxxBoostSet(_maxxBoost);
     }
 
     /// @notice Function to set the MaxxGenesis NFT contract address
@@ -457,18 +489,21 @@ contract MaxxStake is
             revert InterfaceNotSupported(_maxxGenesis);
         }
         maxxGenesis = IMAXXBoost(_maxxGenesis);
+        emit MaxxGenesisSet(_maxxGenesis);
     }
 
     /// @notice Add an accepted NFT
     /// @param _nft The address of the NFT contract
     function addAcceptedNft(address _nft) external onlyOwner {
         isAcceptedNft[_nft] = true;
+        emit AcceptedNftAdded(_nft);
     }
 
     /// @notice Remove an accepted NFT
     /// @param _nft The address of the NFT to remove
     function removeAcceptedNft(address _nft) external onlyOwner {
         isAcceptedNft[_nft] = false;
+        emit AcceptedNftRemoved(_nft);
     }
 
     /// @notice Set the staking bonus for `_nft` to `_bonus`
@@ -476,12 +511,25 @@ contract MaxxStake is
     /// @param _bonus The bonus percentage (e.g. 20 = 20%)
     function setNftBonus(address _nft, uint256 _bonus) external onlyOwner {
         nftBonus[_nft] = _bonus;
+        emit NftBonusSet(_nft, _bonus);
     }
 
     /// @notice Set the baseURI for the token collection
     /// @param baseURI_ The baseURI for the token collection
     function setBaseURI(string memory baseURI_) external onlyOwner {
         _baseUri = baseURI_;
+        emit BaseURISet(baseURI_);
+    }
+
+    /// @notice Function to change the start date
+    /// @dev Cannot change the start date after the day has passed
+    /// @param _launchDate New start date
+    function changeLaunchDate(uint256 _launchDate) external onlyOwner {
+        if (block.timestamp >= launchDate || block.timestamp >= _launchDate) {
+            revert LaunchDatePassed();
+        }
+        launchDate = _launchDate;
+        emit LaunchDateUpdated(_launchDate);
     }
 
     /// @notice Get the stakes array
@@ -580,8 +628,8 @@ contract MaxxStake is
 
         _mint(_owner, stakeId);
 
+        emit Stake(idCounter.current(), _owner, _numDays, _amount);
         idCounter.increment();
-        emit Stake(_owner, _numDays, _amount);
         return stakeId;
     }
 
@@ -604,7 +652,7 @@ contract MaxxStake is
         uint256 shareFactor = _getShareFactor();
 
         uint256 basicShares = _amount / (2 - shareFactor);
-        uint256 bpbBonus = _amount / 10000000;
+        uint256 bpbBonus = _amount / BPB_FACTOR;
         if (bpbBonus > 10) {
             bpbBonus = 10;
         }
@@ -617,7 +665,7 @@ contract MaxxStake is
 
     /// @return shareFactor The current share factor
     function _getShareFactor() internal view returns (uint256 shareFactor) {
-        shareFactor = 1 - (getDaysSinceLaunch() / 3333);
+        shareFactor = 1 - (getDaysSinceLaunch() / MAX_STAKE_DAYS);
         assert(shareFactor <= 1);
         return shareFactor;
     }
