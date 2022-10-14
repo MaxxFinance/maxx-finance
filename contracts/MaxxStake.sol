@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ILiquidityAmplifier} from "./interfaces/ILiquidityAmplifier.sol";
 import {IMaxxFinance} from "./interfaces/IMaxxFinance.sol";
 import {IMAXXBoost} from "./interfaces/IMAXXBoost.sol";
+import {IFreeClaim} from "./interfaces/IFreeClaim.sol";
 
 /// Not authorized to control the stake
 error NotAuthorized();
@@ -48,6 +49,9 @@ error AlreadyMaxDuration();
 
 /// Current or proposed launch date has already passed
 error LaunchDatePassed();
+
+/// Unstaked Free Claims have already been migrated
+error FreeClaimsAlreadyMigrated();
 
 /// `_nft` does not support the IERC721 interface
 /// @param _nft the address of the NFT contract
@@ -96,6 +100,8 @@ contract MaxxStake is
     uint256 public constant BPB_FACTOR = 10_000_000;
 
     uint256 public launchDate;
+
+    bool public freeClaimsMigrated;
 
     /// @notice Maxx Finance Vault address
     address public maxxVault;
@@ -439,6 +445,20 @@ contract MaxxStake is
         stakeId = _stake(_owner, _numDays, _amount, shares);
 
         return (stakeId, shares);
+    }
+
+    /// @notice Stake all unstaked free claims
+    function migrateUnstakedFreeClaims() external onlyOwner {
+        if (freeClaimsMigrated) {
+            revert FreeClaimsAlreadyMigrated();
+        }
+        freeClaimsMigrated = true;
+        uint256[] memory claimIds = IFreeClaim(freeClaim)
+            .getAllUnstakedClaims();
+
+        for (uint256 i = 0; i < claimIds.length; i++) {
+            IFreeClaim(freeClaim).stakeClaim(i, claimIds[i]);
+        }
     }
 
     /// @notice Funciton to set liquidityAmplifier contract address
