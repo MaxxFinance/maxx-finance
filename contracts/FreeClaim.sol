@@ -313,6 +313,7 @@ contract FreeClaim is Ownable, ReentrancyGuard {
             _amount = remainingBalance;
         }
 
+        remainingBalance -= _amount;
         claimedAmount += _amount;
         uint256 stakeId;
         uint256 shares;
@@ -346,13 +347,14 @@ contract FreeClaim is Ownable, ReentrancyGuard {
         address _referrer,
         bool stake
     ) internal {
-        uint256 referralAmount = _amount / 10;
+        uint256 referralAmount = _amount / 10; // referrer receives 10% of claim amount as bonus
 
         userFreeReferral[_referrer].push(block.timestamp);
         userFreeReferral[_referrer].push(_amount);
         userFreeReferral[_referrer].push(referralAmount);
 
         _amount += referralAmount; // +10% bonus for referral
+        remainingBalance -= referralAmount;
         claimedAmount += referralAmount;
 
         uint256 stakeId;
