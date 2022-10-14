@@ -14,7 +14,10 @@ import { MaxxStake__factory } from '../typechain-types/factories/contracts/MaxxS
 import { MaxxFinance } from '../typechain-types/contracts/MaxxFinance';
 import { MaxxFinance__factory } from '../typechain-types/factories/contracts/MaxxFinance__factory';
 
-describe('Liquidity Amplifier', () => {
+import { MAXXGenesis } from '../typechain-types/contracts/MAXXGenesis';
+import { MAXXGenesis__factory } from '../typechain-types/factories/contracts/MAXXGenesis__factory';
+
+describe.only('Liquidity Amplifier', () => {
     let Amplifier: LiquidityAmplifier__factory;
     let amplifier: LiquidityAmplifier;
 
@@ -35,7 +38,15 @@ describe('Liquidity Amplifier', () => {
         Maxx = (await ethers.getContractFactory(
             'MaxxFinance'
         )) as MaxxFinance__factory;
-        maxx = await Maxx.deploy(deployer.address, 500, 1000000, 1000000000); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
+        maxx = await Maxx.deploy();
+
+        let initMaxx = await maxx.init(
+            deployer.address,
+            500,
+            1000000,
+            1000000000
+        ); // 5% transfer tax, 1M whaleLimit, 1B globalDailySellLimit
+        await initMaxx.wait();
 
         const timestampBefore = await time.latest();
         timestamp = timestampBefore + 1;
@@ -368,13 +379,39 @@ describe('Liquidity Amplifier', () => {
         });
     });
 
-    describe('deposit', () => {
+    describe.only('deposit', () => {
         it('should deposit matic', async () => {
             const launchDate = await amplifier.launchDate();
             await time.increaseTo(Number(launchDate) + 1);
             const currentDay = await amplifier.getDay();
             log.yellow('currentDay:', currentDay);
             await expect(amplifier['deposit()']()).to.not.be.reverted;
+        });
+
+        it('should deposit matic w/ genesis code', async () => {
+            const MaxxGenesis = (await ethers.getContractFactory(
+                'MAXXGenesis'
+            )) as MAXXGenesis__factory;
+            const maxxGenesis = await MaxxGenesis.deploy(amplifier.address);
+
+            let setMaxxGenesis = await amplifier.setMaxxGenesis(
+                maxxGenesis.address
+            );
+            await setMaxxGenesis.wait();
+
+            let hashedCode = ethers.utils.solidityKeccak256(
+                ['string'],
+                ['HHkJQlXC']
+            );
+            log.yellow('hashedCode:', hashedCode);
+            let setCode = await maxxGenesis.setCodes([hashedCode]);
+            await setCode.wait();
+
+            let deposit = await expect(
+                amplifier['deposit(string)']('HHkJQlXC', {
+                    value: ethers.utils.parseEther('50'),
+                })
+            ).to.not.be.reverted;
         });
     });
 });
