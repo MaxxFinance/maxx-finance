@@ -301,7 +301,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         if (block.timestamp > stake.launchDate() + (CLAIM_PERIOD * 1 days)) {
             // assess late penalty
             uint256 daysLate = block.timestamp -
-                (stake.launchDate() + CLAIM_PERIOD * 1 days);
+                (stake.launchDate() + (CLAIM_PERIOD * 1 days));
             if (daysLate >= MAX_LATE_DAYS) {
                 revert ClaimExpired();
             } else {
