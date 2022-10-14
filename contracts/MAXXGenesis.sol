@@ -34,7 +34,7 @@ contract MAXXGenesis is ERC721, Ownable {
     mapping(bytes32 => bool) codes;
 
     /// @notice Sets the Name and Ticker for the Collection
-    constructor(address _amplifierContract) ERC721("MAXX OG", "MAXXOG") {
+    constructor(address _amplifierContract) ERC721("MAXXGenesis", "MAXXG") {
         amplifierContract = _amplifierContract;
     }
 
