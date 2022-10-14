@@ -308,13 +308,14 @@ contract FreeClaimTest is Ownable, ReentrancyGuard {
     ) internal {
         if (_amount <= remainingBalance) {
             if (_referrer != address(0)) {
-                _referralClaim(_amount, _referrer, true);
+                _referralClaim(_amount, _referrer, stake);
                 _amount += _amount / 10;
             }
         } else {
             _amount = remainingBalance;
         }
 
+        remainingBalance -= _amount;
         claimedAmount += _amount;
         uint256 stakeId;
         uint256 shares;
@@ -348,13 +349,14 @@ contract FreeClaimTest is Ownable, ReentrancyGuard {
         address _referrer,
         bool stake
     ) internal {
-        uint256 referralAmount = _amount / 10;
+        uint256 referralAmount = _amount / 10; // referrer receives 10% of claim amount as bonus
 
         userFreeReferral[_referrer].push(block.timestamp);
         userFreeReferral[_referrer].push(_amount);
         userFreeReferral[_referrer].push(referralAmount);
 
-        _amount += referralAmount; // +10% bonus for referral
+        _amount += referralAmount; // +10% bonus for referral // TODO remove or move above userFreeReferral[_referrer].push(_amount);
+        remainingBalance -= referralAmount;
         claimedAmount += referralAmount;
 
         uint256 stakeId;
@@ -386,19 +388,19 @@ contract FreeClaimTest is Ownable, ReentrancyGuard {
         emit Referral(_referrer, msg.sender, referralAmount);
     }
 
-    function _generateMerkleLeaf(address _account, uint256 _amount)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(_account, _amount));
-    }
-
     function _verifyMerkleLeaf(bytes32 _leafNode, bytes32[] memory _proof)
         internal
         view
         returns (bool)
     {
         return MerkleProof.verify(_proof, merkleRoot, _leafNode);
+    }
+
+    function _generateMerkleLeaf(address _account, uint256 _amount)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(_account, _amount));
     }
 }

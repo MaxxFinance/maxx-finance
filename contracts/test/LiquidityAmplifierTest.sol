@@ -138,11 +138,21 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     /// @notice Emitted when a Maxx Genesis NFT is minted
     event MaxxGenesisMinted(address indexed user, string code);
 
+    constructor(
+        address _maxxVault,
+        uint256 _launchDate,
+        address _maxx
+    ) {
+        maxxVault = _maxxVault;
+        launchDate = _launchDate;
+        maxx = _maxx;
+    }
+
     /// @dev Function to deposit matic to the contract
     function deposit() external payable {
         if (
             block.timestamp >=
-            launchDate + (AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR
+            launchDate + ((AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             revert AmplifierComplete();
         }
@@ -176,7 +186,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         }
         if (
             block.timestamp >=
-            launchDate + (AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR
+            launchDate + ((AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             revert AmplifierComplete();
         }
@@ -216,7 +226,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     function deposit(string memory _code) external payable {
         if (
             block.timestamp >=
-            launchDate + (AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR
+            launchDate + ((AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             revert AmplifierComplete();
         }
@@ -255,7 +265,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
 
         if (
             block.timestamp >=
-            launchDate + (AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR
+            launchDate + ((AMPLIFIER_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             revert AmplifierComplete();
         }
@@ -310,7 +320,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
 
         if (
             block.timestamp >
-            stake.launchDate() + (CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR
+            stake.launchDate() + ((CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             // assess late penalty
             uint256 daysLate = block.timestamp -
@@ -440,7 +450,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             revert AmplifierNotStarted();
         }
         day = uint8(
-            block.timestamp - (launchDate * _TEST_TIME_FACTOR) / 60 / 60 / 24
+            ((block.timestamp - launchDate) * _TEST_TIME_FACTOR) / 60 / 60 / 24
         ); // divide by 60 seconds, 60 minutes, 24 hours
         return day;
     }
@@ -586,7 +596,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         }
         if (
             block.timestamp <=
-            launchDate + (CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR
+            launchDate + ((CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             revert AmplifierNotComplete();
         }
