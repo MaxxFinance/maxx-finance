@@ -27,7 +27,7 @@ export async function setCodes(maxxGenesisAddress: string) {
 
                 i = 0;
                 while (i < 10000) {
-                    for (let k = i; k < i + 100; k++) {
+                    for (let k = i; k < i + 500; k++) {
                         hashedCodes.push(
                             ethers.utils.solidityKeccak256(
                                 ['string'],
@@ -40,8 +40,9 @@ export async function setCodes(maxxGenesisAddress: string) {
                     );
                     await setGenesisCodes.wait();
                     log.yellow('Genesis codes set', setGenesisCodes.hash);
+                    hashedCodes = [];
 
-                    i += 100;
+                    i += 500;
                 }
             }
         );
@@ -50,7 +51,7 @@ export async function setCodes(maxxGenesisAddress: string) {
     }
 }
 
-const maxxGenesisAddress = '0x614346788721472b105DCBC676c4a5dbce710904';
+const maxxGenesisAddress = process.env.MAXX_GENESIS_ADDRESS!;
 
 setCodes(maxxGenesisAddress).catch((error) => {
     console.error(error);
