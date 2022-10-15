@@ -76,6 +76,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     address public maxx;
 
     bool private _allocationInitialized;
+    bool public initialized;
 
     uint16 public constant MAX_LATE_DAYS = 60;
     uint16 public constant CLAIM_PERIOD = 60;
@@ -135,14 +136,27 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice Emitted when a Maxx Genesis NFT is minted
     event MaxxGenesisMinted(address indexed user, string code);
 
-    constructor(
+    constructor() {
+        _transferOwnership(tx.origin);
+    }
+
+    /// @notice Initialize maxxVault, launchDate and MAXX token address
+    /// @dev Function can only be called once
+    /// @param _maxxVault The address of the Maxx Finance Vault
+    /// @param _launchDate The launch date of the liquidity amplifier
+    /// @param _maxx The address of the MAXX token
+    function init(
         address _maxxVault,
         uint256 _launchDate,
         address _maxx
-    ) {
+    ) external onlyOwner {
+        if (initialized) {
+            revert AlreadyInitialized();
+        }
         maxxVault = _maxxVault;
         launchDate = _launchDate;
         maxx = _maxx;
+        initialized = true;
     }
 
     /// @dev Function to deposit matic to the contract
