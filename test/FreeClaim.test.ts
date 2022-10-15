@@ -23,7 +23,7 @@ import {
     inputs,
 } from './helpers/merkleTree';
 
-describe('Free Claim', () => {
+describe.only('Free Claim', () => {
     let Maxx: MaxxFinance__factory;
     let maxx: MaxxFinance;
 
@@ -35,7 +35,8 @@ describe('Free Claim', () => {
 
     let stakeLaunchDate: any;
     const nftAddress: any = '0x0000000000000000000000000000000000000000'; // TODO add real address
-    const maxxVault = process.env.MAXX_VAULT_ADDRESS!;
+    // let maxxVault = process.env.MAXX_VAULT_ADDRESS!;
+    let maxxVault: any;
 
     let merkleTree: any;
     let merkleRoot: string;
@@ -71,7 +72,9 @@ describe('Free Claim', () => {
         Maxx = (await ethers.getContractFactory(
             'MaxxFinance'
         )) as MaxxFinance__factory;
-        maxx = await Maxx.deploy(
+        maxx = await Maxx.deploy();
+
+        let initMaxx = await maxx.init(
             deployer.address,
             500,
             1_000_000,
@@ -83,18 +86,26 @@ describe('Free Claim', () => {
         const timestampBefore = blockBefore.timestamp;
         stakeLaunchDate = timestampBefore + 1;
 
+        maxxVault = deployer.address;
+
         Stake = (await ethers.getContractFactory(
             'MaxxStake'
         )) as MaxxStake__factory;
         stake = await Stake.deploy(maxxVault, maxx.address, stakeLaunchDate);
 
-        startDate = stakeLaunchDate + 1;
+        startDate = stakeLaunchDate + 10;
         // startDate = '1661407200';
 
         FreeClaim = (await ethers.getContractFactory(
             'FreeClaim'
         )) as FreeClaim__factory;
-        freeClaim = await FreeClaim.deploy(startDate, maxx.address);
+        freeClaim = await FreeClaim.deploy();
+
+        let updateLaunch = await freeClaim.updateLaunchDate(startDate);
+        await updateLaunch.wait();
+
+        let setMaxx = await freeClaim.setMaxx(maxx.address);
+        await setMaxx.wait();
 
         await freeClaim.setMerkleRoot(merkleRoot);
 
@@ -205,17 +216,65 @@ describe('Free Claim', () => {
             const proof = merkleTree.getHexProof(hashedLeaf);
             log.yellow('isBytesLike:', ethers.utils.isBytesLike(proof));
 
-            const stakeLaunchDate = await stake.launchDate();
+            let stakeLaunchDate = await stake.launchDate();
             log.cyan('stakeLaunchDate: ', stakeLaunchDate.toString());
-            const blockNumber = await ethers.provider.getBlockNumber();
-            const block = await ethers.provider.getBlock(blockNumber);
-            const timestamp = block.timestamp;
-            log.cyan('stake has launched:', stakeLaunchDate.gte(timestamp));
+            let blockNumber = await ethers.provider.getBlockNumber();
+            let block = await ethers.provider.getBlock(blockNumber);
+            let timestamp = block.timestamp;
+            log.cyan('stake has launched:', stakeLaunchDate.lte(timestamp));
+
+            Stake = (await ethers.getContractFactory(
+                'MaxxStake'
+            )) as MaxxStake__factory;
+            stake = await Stake.deploy(
+                maxxVault,
+                maxx.address,
+                timestamp + 1000
+            );
+
+            let setStake = await freeClaim.setMaxxStake(stake.address);
+            let setFreeClaim = await stake.setFreeClaim(freeClaim.address);
+
+            log.yellow("new stakes's address:", stake.address);
+
+            stakeLaunchDate = await stake.launchDate();
+            blockNumber = await ethers.provider.getBlockNumber();
+            block = await ethers.provider.getBlock(blockNumber);
+            timestamp = block.timestamp;
+            log.cyan('stake has launched:', stakeLaunchDate.lte(timestamp));
 
             const stakeId = await stake.idCounter();
+            log.yellow('stakeId:', stakeId.toString());
+
             await freeClaim
                 .connect(signers[3])
                 .freeClaim(amount, proof, referrer);
+
+            log.yellow('freeclaim dooone:');
+
+            let unstakedClaims = await freeClaim.getAllUnstakedClaims();
+            log.yellow('unstakedClaims:', unstakedClaims);
+
+            time.setNextBlockTimestamp(stakeLaunchDate.add(1));
+            mine();
+
+            blockNumber = await ethers.provider.getBlockNumber();
+            block = await ethers.provider.getBlock(blockNumber);
+            timestamp = block.timestamp;
+            log.cyan('stake has launched:', stakeLaunchDate.gte(timestamp));
+
+            let migrateClaims = await stake.migrateUnstakedFreeClaims();
+            await migrateClaims.wait();
+
+            const newStakeId = await stake.idCounter();
+            expect(newStakeId).to.be.gt(stakeId);
+
+            let _stake = await stake.stakes(stakeId);
+
+            log.yellow('stake:', _stake.toString());
+
+            unstakedClaims = await freeClaim.getAllUnstakedClaims();
+            log.yellow('unstakedClaims:', unstakedClaims.toString());
         });
 
         it('should make a free claim with a referral after stake launch', async () => {
