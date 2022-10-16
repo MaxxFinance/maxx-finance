@@ -220,8 +220,8 @@ contract MaxxStakeTest is
 
         uint256 withdrawableAmount;
         uint256 penaltyAmount;
-        uint256 daysServed = ((block.timestamp - tStake.startDate) / 1 days) *
-            TEST_TIME_FACTOR;
+        uint256 daysServed = (((block.timestamp - tStake.startDate) *
+            TEST_TIME_FACTOR) / 1 days);
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
             daysServed,
@@ -289,8 +289,8 @@ contract MaxxStakeTest is
         ) {
             revert NotAuthorized();
         }
-        uint256 daysServed = ((block.timestamp - tStake.startDate) / 1 days) *
-            TEST_TIME_FACTOR;
+        uint256 daysServed = (((block.timestamp - tStake.startDate) *
+            TEST_TIME_FACTOR) / 1 days);
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
             daysServed,
@@ -327,8 +327,8 @@ contract MaxxStakeTest is
         if (_topUpAmount > maxx.balanceOf(msg.sender)) {
             revert InsufficientMaxx();
         }
-        uint256 daysServed = ((block.timestamp - tStake.startDate) / 1 days) *
-            TEST_TIME_FACTOR;
+        uint256 daysServed = (((block.timestamp - tStake.startDate) *
+            TEST_TIME_FACTOR) / 1 days);
         uint256 interestToDate = _calcInterestToDate(
             tStake.shares,
             daysServed,
@@ -559,7 +559,7 @@ contract MaxxStakeTest is
         totalStakesAlltime.increment();
         totalStakesActive.increment();
 
-        uint256 duration = uint256(_numDays) * 1 days * TEST_TIME_FACTOR;
+        uint256 duration = uint256(_numDays) * 1 days;
         stakeId = idCounter.current();
         assert(stakeId == stakes.length);
         stakes.push(
@@ -574,7 +574,7 @@ contract MaxxStakeTest is
             )
         );
 
-        endTimes[stakeId] = block.timestamp + duration;
+        endTimes[stakeId] = block.timestamp + (duration / TEST_TIME_FACTOR);
 
         _mint(_owner, stakeId);
 
