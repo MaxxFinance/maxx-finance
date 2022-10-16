@@ -196,6 +196,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             revert AmplifierComplete();
         }
         uint256 amount = msg.value;
+        uint256 originalAmount = amount;
         uint256 referralBonus = amount / 10; // +10% referral bonus
         amount += referralBonus;
         uint256 referrerAmount = msg.value / 20; // 5% bonus for referrer
@@ -220,8 +221,8 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         userAmpReferral[_referrer].push(amount);
         userAmpReferral[_referrer].push(referrerAmount);
 
-        emit Referral(msg.sender, _referrer, amount);
-        emit Deposit(msg.sender, amount, _referrer);
+        emit Referral(msg.sender, _referrer, originalAmount);
+        emit Deposit(msg.sender, originalAmount, _referrer);
     }
 
     /// @dev Function to deposit matic to the contract
@@ -267,6 +268,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         }
 
         uint256 amount = msg.value;
+        uint256 originalAmount = amount;
         if (amount >= MIN_GENESIS_AMOUNT) {
             _mintMaxxGenesis(_code);
         }
@@ -296,8 +298,8 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         userAmpReferral[_referrer].push(amount);
         userAmpReferral[_referrer].push(referrerAmount);
 
-        emit Referral(msg.sender, _referrer, amount);
-        emit Deposit(msg.sender, amount, _referrer);
+        emit Referral(msg.sender, _referrer, originalAmount);
+        emit Deposit(msg.sender, originalAmount, _referrer);
     }
 
     /// @notice Function to claim MAXX directly to user wallet
