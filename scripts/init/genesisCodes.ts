@@ -15,15 +15,26 @@ export async function setCodes(maxxGenesisAddress: string) {
                 if (error) {
                     throw error;
                 }
-                const codes = data.toString();
+                const codes = data.toString().toUpperCase();
+
+                log.cyan('codes slice:', codes.slice(0, 100));
 
                 const codeArray = [];
                 let i = 0;
                 while (i < codes.length) {
+                    log.red(codes.slice(i, i + 8));
                     codeArray.push(codes.slice(i, i + 8));
-                    i += 8;
+                    i += 9;
                 }
-                log.yellow('codeArray:', codeArray[0]);
+                log.magenta('codeArray.length:', codeArray.length);
+
+                for (let i = 0; i < 10; i++) {
+                    let hash = ethers.utils.solidityKeccak256(
+                        ['string'],
+                        [codeArray[i]]
+                    );
+                    log.yellow('code:', codeArray[i], 'hash:', hash);
+                }
 
                 i = 0;
                 while (i < 10000) {
@@ -51,9 +62,18 @@ export async function setCodes(maxxGenesisAddress: string) {
     }
 }
 
+async function hashCode() {
+    let hash = ethers.utils.solidityKeccak256(['string'], ['a52FNKOU']);
+    log.yellow('hash:', hash);
+
+    const maxxGenesis = await getMAXXGenesis(maxxGenesisAddress);
+}
+
 const maxxGenesisAddress = process.env.MAXX_GENESIS_ADDRESS!;
 
 setCodes(maxxGenesisAddress).catch((error) => {
     console.error(error);
     process.exitCode = 1;
 });
+
+hashCode();
