@@ -76,11 +76,6 @@ contract MaxxStakeTest is
         bool withdrawn;
     }
 
-    enum MaxxNFT {
-        MaxxGenesis,
-        MaxxBoost
-    }
-
     mapping(address => bool) public isAcceptedNft;
     /// @dev 10 = 10% boost
     mapping(address => uint256) public nftBonus;
@@ -116,12 +111,6 @@ contract MaxxStakeTest is
     uint256 public totalStakesMatured; // who is going to pay for the transaction to update this? // timed bot to update value?
     /// @notice amount of accrued interest
     uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?  // timed bot to update value?
-    /// @notice percentage of nft bonus
-    uint8 public nftBonusPercentage;
-    /// @notice maxxBoost NFT
-    IMAXXBoost public maxxBoost;
-    /// @notice maxxGenesis NFT
-    IMAXXBoost public maxxGenesis;
     /// @notice address of the freeClaim contract
     address public freeClaim;
     /// @notice address of the liquidityAmplifier contract
@@ -157,9 +146,6 @@ contract MaxxStakeTest is
     event LiquidityAmplifierSet(address _liquidityAmplifier);
     /// @notice Emitted when the freeClaim address is updated
     event FreeClaimSet(address _freeClaim);
-    event MaxxGenesisSet(address _maxxGenesis);
-    event MaxxBoostSet(address _maxxBoost);
-    event NftBonusPercentageSet(uint8 _nftBonusPercentage);
     event NftBonusSet(address _nft, uint256 _bonus);
     event BaseURISet(string _baseUri);
     event AcceptedNftAdded(address _nft);
@@ -213,7 +199,7 @@ contract MaxxStakeTest is
         IMAXXBoost(_maxxNFT).setUsed(_tokenId);
 
         uint256 shares = _calcShares(_numDays, _amount);
-        shares += shares / nftBonus[_maxxNFT] / 100; // add nft bonus to the shares
+        shares += ((shares * nftBonus[_maxxNFT]) / 100); // add nft bonus to the shares
 
         _stake(msg.sender, _numDays, _amount, shares);
     }
@@ -450,40 +436,6 @@ contract MaxxStakeTest is
     function setFreeClaim(address _freeClaim) external onlyOwner {
         freeClaim = _freeClaim;
         emit FreeClaimSet(_freeClaim);
-    }
-
-    /// @notice Function to set the NFT bonus percentage
-    /// @param _nftBonusPercentage The percentage of NFT bonus (e.g. 20 = 20%)
-    function setNftBonusPercentage(uint8 _nftBonusPercentage)
-        external
-        onlyOwner
-    {
-        nftBonusPercentage = _nftBonusPercentage;
-        emit NftBonusPercentageSet(_nftBonusPercentage);
-    }
-
-    /// @notice Function to set the MaxxBoost NFT contract address
-    /// @param _maxxBoost Address of the MaxxBoost NFT contract
-    function setMaxxBoost(address _maxxBoost) external onlyOwner {
-        if (!IERC721(_maxxBoost).supportsInterface(type(IERC721).interfaceId)) {
-            // must support IERC721 interface
-            revert InterfaceNotSupported(_maxxBoost);
-        }
-        maxxBoost = IMAXXBoost(_maxxBoost);
-        emit MaxxBoostSet(_maxxBoost);
-    }
-
-    /// @notice Function to set the MaxxGenesis NFT contract address
-    /// @param _maxxGenesis Address of the MaxxGenesis NFT contract
-    function setMaxxGenesis(address _maxxGenesis) external onlyOwner {
-        if (
-            !IERC721(_maxxGenesis).supportsInterface(type(IERC721).interfaceId)
-        ) {
-            // must support IERC721 interface
-            revert InterfaceNotSupported(_maxxGenesis);
-        }
-        maxxGenesis = IMAXXBoost(_maxxGenesis);
-        emit MaxxGenesisSet(_maxxGenesis);
     }
 
     /// @notice Add an accepted NFT
