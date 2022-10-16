@@ -17,8 +17,6 @@ export async function setCodes(maxxGenesisAddress: string) {
                 }
                 const codes = data.toString().toUpperCase();
 
-                log.cyan('codes slice:', codes.slice(0, 100));
-
                 const codeArray = [];
                 let i = 0;
                 while (i < codes.length) {
