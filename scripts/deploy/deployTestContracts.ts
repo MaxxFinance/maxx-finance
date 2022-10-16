@@ -10,6 +10,9 @@ import {
 } from '../../typechain-types';
 import log from 'ololog';
 
+import { setCodes } from '../init/genesisCodes';
+import { dailyAllocations } from '../init/dailyAllocations';
+
 async function main() {
     const maxxVaultAddress = '0xDb0EAe4c4DDb75413d85B62B8391bFde75702B5a'; // mumbai only
     const transferTax = '500'; // 5%
@@ -104,6 +107,28 @@ async function main() {
     await maxxGenesis.deployed();
     log.yellow('maxxGenesis.address: ', maxxGenesis.address);
 
+    try {
+        await setCodes(maxxGenesis.address);
+    } catch (e) {
+        log.red(e);
+    }
+
+    let setGenesisNft = await maxxStake.addAcceptedNft(maxxGenesis.address);
+    await setGenesisNft.wait();
+    log.yellow('setGenesisNft: ', setGenesisNft.hash);
+
+    let setGenesisBonus = await maxxStake.setNftBonus(maxxGenesis.address, 10);
+    await setGenesisBonus.wait();
+    log.yellow('setGenesisBonus: ', setGenesisBonus.hash);
+
+    let setBoostNft = await maxxStake.addAcceptedNft(maxxBoost.address);
+    await setBoostNft.wait();
+    log.yellow('setBoostNft: ', setBoostNft.hash);
+
+    let setBoostBonus = await maxxStake.setNftBonus(maxxBoost.address, 20);
+    await setBoostBonus.wait();
+    log.yellow('setBoostBonus: ', setBoostBonus.hash);
+
     let setStake = await liquidityAmplifier.setStakeAddress(maxxStake.address);
     await setStake.wait();
     log.yellow('setStake: ', setStake.hash);
@@ -114,78 +139,54 @@ async function main() {
     await setMaxxGenesis.wait();
     log.yellow('setMaxxGenesis: ', setMaxxGenesis.hash);
 
-    let dailyAllocations = [
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('1000000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('420000000'),
-        ethers.utils.parseEther('680000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('1500000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('400000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('500000000'),
-        ethers.utils.parseEther('1000000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('900000000'),
-        ethers.utils.parseEther('200000000'),
-        ethers.utils.parseEther('700000000'),
-        ethers.utils.parseEther('800000000'),
-        ethers.utils.parseEther('900000000'),
-        ethers.utils.parseEther('600000000'),
-        ethers.utils.parseEther('800000000'),
-    ];
-
     if (dailyAllocations.length === 60) {
         let setDailyAllocations = await liquidityAmplifier.setDailyAllocations(
             dailyAllocations
         );
+    } else {
+        log.error.red('Daily allocations array is not 60 days long');
     }
 
     let transfer = await liquidityAmplifier.transferOwnership(maxxVaultAddress);
     await transfer.wait();
     log.yellow('transfer: ', transfer.hash);
+
+    // verify contracts
+    try {
+        await hre.run('verify:verify', {
+            address: freeClaim.address,
+            contructorArguments: [],
+        });
+        await hre.run('verify:verify', {
+            address: maxxFinance.address,
+            contructorArguments: [],
+        });
+        await hre.run('verify:verify', {
+            address: liquidityAmplifier.address,
+            contructorArguments: [],
+        });
+        await hre.run('verify:verify', {
+            address: maxxStake.address,
+            contructorArguments: [
+                maxxVaultAddress,
+                maxxFinance.address,
+                stakeLaunchDate,
+            ],
+        });
+        await hre.run('verify:verify', {
+            address: maxxBoost.address,
+            contructorArguments: [
+                liquidityAmplifier.address,
+                maxxStake.address,
+            ],
+        });
+        await hre.run('verify:verify', {
+            address: maxxGenesis.address,
+            contructorArguments: [liquidityAmplifier.address],
+        });
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
