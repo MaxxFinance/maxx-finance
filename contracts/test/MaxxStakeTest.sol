@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ILiquidityAmplifier} from "../interfaces/ILiquidityAmplifier.sol";
 import {IMaxxFinance} from "../interfaces/IMaxxFinance.sol";
 import {IMAXXBoost} from "../interfaces/IMAXXBoost.sol";
+import {IFreeClaim} from "../interfaces/IFreeClaim.sol";
 
 /// Not authorized to control the stake
 error NotAuthorized();
@@ -46,6 +47,9 @@ error TransferFailed();
 /// Tokens already staked for maximum duration
 error AlreadyMaxDuration();
 
+/// Unstaked Free Claims have already been migrated
+error FreeClaimsAlreadyMigrated();
+
 /// Current or proposed launch date has already passed
 error LaunchDatePassed();
 
@@ -62,7 +66,7 @@ contract MaxxStakeTest is
     Pausable,
     ReentrancyGuard
 {
-    uint16 private constant TEST_TIME_FACTOR = 168; // Test contract runs 168x faster (1 hour = 1 week)
+    uint16 private constant TEST_TIME_FACTOR = 332; // Test contract runs 332x faster (1 hour = 2 weeks)
     using ERC165Checker for address;
     using Counters for Counters.Counter;
 
@@ -84,13 +88,15 @@ contract MaxxStakeTest is
     uint8 public constant LATE_DAYS = 14;
     uint8 public constant MIN_STAKE_DAYS = 7;
     uint16 public constant MAX_STAKE_DAYS = 3333;
-    uint8 public constant BASE_INFLATION = 10; // 10%
-    uint8 public constant BASE_INFLATION_FACTOR = 100;
+    uint256 public constant BASE_INFLATION = 18_185; // 18.185%
+    uint256 public constant BASE_INFLATION_FACTOR = 100_000;
     uint16 public constant DAYS_IN_YEAR = 365;
     uint256 public constant PERCENT_FACTOR = 10000000000; // was 10,000 now 1,000,000,000
     uint256 public constant MAGIC_NUMBER = 1111;
 
     uint256 public launchDate;
+
+    bool public freeClaimsMigrated;
 
     /// @notice Maxx Finance Vault address
     address public maxxVault;
@@ -419,6 +425,20 @@ contract MaxxStakeTest is
         stakeId = _stake(_owner, _numDays, _amount, shares);
 
         return (stakeId, shares);
+    }
+
+    /// @notice Stake all unstaked free claims
+    function migrateUnstakedFreeClaims() external onlyOwner {
+        if (freeClaimsMigrated) {
+            revert FreeClaimsAlreadyMigrated();
+        }
+        freeClaimsMigrated = true;
+        uint256[] memory claimIds = IFreeClaim(freeClaim)
+            .getAllUnstakedClaims();
+
+        for (uint256 i = 0; i < claimIds.length; i++) {
+            IFreeClaim(freeClaim).stakeClaim(i, claimIds[i]);
+        }
     }
 
     /// @notice Funciton to set liquidityAmplifier contract address
