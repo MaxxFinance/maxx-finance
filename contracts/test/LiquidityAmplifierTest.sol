@@ -50,7 +50,7 @@ error MaxxTransferFailed();
 contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     using ERC165Checker for address;
 
-    uint16 private constant _TEST_TIME_FACTOR = 168; // Test contract runs 168x faster (1 hour = 1 week)
+    uint16 private constant _TEST_TIME_FACTOR = 332; // Test contract runs 332x faster (1 hour = 2 weeks)
 
     uint256[] private _maxxDailyAllocation = new uint256[](AMPLIFIER_PERIOD);
     uint256[] private _effectiveMaticDailyDeposits =
@@ -116,9 +116,13 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
 
     /// @notice Emitted when MAXX is claimed from a deposit
     /// @param user The user claiming MAXX
+    /// @param day The day of the amplifier claimed
     /// @param amount The amount of MAXX claimed
-    event Claim(address indexed user, uint256 amount);
-
+    event Claim(
+        address indexed user,
+        uint8 indexed day,
+        uint256 indexed amount
+    );
     /// @notice Emitted when MAXX is claimed from a referral
     /// @param user The user claiming MAXX
     /// @param amount The amount of MAXX claimed
@@ -319,7 +323,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         userAmpReferral[_referrer].push(referrerAmount);
 
         emit Referral(msg.sender, _referrer, originalAmount);
-        emit Deposit(msg.sender, orignalAmount, _referrer);
+        emit Deposit(msg.sender, originalAmount, _referrer);
     }
 
     /// @notice Function to claim MAXX directly to user wallet
@@ -354,7 +358,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             revert MaxxTransferFailed();
         }
 
-        emit Claim(msg.sender, amount);
+        emit Claim(msg.sender, _day, amount);
     }
 
     /// @notice Function to claim MAXX and directly stake
@@ -366,7 +370,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         uint256 amount = _getClaimAmount(_day);
         IMaxxFinance(maxx).approve(address(stake), amount);
         stake.amplifierStake(msg.sender, _daysToStake, amount);
-        emit Claim(msg.sender, amount);
+        emit Claim(msg.sender, _day, amount);
     }
 
     /// @notice Function to claim referral amount as liquid MAXX tokens
@@ -549,7 +553,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         returns (uint256)
     {
         uint8 currentDay = getDay();
-        if (_day >= AMPLIFIER_PERIOD || _day >= currentDay) {
+        if (_day >= AMPLIFIER_PERIOD || _day > currentDay) {
             revert InvalidDay(_day);
         }
         return _effectiveMaticDailyDeposits[_day];

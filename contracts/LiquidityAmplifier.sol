@@ -113,8 +113,13 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     /// @notice Emitted when MAXX is claimed from a deposit
     /// @param user The user claiming MAXX
+    /// @param day The day of the amplifier claimed
     /// @param amount The amount of MAXX claimed
-    event Claim(address indexed user, uint256 amount);
+    event Claim(
+        address indexed user,
+        uint8 indexed day,
+        uint256 indexed amount
+    );
 
     /// @notice Emitted when MAXX is claimed from a referral
     /// @param user The user claiming MAXX
@@ -331,7 +336,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             revert MaxxTransferFailed();
         }
 
-        emit Claim(msg.sender, amount);
+        emit Claim(msg.sender, _day, amount);
     }
 
     /// @notice Function to claim MAXX and directly stake
@@ -343,7 +348,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         uint256 amount = _getClaimAmount(_day);
         IMaxxFinance(maxx).approve(address(stake), amount);
         stake.amplifierStake(msg.sender, _daysToStake, amount);
-        emit Claim(msg.sender, amount);
+        emit Claim(msg.sender, _day, amount);
     }
 
     /// @notice Function to claim referral amount as liquid MAXX tokens
@@ -514,7 +519,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         returns (uint256)
     {
         uint8 currentDay = getDay();
-        if (_day >= AMPLIFIER_PERIOD || _day >= currentDay) {
+        if (_day >= AMPLIFIER_PERIOD || _day > currentDay) {
             revert InvalidDay(_day);
         }
         return _effectiveMaticDailyDeposits[_day];
