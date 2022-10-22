@@ -8,43 +8,11 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 import {IStake} from "../interfaces/IStake.sol";
-
-/// User has already claimed their allotment of MAXX
-error AlreadyClaimed();
-
-/// Merkle proof is invalid
-error InvalidProof();
-
-/// Maxx cannot be the zero address
-error InvalidMaxxAddress();
-
-/// Merkle root cannot be zero
-error InvalidMerkleRoot();
-
-/// No more MAXX left to claim
-error FreeClaimEnded();
-
-/// Free Claim has not started yet
-error FreeClaimNotStarted();
-
-/// User cannot refer themselves
-error SelfReferral();
-
-/// The Maxx Finance Staking contract hasn't been initialized
-error StakingNotInitialized();
-
-/// Only the Staking contract can call this function
-error OnlyMaxxStake();
-
-/// MAXX tokens not transferred to this contract
-error MaxxAllocationFailed();
-
-/// Launch date must be in the future
-error LaunchDateUpdateFailed();
+import {IFreeClaim} from "../interfaces/IFreeClaim.sol";
 
 /// @title Maxx Finance Free Claim
 /// @author Alta Web3 Labs - SonOfMosiah
-contract FreeClaimTest is Ownable, ReentrancyGuard {
+contract FreeClaimTest is IFreeClaim, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Counters for Counters.Counter;
 
@@ -56,7 +24,7 @@ contract FreeClaimTest is Ownable, ReentrancyGuard {
         uint256 timestamp;
     }
 
-    uint16 private constant TEST_TIME_FACTOR = 168; // Test contract runs 168x faster (1 hour = 1 week)
+    uint16 private constant TEST_TIME_FACTOR = 332; // Test contract runs 332x faster (1 hour = 2 weeks)
 
     /// @notice Merkle root for the free claim whitelist
     bytes32 public merkleRoot;
@@ -99,33 +67,6 @@ contract FreeClaimTest is Ownable, ReentrancyGuard {
 
     /// @notice Claim Counter
     Counters.Counter public claimCounter;
-
-    /// @notice Emitted when free claim is claimed
-    /// @param user The user claiming free claim
-    /// @param amount The amount of free claim claimed
-    event UserClaim(address indexed user, uint256 amount);
-
-    /// @notice Emitted when a referral is made
-    /// @param referrer The address of the referrer
-    /// @param user The user claiming free claim
-    /// @param amount The amount of free claim claimed
-    event Referral(
-        address indexed referrer,
-        address indexed user,
-        uint256 amount
-    );
-
-    /// @notice Emitted when the maxx token address is set
-    /// @param maxx The address of the maxx token
-    event MaxxSet(address indexed maxx);
-
-    /// @notice Emitted when the merkle root is set
-    /// @param merkleRoot The merkle root
-    event MerkleRootSet(bytes32 indexed merkleRoot);
-
-    /// @notice Emitted when the launch date is updated
-    /// @param launchDate The new launch date
-    event LaunchDateUpdated(uint256 indexed launchDate);
 
     constructor() {
         _transferOwnership(tx.origin);
@@ -233,37 +174,48 @@ contract FreeClaimTest is Ownable, ReentrancyGuard {
         emit MerkleRootSet(_merkleRoot);
     }
 
-    /// @notice Stake the unstaked claims
-    function stakeClaims() external {
+    function stakeClaim(uint256 _unstakedClaimId, uint256 _claimId) external {
         if (msg.sender != address(maxxStake) || msg.sender == address(0)) {
             revert OnlyMaxxStake();
         }
-
-        for (uint256 i = 0; i < unstakedClaims.length; i++) {
-            stakedClaims.push(unstakedClaims[i]);
-        }
-        delete unstakedClaims;
-    }
-
-    function stakeClaimsSlice(uint256 _amount) external {
-        if (msg.sender != address(maxxStake) || msg.sender == address(0)) {
-            revert OnlyMaxxStake();
-        }
-
-        for (
-            uint256 i = unstakedClaims.length;
-            i > unstakedClaims.length - _amount;
-            i--
-        ) {
-            stakedClaims.push(unstakedClaims[i]);
-            delete unstakedClaims[i];
-        }
+        Claim storage claim = claims[_claimId];
+        stakedClaims.push(_claimId);
+        (uint256 stakeId, uint256 shares) = maxxStake.freeClaimStake(
+            claim.user,
+            365,
+            claim.amount
+        );
+        claim.stakeId = stakeId;
+        claim.shares = shares;
+        delete unstakedClaims[_unstakedClaimId];
     }
 
     /// @notice Get the number of total claimers
     /// @return The number of total claimers
     function getTotalClaimers() external view returns (uint256) {
         return stakedClaims.length + unstakedClaims.length;
+    }
+
+    /// @notice Get all unstaked claims
+    /// @return The array of unstaked claim ids
+    function getAllUnstakedClaims() external view returns (uint256[] memory) {
+        return unstakedClaims;
+    }
+
+    /// @notice Get the unstaked claims slice from `_start` to `_end`
+    /// @param _start The start index
+    /// @param _end The end index
+    /// @return The array of unstaked claim ids
+    function getUnstakedClaimsSlice(uint256 _start, uint256 _end)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        uint256[] memory slice = new uint256[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            slice[i - _start] = unstakedClaims[i];
+        }
+        return slice;
     }
 
     /// @notice Get the referrals by user
