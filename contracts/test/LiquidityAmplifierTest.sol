@@ -546,7 +546,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             if (_effectiveMaticDailyDeposits[i] > 0) {
                 amount +=
                     (_maxxDailyAllocation[i] *
-                        effectiveUserDailyDeposits[msg.sender][i]) /
+                        effectiveUserReferrals[msg.sender][i]) /
                     _effectiveMaticDailyDeposits[i];
             }
         }
