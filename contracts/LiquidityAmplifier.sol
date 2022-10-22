@@ -529,7 +529,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         if (_day >= AMPLIFIER_PERIOD) {
             revert InvalidDay(_day);
         }
-        if (block.timestamp <= launchDate + CLAIM_PERIOD * 1 days) {
+        if (block.timestamp <= launchDate + (CLAIM_PERIOD * 1 days)) {
             revert AmplifierNotComplete();
         }
     }
