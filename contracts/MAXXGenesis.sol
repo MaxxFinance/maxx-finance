@@ -27,6 +27,9 @@ contract MAXXGenesis is ERC721, Ownable {
     // The address of the MAXX Liquidity Amplifier Smart Contract
     address public immutable amplifierContract;
 
+    // The address of the MAXX Staking Smart Contract
+    address public immutable stakingContract;
+
     // Mapping of Token ID to used state
     mapping(uint256 => bool) private usedState;
 
@@ -34,8 +37,11 @@ contract MAXXGenesis is ERC721, Ownable {
     mapping(bytes32 => bool) codes;
 
     /// @notice Sets the Name and Ticker for the Collection
-    constructor(address _amplifierContract) ERC721("MAXXGenesis", "MAXXG") {
+    constructor(address _amplifierContract, address _stakingContract)
+        ERC721("MAXXGenesis", "MAXXG")
+    {
         amplifierContract = _amplifierContract;
+        stakingContract = _stakingContract;
     }
 
     /// @notice Called by MAXX Staking SC to mint a reward NFT to user that stake >= 10.000.000 MAXX for 3.333 days.
@@ -70,13 +76,13 @@ contract MAXXGenesis is ERC721, Ownable {
         }
     }
 
-    /// @notice Marks NFT as used after it has been used in the MAXX Amplifier or Staking Contract
+    /// @notice Marks NFT as used after it has been used in the MAXX Staking Contract
     /// @param _tokenId the Token ID of the NFT to be marked as used
-    /// @dev This function is only callable by the MAXX Amplify Contract
+    /// @dev This function is only callable by the MAXX Staking Contract
     function setUsed(uint256 _tokenId) external {
         require(
-            msg.sender == amplifierContract,
-            "Only the Amplify Contract can set a token as used"
+            msg.sender == stakingContract,
+            "Only the Staking Contract can set a token as used"
         );
         usedState[_tokenId] = true;
     }

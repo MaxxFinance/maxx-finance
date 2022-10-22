@@ -60,13 +60,13 @@ contract MAXXBoost is ERC721, Ownable {
         _safeMint(luckyParticipant, supply.current());
     }
 
-    /// @notice Marks NFT as used after it has been used in the MAXX Amplifier or Staking Contract
+    /// @notice Marks NFT as used after it has been used in the MAXX Staking Contract
     /// @param _tokenId the Token ID of the NFT to be marked as used
-    /// @dev This function is only callable by the MAXX Amplify Contract
+    /// @dev This function is only callable by the MAXX Staking Contract
     function setUsed(uint256 _tokenId) external {
         require(
-            msg.sender == amplifierContract || msg.sender == stakingContract,
-            "Only the Amplify Contract can set a token as used"
+            msg.sender == stakingContract,
+            "Only the Staking Contract can set a token as used"
         );
         usedState[_tokenId] = true;
     }
