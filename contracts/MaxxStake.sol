@@ -13,53 +13,12 @@ import {ILiquidityAmplifier} from "./interfaces/ILiquidityAmplifier.sol";
 import {IMaxxFinance} from "./interfaces/IMaxxFinance.sol";
 import {IMAXXBoost} from "./interfaces/IMAXXBoost.sol";
 import {IFreeClaim} from "./interfaces/IFreeClaim.sol";
-
-/// Not authorized to control the stake
-error NotAuthorized();
-
-/// Cannot stake less than {MIN_STAKE_DAYS} days
-error StakeTooShort();
-
-/// Cannot stake more than {MAX_STAKE_DAYS} days
-error StakeTooLong();
-
-/// Address does not own enough MAXX tokens
-error InsufficientMaxx();
-
-/// Stake has not yet completed
-error StakeNotComplete();
-
-/// Stake has already been claimed
-error StakeAlreadyWithdrawn();
-
-/// User does not own the NFT
-error IncorrectOwner();
-
-/// NFT boost has already been used
-error UsedNFT();
-
-/// NFT collection is not accepted
-error NftNotAccepted();
-
-/// Token transfer returned false (failed)
-error TransferFailed();
-
-/// Tokens already staked for maximum duration
-error AlreadyMaxDuration();
-
-/// Current or proposed launch date has already passed
-error LaunchDatePassed();
-
-/// Unstaked Free Claims have already been migrated
-error FreeClaimsAlreadyMigrated();
-
-/// `_nft` does not support the IERC721 interface
-/// @param _nft the address of the NFT contract
-error InterfaceNotSupported(address _nft);
+import {IStake} from "./interfaces/IStake.sol";
 
 /// @title Maxx Finance staking contract
 /// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxStake is
+    IStake,
     ERC721,
     ERC721Enumerable,
     Ownable,
@@ -69,19 +28,11 @@ contract MaxxStake is
     using ERC165Checker for address;
     using Counters for Counters.Counter;
 
-    struct StakeData {
-        string name;
-        address owner;
-        uint256 amount;
-        uint256 shares;
-        uint256 duration;
-        uint256 startDate;
-        bool withdrawn;
-    }
-
     mapping(address => bool) public isAcceptedNft;
     /// @dev 10 = 10% boost
     mapping(address => uint256) public nftBonus;
+    /// mapping of stake end times
+    mapping(uint256 => uint256) public endTimes;
 
     // Calculation variables
     uint256 public constant LATE_DAYS = 14;
@@ -90,9 +41,10 @@ contract MaxxStake is
     uint256 public constant BASE_INFLATION = 18_185; // 18.185%
     uint256 public constant BASE_INFLATION_FACTOR = 100_000;
     uint256 public constant DAYS_IN_YEAR = 365;
-    uint256 public constant PERCENT_FACTOR = 10_000_000_000; // was 10,000 now 1,000,000,000
+    uint256 public constant PERCENT_FACTOR = 1e10;
     uint256 public constant MAGIC_NUMBER = 1111;
-    uint256 public constant BPB_FACTOR = 10_000_000;
+    uint256 public constant SHARE_FACTOR = 10_000;
+    uint256 public constant BPB_FACTOR = 2e27;
 
     uint256 public launchDate;
 
@@ -100,71 +52,29 @@ contract MaxxStake is
 
     /// @notice Maxx Finance Vault address
     address public maxxVault;
-
+    /// @notice address of the freeClaim contract
+    address public freeClaim;
+    /// @notice address of the liquidityAmplifier contract
+    address public liquidityAmplifier;
     /// @notice Maxx Finance token
     IMaxxFinance public maxx;
-    /// @notice Stake Counter
-    Counters.Counter public idCounter;
+
     /// @notice amount of shares all time
     uint256 public totalShares;
+    /// @notice Stake Counter
+    Counters.Counter public idCounter;
     /// @notice alltime stakes
     Counters.Counter public totalStakesAlltime;
     /// @notice all active stakes
     Counters.Counter public totalStakesActive;
     /// @notice number of withdrawn stakes
     Counters.Counter public totalStakesWithdrawn;
-    /// @notice number of stakes that have ended but are not yet withdrawn
-    uint256 public totalStakesMatured; // who is going to pay for the transaction to update this? // timed bot to update value?
-    /// @notice amount of accrued interest
-    uint256 public totalStakedOutstandingInterest; // who is going to pay for the transaction to update this?  // timed bot to update value?
-    /// @notice address of the freeClaim contract
-    address public freeClaim;
-    /// @notice address of the liquidityAmplifier contract
-    address public liquidityAmplifier;
-    /// mapping of stake end times
-    mapping(uint256 => uint256) public endTimes;
 
     /// @notice Array of all stakes
     StakeData[] public stakes;
 
     // Base URI
     string private _baseUri;
-
-    /// @notice Emitted when MAXX is staked
-    /// @param user The user staking MAXX
-    /// @param numDays The number of days staked
-    /// @param amount The amount of MAXX staked
-    event Stake(
-        uint256 indexed stakeId,
-        address indexed user,
-        uint16 numDays,
-        uint256 amount
-    );
-
-    /// @notice Emitted when MAXX is unstaked
-    /// @param user The user unstaking MAXX
-    /// @param amount The amount of MAXX unstaked
-    event Unstake(
-        uint256 indexed stakeId,
-        address indexed user,
-        uint256 amount
-    );
-
-    /// @notice Emitted when the name of a stake is changed
-    /// @param stakeId The id of the stake
-    /// @param name The new name of the stake
-    event StakeNameChange(uint256 stakeId, string name);
-
-    /// @notice Emitted when the launch date is updated
-    event LaunchDateUpdated(uint256 newLaunchDate);
-    /// @notice Emitted when the liquidityAmplifier address is updated
-    event LiquidityAmplifierSet(address _liquidityAmplifier);
-    /// @notice Emitted when the freeClaim address is updated
-    event FreeClaimSet(address _freeClaim);
-    event NftBonusSet(address _nft, uint256 _bonus);
-    event BaseURISet(string _baseUri);
-    event AcceptedNftAdded(address _nft);
-    event AcceptedNftRemoved(address _nft);
 
     /// @dev Sets the `maxxVault` and `maxx` addresses and the `launchDate`
     constructor(
@@ -232,6 +142,8 @@ contract MaxxStake is
         stakes[_stakeId].withdrawn = true;
         totalStakesWithdrawn.increment();
         totalStakesActive.decrement();
+
+        _burn(_stakeId);
 
         uint256 withdrawableAmount;
         uint256 penaltyAmount;
@@ -540,7 +452,7 @@ contract MaxxStake is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC721Enumerable)
+        override(ERC721, ERC721Enumerable, IERC165)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -557,6 +469,7 @@ contract MaxxStake is
         uint256 _amount,
         uint256 _shares
     ) internal returns (uint256 stakeId) {
+        // Check that stake duration is valid
         if (_numDays < MIN_STAKE_DAYS) {
             revert StakeTooShort();
         } else if (_numDays > MAX_STAKE_DAYS) {
@@ -623,7 +536,9 @@ contract MaxxStake is
     {
         uint256 shareFactor = _getShareFactor();
 
-        uint256 basicShares = _amount / (2 - shareFactor);
+        uint256 basicShares = _amount /
+            ((2 * SHARE_FACTOR) - shareFactor) /
+            SHARE_FACTOR;
         uint256 bpbBonus = _amount / BPB_FACTOR;
         if (bpbBonus > 10) {
             bpbBonus = 10;
@@ -637,8 +552,13 @@ contract MaxxStake is
 
     /// @return shareFactor The current share factor
     function _getShareFactor() internal view returns (uint256 shareFactor) {
-        shareFactor = 1 - (getDaysSinceLaunch() / MAX_STAKE_DAYS);
-        assert(shareFactor <= 1);
+        uint256 day = getDaysSinceLaunch();
+        if (day >= MAX_STAKE_DAYS) {
+            return 0;
+        }
+        shareFactor =
+            SHARE_FACTOR -
+            ((getDaysSinceLaunch() * SHARE_FACTOR) / MAX_STAKE_DAYS);
         return shareFactor;
     }
 
