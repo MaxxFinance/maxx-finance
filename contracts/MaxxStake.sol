@@ -44,7 +44,7 @@ contract MaxxStake is
     uint256 public constant PERCENT_FACTOR = 1e10;
     uint256 public constant MAGIC_NUMBER = 1111;
     uint256 public constant SHARE_FACTOR = 10_000;
-    uint256 public constant BPB_FACTOR = 2e27;
+    uint256 public constant BPB_FACTOR = 2e24;
 
     uint256 public launchDate;
 

@@ -46,7 +46,7 @@ contract MaxxStakeTest is
     uint256 public constant PERCENT_FACTOR = 1e10; // was 10,000 now 1,000,000,000
     uint256 public constant MAGIC_NUMBER = 1111;
     uint256 public constant SHARE_FACTOR = 10_000;
-    uint256 public constant BPB_FACTOR = 2e27;
+    uint256 public constant BPB_FACTOR = 2e24;
 
     uint256 public launchDate;
 
