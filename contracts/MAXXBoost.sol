@@ -25,10 +25,10 @@ contract MAXXBoost is ERC721, Ownable {
     uint256 public constant MAX_SUPPLY = 120;
 
     // The address of the MAXX Liquidity Amplifier Smart Contract
-    address public immutable amplifierContract;
+    address public amplifierContract;
 
     // The address of the MAXX Staking Smart Contract
-    address public immutable stakingContract;
+    address public stakingContract;
 
     // Mapping of Token ID to used state
     mapping(uint256 => bool) private usedState;
@@ -69,6 +69,17 @@ contract MAXXBoost is ERC721, Ownable {
             "Only the Staking Contract can set a token as used"
         );
         usedState[_tokenId] = true;
+    }
+
+    function setMaxxStake(address _maxxStake) external onlyOwner {
+        stakingContract = _maxxStake;
+    }
+
+    function setLiquidityAmplifier(address _liquidityAmplifier)
+        external
+        onlyOwner
+    {
+        amplifierContract = _liquidityAmplifier;
     }
 
     /// @notice Verifies if a NFT is used or not
