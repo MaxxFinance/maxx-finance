@@ -16,7 +16,7 @@ import {IMAXXBoost} from "../interfaces/IMAXXBoost.sol";
 contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     using ERC165Checker for address;
 
-    uint16 private constant _TEST_TIME_FACTOR = 332; // Test contract runs 332x faster (1 hour = 2 weeks)
+    uint16 private constant _TEST_TIME_FACTOR = 336; // Test contract runs 336x faster (1 hour = 2 weeks)
 
     uint256[] private _maxxDailyAllocation = new uint256[](AMPLIFIER_PERIOD);
     uint256[] private _effectiveMaticDailyDeposits =
@@ -63,7 +63,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     /// @notice tracks if address has claimed for a given day
     mapping(address => mapping(uint8 => bool)) public participatedByDay;
     mapping(address => mapping(uint256 => bool)) public dayClaimed;
-    mapping(address => bool) public claimedReferrals;
+    mapping(address => uint256) public claimedReferralAmount;
 
     mapping(address => uint256[]) public userAmpReferral;
 
@@ -537,10 +537,6 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
 
     /// @return amount The amount of MAXX tokens to be claimed
     function _getReferralAmountAndTransfer() internal returns (uint256) {
-        if (claimedReferrals[msg.sender]) {
-            revert AlreadyClaimedReferrals();
-        }
-        claimedReferrals[msg.sender] = true;
         uint256 amount;
         for (uint256 i = 0; i < AMPLIFIER_PERIOD; i++) {
             if (_effectiveMaticDailyDeposits[i] > 0) {
@@ -550,6 +546,8 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
                     _effectiveMaticDailyDeposits[i];
             }
         }
+        amount -= claimedReferralAmount[msg.sender];
+        claimedReferralAmount[msg.sender] += amount;
         IMaxxFinance(maxx).transfer(msg.sender, amount);
         return amount;
     }

@@ -60,7 +60,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice tracks if address has claimed for a given day
     mapping(address => mapping(uint8 => bool)) public participatedByDay;
     mapping(address => mapping(uint256 => bool)) public dayClaimed;
-    mapping(address => bool) public claimedReferrals;
+    mapping(address => uint256) public claimedReferralAmount;
 
     mapping(address => uint256[]) public userAmpReferral;
 
@@ -508,10 +508,6 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     /// @return amount The amount of MAXX tokens to be claimed
     function _getReferralAmountAndTransfer() internal returns (uint256) {
-        if (claimedReferrals[msg.sender]) {
-            revert AlreadyClaimedReferrals();
-        }
-        claimedReferrals[msg.sender] = true;
         uint256 amount;
         for (uint256 i = 0; i < AMPLIFIER_PERIOD; i++) {
             if (_effectiveMaticDailyDeposits[i] > 0) {
@@ -521,6 +517,8 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
                     _effectiveMaticDailyDeposits[i];
             }
         }
+        amount -= claimedReferralAmount[msg.sender];
+        claimedReferralAmount[msg.sender] += amount;
         IMaxxFinance(maxx).transfer(msg.sender, amount);
         return amount;
     }
