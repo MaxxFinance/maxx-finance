@@ -34,19 +34,19 @@ contract MaxxStakeTest is
     /// mapping of stake end times
     mapping(uint256 => uint256) public endTimes;
 
-    uint16 private constant _TEST_TIME_FACTOR = 332; // Test contract runs 332x faster (1 hour = 2 weeks)
+    uint16 private constant _TEST_TIME_FACTOR = 336; // Test contract runs 336x faster (1 hour = 2 weeks)
 
     // Calculation variables
     uint8 public constant LATE_DAYS = 14;
     uint8 public constant MIN_STAKE_DAYS = 7;
     uint16 public constant MAX_STAKE_DAYS = 3333;
+    uint16 public constant DAYS_IN_YEAR = 365;
     uint256 public constant BASE_INFLATION = 18_185; // 18.185%
     uint256 public constant BASE_INFLATION_FACTOR = 100_000;
-    uint16 public constant DAYS_IN_YEAR = 365;
-    uint256 public constant PERCENT_FACTOR = 1e10; // was 10,000 now 1,000,000,000
+    uint256 public constant PERCENT_FACTOR = 1e10;
     uint256 public constant MAGIC_NUMBER = 1111;
-    uint256 public constant SHARE_FACTOR = 10_000;
     uint256 public constant BPB_FACTOR = 2e24;
+    uint256 private constant _SHARE_FACTOR = 1e9;
 
     uint256 public launchDate;
 
@@ -76,7 +76,7 @@ contract MaxxStakeTest is
     StakeData[] public stakes;
 
     // Base URI
-    string private _baseUri; // TODO
+    string private _baseUri;
 
     /// @dev Sets the `maxxVault` and `maxx` addresses and the `launchDate`
     constructor(
@@ -97,6 +97,9 @@ contract MaxxStakeTest is
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
     function stake(uint16 _numDays, uint256 _amount) external {
+        if (_amount < 5e22) {
+            revert InvalidAmount();
+        }
         uint256 shares = _calcShares(_numDays, _amount);
 
         _stake(msg.sender, _numDays, _amount, shares);
@@ -114,6 +117,9 @@ contract MaxxStakeTest is
         uint256 _tokenId,
         address _maxxNFT
     ) external {
+        if (_amount < 5e22) {
+            revert InvalidAmount();
+        }
         if (!isAcceptedNft[_maxxNFT]) {
             revert NftNotAccepted();
         }
@@ -226,7 +232,7 @@ contract MaxxStakeTest is
             tStake.duration
         );
         tStake.duration = uint256(MAX_STAKE_DAYS) * 1 days;
-        uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
+        uint16 durationInDays = uint16(tStake.duration / 1 days);
         totalShares -= tStake.shares;
 
         tStake.amount += interestToDate;
@@ -265,7 +271,7 @@ contract MaxxStakeTest is
         );
         tStake.amount += _topUpAmount + interestToDate;
         tStake.startDate = block.timestamp;
-        uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
+        uint16 durationInDays = uint16(tStake.duration / 1 days);
         totalShares -= tStake.shares;
         tStake.shares = _calcShares(durationInDays, tStake.amount);
         tStake.startDate = block.timestamp;
@@ -447,11 +453,7 @@ contract MaxxStakeTest is
     /// @notice This function will return day `day` since the launch date
     /// @return day The number of days passed since `launchDate`
     function getDaysSinceLaunch() public view returns (uint256 day) {
-        day =
-            ((block.timestamp - launchDate) * _TEST_TIME_FACTOR) /
-            60 /
-            60 /
-            24; // divide by 60 seconds, 60 minutes, 24 hours
+        day = ((block.timestamp - launchDate) * _TEST_TIME_FACTOR) / 1 days;
         return day;
     }
 
@@ -470,6 +472,18 @@ contract MaxxStakeTest is
     /// @notice Returns the base URI for the token collection
     function tokenURI(uint256) public view override returns (string memory) {
         return _baseURI();
+    }
+
+    /// @return shareFactor The current share factor
+    function getShareFactor() public view returns (uint256 shareFactor) {
+        uint256 day = getDaysSinceLaunch();
+        if (day >= MAX_STAKE_DAYS) {
+            return 0;
+        }
+        shareFactor =
+            _SHARE_FACTOR -
+            ((getDaysSinceLaunch() * _SHARE_FACTOR) / MAX_STAKE_DAYS);
+        return shareFactor;
     }
 
     function _stake(
@@ -543,32 +557,19 @@ contract MaxxStakeTest is
         view
         returns (uint256 shares)
     {
-        uint256 shareFactor = _getShareFactor();
+        uint256 shareFactor = getShareFactor();
 
-        uint256 basicShares = _amount /
-            ((2 * SHARE_FACTOR) - shareFactor) /
-            SHARE_FACTOR;
-        uint256 bpbBonus = _amount / BPB_FACTOR;
-        if (bpbBonus > 10) {
-            bpbBonus = 10;
+        uint256 basicShares = (_amount * _SHARE_FACTOR) /
+            ((2 * _SHARE_FACTOR) - shareFactor);
+        uint256 bpbBonus = _amount / (BPB_FACTOR / 10);
+        if (bpbBonus > 100) {
+            bpbBonus = 100;
         }
-        uint256 bpbShares = (basicShares * bpbBonus) / 100; // bigger pays better
+        uint256 bpbShares = (basicShares * bpbBonus) / 1_000; // bigger pays better
         uint256 lpbShares = ((basicShares + bpbShares) * (duration - 1)) /
             MAGIC_NUMBER; // longer pays better
         shares = basicShares + bpbShares + lpbShares;
         return shares;
-    }
-
-    /// @return shareFactor The current share factor
-    function _getShareFactor() internal view returns (uint256 shareFactor) {
-        uint256 day = getDaysSinceLaunch();
-        if (day >= MAX_STAKE_DAYS) {
-            return 0;
-        }
-        shareFactor =
-            SHARE_FACTOR -
-            ((getDaysSinceLaunch() * SHARE_FACTOR) / MAX_STAKE_DAYS);
-        return shareFactor;
     }
 
     /**
