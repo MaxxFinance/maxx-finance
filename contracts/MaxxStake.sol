@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -43,8 +45,8 @@ contract MaxxStake is
     uint256 public constant DAYS_IN_YEAR = 365;
     uint256 public constant PERCENT_FACTOR = 1e10;
     uint256 public constant MAGIC_NUMBER = 1111;
-    uint256 public constant SHARE_FACTOR = 10_000;
     uint256 public constant BPB_FACTOR = 2e24;
+    uint256 private constant _SHARE_FACTOR = 1e9;
 
     uint256 public launchDate;
 
@@ -95,6 +97,9 @@ contract MaxxStake is
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
     function stake(uint16 _numDays, uint256 _amount) external {
+        if (_amount < 5e22) {
+            revert InvalidAmount();
+        }
         uint256 shares = _calcShares(_numDays, _amount);
 
         _stake(msg.sender, _numDays, _amount, shares);
@@ -112,6 +117,9 @@ contract MaxxStake is
         uint256 _tokenId,
         address _maxxNFT
     ) external {
+        if (_amount < 5e22) {
+            revert InvalidAmount();
+        }
         if (!isAcceptedNft[_maxxNFT]) {
             revert NftNotAccepted();
         }
@@ -222,7 +230,7 @@ contract MaxxStake is
             tStake.duration
         );
         tStake.duration = uint256(MAX_STAKE_DAYS) * 1 days;
-        uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
+        uint16 durationInDays = uint16(tStake.duration / 1 days);
         totalShares -= tStake.shares;
 
         tStake.amount += interestToDate;
@@ -260,7 +268,7 @@ contract MaxxStake is
         );
         tStake.amount += _topUpAmount + interestToDate;
         tStake.startDate = block.timestamp;
-        uint16 durationInDays = uint16(tStake.duration / 24 / 60 / 60);
+        uint16 durationInDays = uint16(tStake.duration / 1 days);
         totalShares -= tStake.shares;
         tStake.shares = _calcShares(durationInDays, tStake.amount);
         tStake.startDate = block.timestamp;
@@ -442,7 +450,7 @@ contract MaxxStake is
     /// @notice This function will return day `day` since the launch date
     /// @return day The number of days passed since `launchDate`
     function getDaysSinceLaunch() public view returns (uint256 day) {
-        day = (block.timestamp - launchDate) / 60 / 60 / 24; // divide by 60 seconds, 60 minutes, 24 hours
+        day = (block.timestamp - launchDate) / 1 days;
         return day;
     }
 
@@ -536,17 +544,22 @@ contract MaxxStake is
     {
         uint256 shareFactor = _getShareFactor();
 
-        uint256 basicShares = _amount /
-            ((2 * SHARE_FACTOR) - shareFactor) /
-            SHARE_FACTOR;
-        uint256 bpbBonus = _amount / BPB_FACTOR;
-        if (bpbBonus > 10) {
-            bpbBonus = 10;
+        uint256 basicShares = (_amount * _SHARE_FACTOR) /
+            ((2 * _SHARE_FACTOR) - shareFactor);
+        console.log("basicShares:", basicShares / 1e18);
+        uint256 bpbBonus = _amount / (BPB_FACTOR / 10);
+        console.log("bpbBonus:", bpbBonus);
+        if (bpbBonus > 100) {
+            bpbBonus = 100;
         }
-        uint256 bpbShares = (basicShares * bpbBonus) / 100; // bigger pays better
+        console.log("bpbBonus:", bpbBonus);
+        uint256 bpbShares = (basicShares * bpbBonus) / 1_000; // bigger pays better
+        console.log("bpbShares:", bpbShares / 1e18);
         uint256 lpbShares = ((basicShares + bpbShares) * (duration - 1)) /
             MAGIC_NUMBER; // longer pays better
+        console.log("lpbShares:", lpbShares / 1e18);
         shares = basicShares + bpbShares + lpbShares;
+        console.log("total shares:", shares / 1e18);
         return shares;
     }
 
@@ -557,8 +570,9 @@ contract MaxxStake is
             return 0;
         }
         shareFactor =
-            SHARE_FACTOR -
-            ((getDaysSinceLaunch() * SHARE_FACTOR) / MAX_STAKE_DAYS);
+            _SHARE_FACTOR -
+            ((getDaysSinceLaunch() * _SHARE_FACTOR) / MAX_STAKE_DAYS);
+
         return shareFactor;
     }
 

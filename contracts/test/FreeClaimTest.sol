@@ -24,7 +24,7 @@ contract FreeClaimTest is IFreeClaim, Ownable, ReentrancyGuard {
         uint256 timestamp;
     }
 
-    uint16 private constant TEST_TIME_FACTOR = 332; // Test contract runs 332x faster (1 hour = 2 weeks)
+    uint16 private constant TEST_TIME_FACTOR = 336; // Test contract runs 336x faster (1 hour = 2 weeks)
 
     /// @notice Merkle root for the free claim whitelist
     bytes32 public merkleRoot;

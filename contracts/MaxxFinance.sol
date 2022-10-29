@@ -77,6 +77,9 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice whitelisted addresses
     mapping(address => bool) public isAllowed;
 
+    /// @notice tax exempt addresses
+    mapping(address => bool) public isTaxExempt;
+
     /// @notice The block number of the address's last purchase from a pool
     mapping(address => uint256) public lastPurchase;
 
@@ -99,6 +102,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     event AddressUnblocked(address indexed account);
     event GlobalDailySellLimitUpdated(uint256 globalDailySellLimit);
     event WhaleLimitUpdated(uint256 whaleLimit);
+    event TaxExemptAdded(address indexed account);
+    event TaxExemptRemoved(address indexed account);
 
     constructor() ERC20("Maxx Finance", "MAXX") {
         _grantRole(DEFAULT_ADMIN_ROLE, tx.origin);
@@ -219,6 +224,22 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         _unpause();
     }
 
+    function addTaxExempt(address _exempt)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        isTaxExempt[_exempt] = true;
+        emit TaxExemptAdded(_exempt);
+    }
+
+    function removeTaxExempt(address _exempt)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        isTaxExempt[_exempt] = false;
+        emit TaxExemptRemoved(_exempt);
+    }
+
     /// @notice Get the timestamp of the next day when the daily amount sold will be reset
     /// @return timestamp The timestamp corresponding to the next day when the global daily sell limit will be reset
     function getNextDayTimestamp() external view returns (uint256 timestamp) {
@@ -307,7 +328,10 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
             return false;
         }
 
-        if (isPool[_to] || isPool[msg.sender]) {
+        if (
+            (isPool[_to] || isPool[msg.sender]) &&
+            (!isTaxExempt[msg.sender] && !isTaxExempt[_to])
+        ) {
             uint256 tax = _getTaxAmount(_amount);
             _amount -= tax;
             require(super.transfer(maxxVault, tax / 2));
@@ -337,7 +361,10 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
             return false;
         }
 
-        if (isPool[_from] || isPool[_to]) {
+        if (
+            (isPool[_from] || isPool[_to]) &&
+            (!isTaxExempt[_from] && !isTaxExempt[_to])
+        ) {
             uint256 tax = _getTaxAmount(_amount);
             _amount -= tax;
             require(super.transferFrom(msg.sender, maxxVault, tax / 2));

@@ -19,7 +19,7 @@ interface ILiquidityAmplifier {
     error InvalidDay(uint256 day);
     /// User has already claimed for this day
     /// @param day The amplifier day 1-60
-    error AlreadyClaimed(uint8 day);
+    error AlreadyClaimed(uint256 day);
     /// User has already claimed referral rewards
     error AlreadyClaimedReferrals();
     /// The Maxx allocation has already been initialized
@@ -53,7 +53,7 @@ interface ILiquidityAmplifier {
     /// @param amount The amount of MAXX claimed
     event Claim(
         address indexed user,
-        uint8 indexed day,
+        uint256 indexed day,
         uint256 indexed amount
     );
 
@@ -87,7 +87,7 @@ interface ILiquidityAmplifier {
     /// @notice This function will return all liquidity amplifier participants for `day` day
     /// @param day The day for which to return the participants
     /// @return participants Array of addresses that have participated in the Liquidity Amplifier
-    function getParticipantsByDay(uint8 day)
+    function getParticipantsByDay(uint256 day)
         external
         view
         returns (address[] memory);

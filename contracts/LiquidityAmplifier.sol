@@ -30,7 +30,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     address[] public participants;
 
     /// @notice Array of address that participated in the liquidity amplifier for each day
-    mapping(uint8 => address[]) public participantsByDay;
+    mapping(uint256 => address[]) public participantsByDay;
 
     /// @inheritdoc ILiquidityAmplifier
     uint256 public launchDate;
@@ -44,7 +44,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     bool private _allocationInitialized;
     bool public initialized;
 
-    uint16 public constant MAX_LATE_DAYS = 60;
+    uint16 public constant MAX_LATE_DAYS = 100;
     uint16 public constant CLAIM_PERIOD = 60;
     uint16 public constant AMPLIFIER_PERIOD = 60;
     uint256 public constant MIN_GENESIS_AMOUNT = 5e19; // 50 matic
@@ -58,7 +58,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice tracks if address has participated in the amplifier
     mapping(address => bool) public participated;
     /// @notice tracks if address has claimed for a given day
-    mapping(address => mapping(uint8 => bool)) public participatedByDay;
+    mapping(address => mapping(uint256 => bool)) public participatedByDay;
     mapping(address => mapping(uint256 => bool)) public dayClaimed;
     mapping(address => uint256) public claimedReferralAmount;
 
@@ -97,7 +97,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         }
 
         uint256 amount = msg.value;
-        uint8 day = getDay();
+        uint256 day = getDay();
 
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
@@ -132,7 +132,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         amount += referralBonus;
         uint256 referrerAmount = msg.value / 20; // 5% bonus for referrer
         uint256 effectiveDeposit = amount + referrerAmount;
-        uint8 day = getDay();
+        uint256 day = getDay();
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
             participants.push(msg.sender);
@@ -167,7 +167,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             _mintMaxxGenesis(_code);
         }
 
-        uint8 day = getDay();
+        uint256 day = getDay();
 
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
@@ -208,7 +208,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         amount += referralBonus;
         uint256 referrerAmount = msg.value / 20; // 5% bonus for referrer
         uint256 effectiveDeposit = amount + referrerAmount;
-        uint8 day = getDay();
+        uint256 day = getDay();
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
             participants.push(msg.sender);
@@ -235,7 +235,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     /// @notice Function to claim MAXX directly to user wallet
     /// @param _day The day to claim MAXX for
-    function claim(uint8 _day) external {
+    function claim(uint256 _day) external {
         _checkDayRange(_day);
         if (
             address(stake) == address(0) || block.timestamp < stake.launchDate()
@@ -268,8 +268,14 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice Function to claim MAXX and directly stake
     /// @param _day The day to claim MAXX for
     /// @param _daysToStake The number of days to stake
-    function claimToStake(uint8 _day, uint16 _daysToStake) external {
+    function claimToStake(uint256 _day, uint16 _daysToStake) external {
         _checkDayRange(_day);
+
+        if (
+            address(stake) == address(0) || block.timestamp < stake.launchDate()
+        ) {
+            revert StakingNotInitialized();
+        }
 
         uint256 amount = _getClaimAmount(_day);
 
@@ -292,6 +298,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     /// @notice Function to claim referral amount as liquid MAXX tokens
     function claimReferrals() external {
+        if (
+            address(stake) == address(0) || block.timestamp < stake.launchDate()
+        ) {
+            revert StakingNotInitialized();
+        }
+
         uint256 amount = _getReferralAmountAndTransfer();
         emit ClaimReferral(msg.sender, amount);
     }
@@ -389,7 +401,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice This function will return all liquidity amplifier participants for `day` day
     /// @param day The day for which to return the participants
     /// @return participants Array of addresses that have participated in the Liquidity Amplifier
-    function getParticipantsByDay(uint8 day)
+    function getParticipantsByDay(uint256 day)
         external
         view
         returns (address[] memory)
@@ -418,12 +430,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @dev This function will revert until after the day `day` has ended
     /// @param _day The day of the liquidity amplifier period 0-59
     /// @return The maxx allocated for day `day`
-    function getMaxxDailyAllocation(uint8 _day)
+    function getMaxxDailyAllocation(uint256 _day)
         external
         view
         returns (uint256)
     {
-        uint8 currentDay = getDay();
+        uint256 currentDay = getDay();
 
         // changed: does not revert on current day
         if (_day >= AMPLIFIER_PERIOD || _day > currentDay) {
@@ -437,8 +449,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @dev This function will revert until after the day `day` has ended
     /// @param _day The day of the liquidity amplifier period 0-59
     /// @return The matic deposited for day `day`
-    function getMaticDailyDeposit(uint8 _day) external view returns (uint256) {
-        uint8 currentDay = getDay();
+    function getMaticDailyDeposit(uint256 _day)
+        external
+        view
+        returns (uint256)
+    {
+        uint256 currentDay = getDay();
 
         // changed: does not revert on current day
         if (_day >= AMPLIFIER_PERIOD || _day > currentDay) {
@@ -452,12 +468,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @dev This function will revert until after the day `day` has ended
     /// @param _day The day of the liquidity amplifier period 0-59
     /// @return The effective matic deposited for day `day`
-    function getEffectiveMaticDailyDeposit(uint8 _day)
+    function getEffectiveMaticDailyDeposit(uint256 _day)
         external
         view
         returns (uint256)
     {
-        uint8 currentDay = getDay();
+        uint256 currentDay = getDay();
         if (_day >= AMPLIFIER_PERIOD || _day > currentDay) {
             revert InvalidDay(_day);
         }
@@ -474,11 +490,11 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     /// @notice This function will return day `day` out of 60 days
     /// @return day How many days have passed since `launchDate`
-    function getDay() public view returns (uint8 day) {
+    function getDay() public view returns (uint256 day) {
         if (block.timestamp < launchDate) {
             revert AmplifierNotStarted();
         }
-        day = uint8((block.timestamp - launchDate) / 60 / 60 / 24); // divide by 60 seconds, 60 minutes, 24 hours
+        day = uint256((block.timestamp - launchDate) / 60 / 60 / 24); // divide by 60 seconds, 60 minutes, 24 hours
         return day;
     }
 
@@ -495,7 +511,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     }
 
     /// @return amount The amount of MAXX tokens to be claimed
-    function _getClaimAmount(uint8 _day) internal returns (uint256) {
+    function _getClaimAmount(uint256 _day) internal returns (uint256) {
         if (dayClaimed[msg.sender][_day]) {
             revert AlreadyClaimed(_day);
         }
@@ -523,7 +539,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         return amount;
     }
 
-    function _checkDayRange(uint8 _day) internal view {
+    function _checkDayRange(uint256 _day) internal view {
         if (_day >= AMPLIFIER_PERIOD) {
             revert InvalidDay(_day);
         }

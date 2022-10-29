@@ -14,6 +14,9 @@ interface IStake is IERC721 {
     /// Cannot stake more than {MAX_STAKE_DAYS} days
     error StakeTooLong();
 
+    /// Cannot stake less than 50_000 MAXX
+    error InvalidAmount();
+
     /// Address does not own enough MAXX tokens
     error InsufficientMaxx();
 
@@ -77,13 +80,13 @@ interface IStake is IERC721 {
     /// @notice Emitted when the launch date is updated
     event LaunchDateUpdated(uint256 newLaunchDate);
     /// @notice Emitted when the liquidityAmplifier address is updated
-    event LiquidityAmplifierSet(address _liquidityAmplifier);
+    event LiquidityAmplifierSet(address liquidityAmplifier);
     /// @notice Emitted when the freeClaim address is updated
-    event FreeClaimSet(address _freeClaim);
-    event NftBonusSet(address _nft, uint256 _bonus);
-    event BaseURISet(string _baseUri);
-    event AcceptedNftAdded(address _nft);
-    event AcceptedNftRemoved(address _nft);
+    event FreeClaimSet(address freeClaim);
+    event NftBonusSet(address nft, uint256 bonus);
+    event BaseURISet(string baseUri);
+    event AcceptedNftAdded(address nft);
+    event AcceptedNftRemoved(address nft);
 
     struct StakeData {
         string name;
