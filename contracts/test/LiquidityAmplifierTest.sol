@@ -270,10 +270,10 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             stake.launchDate() + ((CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             // assess late penalty
-            uint256 daysLate = (block.timestamp -
+            uint256 daysLate = ((block.timestamp -
                 (stake.launchDate() +
                     ((CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR))) *
-                _TEST_TIME_FACTOR;
+                _TEST_TIME_FACTOR) / 1 days;
             if (daysLate >= MAX_LATE_DAYS) {
                 revert ClaimExpired();
             } else {
@@ -309,8 +309,10 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             stake.launchDate() + ((CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR)
         ) {
             // assess late penalty
-            uint256 daysLate = block.timestamp -
-                (stake.launchDate() + CLAIM_PERIOD * 1 days);
+            uint256 daysLate = ((block.timestamp -
+                (stake.launchDate() +
+                    ((CLAIM_PERIOD * 1 days) / _TEST_TIME_FACTOR))) *
+                _TEST_TIME_FACTOR) / 1 days;
             if (daysLate >= MAX_LATE_DAYS) {
                 revert ClaimExpired();
             } else {
@@ -419,7 +421,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         }
     }
 
-    /// @notice This function will return day `day` out of 60 days
+    /// @notice Get how many days have passed since `launchDate`
     /// @return day How many days have passed since `launchDate`
     function getDay() public view returns (uint256 day) {
         if (block.timestamp < launchDate) {
