@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -546,20 +544,14 @@ contract MaxxStake is
 
         uint256 basicShares = (_amount * _SHARE_FACTOR) /
             ((2 * _SHARE_FACTOR) - shareFactor);
-        console.log("basicShares:", basicShares / 1e18);
         uint256 bpbBonus = _amount / (BPB_FACTOR / 10);
-        console.log("bpbBonus:", bpbBonus);
         if (bpbBonus > 100) {
             bpbBonus = 100;
         }
-        console.log("bpbBonus:", bpbBonus);
         uint256 bpbShares = (basicShares * bpbBonus) / 1_000; // bigger pays better
-        console.log("bpbShares:", bpbShares / 1e18);
         uint256 lpbShares = ((basicShares + bpbShares) * (duration - 1)) /
             MAGIC_NUMBER; // longer pays better
-        console.log("lpbShares:", lpbShares / 1e18);
         shares = basicShares + bpbShares + lpbShares;
-        console.log("total shares:", shares / 1e18);
         return shares;
     }
 
