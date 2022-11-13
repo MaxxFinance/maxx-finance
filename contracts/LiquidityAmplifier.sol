@@ -488,13 +488,13 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         return userAmpReferral[_user];
     }
 
-    /// @notice This function will return day `day` out of 60 days
+    /// @notice Get how many days have passed since `launchDate`
     /// @return day How many days have passed since `launchDate`
     function getDay() public view returns (uint256 day) {
         if (block.timestamp < launchDate) {
             revert AmplifierNotStarted();
         }
-        day = uint256((block.timestamp - launchDate) / 60 / 60 / 24); // divide by 60 seconds, 60 minutes, 24 hours
+        day = uint256((block.timestamp - launchDate) / 1 days);
         return day;
     }
 
