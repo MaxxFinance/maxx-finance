@@ -66,4 +66,9 @@ interface IFreeClaim {
     function stakeClaim(uint256 unstakedClaimId, uint256 claimId) external;
 
     function getAllUnstakedClaims() external view returns (uint256[] memory);
+
+    function getUnstakedClaimsSlice(uint256 start, uint256 end)
+        external
+        view
+        returns (uint256[] memory);
 }
