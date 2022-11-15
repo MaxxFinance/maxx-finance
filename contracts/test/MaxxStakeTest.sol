@@ -28,6 +28,7 @@ contract MaxxStakeTest is
     using ERC165Checker for address;
     using Counters for Counters.Counter;
 
+    /// mapping of accepted NFTs
     mapping(address => bool) public isAcceptedNft;
     /// @dev 10 = 10% boost
     mapping(address => uint256) public nftBonus;
@@ -77,6 +78,7 @@ contract MaxxStakeTest is
 
     // Base URI
     string private _baseUri;
+    uint256 private _lastMigrationValue;
 
     /// @dev Sets the `maxxVault` and `maxx` addresses and the `launchDate`
     constructor(
@@ -109,8 +111,8 @@ contract MaxxStakeTest is
     /// @dev User must approve MAXX before staking
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
-    /// @param _tokenId // The token Id of the nft to use
-    /// @param _maxxNFT // The address of the nft collection to use
+    /// @param _tokenId The token Id of the nft to use
+    /// @param _maxxNFT The address of the nft collection to use
     function stake(
         uint16 _numDays,
         uint256 _amount,
@@ -356,18 +358,19 @@ contract MaxxStakeTest is
         return (stakeId, shares);
     }
 
-    /// @notice Stake all unstaked free claims
-    function migrateUnstakedFreeClaims() external onlyOwner {
+    /// @notice Stake unstaked free claims in batches
+    /// @param amount The amount of free claims to stake
+    function migrateUnstakedFreeClaims(uint256 amount) external onlyOwner {
         if (freeClaimsMigrated) {
             revert FreeClaimsAlreadyMigrated();
         }
-        freeClaimsMigrated = true;
         uint256[] memory claimIds = IFreeClaim(freeClaim)
-            .getAllUnstakedClaims();
+            .getUnstakedClaimsSlice(_lastMigrationValue, amount);
 
-        for (uint256 i = 0; i < claimIds.length; i++) {
+        for (uint256 i = 0; i < amount; i++) {
             IFreeClaim(freeClaim).stakeClaim(i, claimIds[i]);
         }
+        _lastMigrationValue += amount;
     }
 
     /// @notice Funciton to set liquidityAmplifier contract address
