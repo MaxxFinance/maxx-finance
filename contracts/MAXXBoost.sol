@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./interfaces/ILiquidityAmplifier.sol";
 
 /// @title MAXXBoost NFT Collection
@@ -16,10 +17,13 @@ contract MAXXBoost is ERC721, Ownable {
     Counters.Counter private supply;
 
     // Token URI for the NFTs available to use for Staking APR Bonus
-    string internal constant AVAILABLE_URI = "available";
+    string internal constant AVAILABLE_URI = "/available";
 
     // Token URI for used NFTs
-    string internal constant USED_URI = "used";
+    string internal constant USED_URI = "/used";
+
+    // Base URI
+    string private _baseUri;
 
     // The maximum supply of the collection
     uint256 public constant MAX_SUPPLY = 120;
@@ -32,6 +36,8 @@ contract MAXXBoost is ERC721, Ownable {
 
     // Mapping of Token ID to used state
     mapping(uint256 => bool) private usedState;
+
+    event BaseURISet(string _baseUri);
 
     /// @notice Sets the MAXX Amplify Smart Contract Address, Name and Token for the Collection
     /// @param  _amplifierContract the address of the Amplify Smart Contract
@@ -82,6 +88,13 @@ contract MAXXBoost is ERC721, Ownable {
         amplifierContract = _liquidityAmplifier;
     }
 
+    /// @notice Set the baseURI for the token collection
+    /// @param baseURI_ The baseURI for the token collection
+    function setBaseURI(string memory baseURI_) external onlyOwner {
+        _baseUri = baseURI_;
+        emit BaseURISet(baseURI_);
+    }
+
     /// @notice Verifies if a NFT is used or not
     /// @param _tokenId the Token ID that is verified
     /// @return Bool for the used state of the NFT
@@ -115,9 +128,9 @@ contract MAXXBoost is ERC721, Ownable {
     }
 
     /// @notice Returns the URI used to access the IPFS file containing the NFT Metadata
-    /// @param _tokenId the Token ID of the NFT
+    /// @param tokenId the Token ID of the NFT
     /// @return The URI for the Token ID
-    function tokenURI(uint256 _tokenId)
+    function tokenURI(uint256 tokenId)
         public
         view
         virtual
@@ -125,18 +138,42 @@ contract MAXXBoost is ERC721, Ownable {
         returns (string memory)
     {
         require(
-            _exists(_tokenId),
+            _exists(tokenId),
             "ERC721Metadata: URI query for nonexistent token"
         );
-        if (usedState[_tokenId]) {
-            return USED_URI;
+        string memory baseURI = _baseURI();
+        if (usedState[tokenId]) {
+            return
+                bytes(baseURI).length > 0
+                    ? string(
+                        abi.encodePacked(baseURI, tokenId.toString(), USED_URI)
+                    )
+                    : "";
         } else {
-            return AVAILABLE_URI;
+            return
+                bytes(baseURI).length > 0
+                    ? string(
+                        abi.encodePacked(
+                            baseURI,
+                            tokenId.toString(),
+                            AVAILABLE_URI
+                        )
+                    )
+                    : "";
         }
     }
 
     /// @notice Returns the total supply of the collection
     function totalSupply() public view returns (uint256) {
         return supply.current();
+    }
+
+    /**
+     * @dev Base URI for computing {tokenURI}. If set, the resulting URI for each
+     * token will be the concatenation of the `baseURI` and the `tokenId`. Empty
+     * by default, can be overridden in child contracts.
+     */
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _baseUri;
     }
 }

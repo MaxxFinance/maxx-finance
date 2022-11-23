@@ -19,10 +19,13 @@ contract MAXXGenesis is ERC721, Ownable {
     uint256 public constant MAX_SUPPLY = 5000;
 
     // Token URI for the NFTs available to use for Staking APR Bonus
-    string internal constant AVAILABLE_URI = "available";
+    string internal constant AVAILABLE_URI = "/available";
 
     // Token URI for used NFTs
-    string internal constant USED_URI = "used";
+    string internal constant USED_URI = "/used";
+
+    // Base URI
+    string private _baseUri;
 
     // The address of the MAXX Liquidity Amplifier Smart Contract
     address public amplifierContract;
@@ -35,6 +38,8 @@ contract MAXXGenesis is ERC721, Ownable {
 
     // Mapping of hashed codes to their availability
     mapping(bytes32 => bool) codes;
+
+    event BaseURISet(string _baseUri);
 
     /// @notice Sets the Name and Ticker for the Collection
     constructor(address _amplifierContract, address _stakingContract)
@@ -98,6 +103,13 @@ contract MAXXGenesis is ERC721, Ownable {
         amplifierContract = _liquidityAmplifier;
     }
 
+    /// @notice Set the baseURI for the token collection
+    /// @param baseURI_ The baseURI for the token collection
+    function setBaseURI(string memory baseURI_) external onlyOwner {
+        _baseUri = baseURI_;
+        emit BaseURISet(baseURI_);
+    }
+
     /// @notice Verifies if a NFT is used or not
     /// @param _tokenId the Token ID that is verified
     /// @return Bool for the used state of the NFT
@@ -131,9 +143,9 @@ contract MAXXGenesis is ERC721, Ownable {
     }
 
     /// @notice Returns the URI used to access the IPFS file containing the NFT Metadata
-    /// @param _tokenId the Token ID of the NFT
+    /// @param tokenId the Token ID of the NFT
     /// @return The URI for the Token ID
-    function tokenURI(uint256 _tokenId)
+    function tokenURI(uint256 tokenId)
         public
         view
         virtual
@@ -141,18 +153,42 @@ contract MAXXGenesis is ERC721, Ownable {
         returns (string memory)
     {
         require(
-            _exists(_tokenId),
+            _exists(tokenId),
             "ERC721Metadata: URI query for nonexistent token"
         );
-        if (usedState[_tokenId]) {
-            return USED_URI;
+        string memory baseURI = _baseURI();
+        if (usedState[tokenId]) {
+            return
+                bytes(baseURI).length > 0
+                    ? string(
+                        abi.encodePacked(baseURI, tokenId.toString(), USED_URI)
+                    )
+                    : "";
         } else {
-            return AVAILABLE_URI;
+            return
+                bytes(baseURI).length > 0
+                    ? string(
+                        abi.encodePacked(
+                            baseURI,
+                            tokenId.toString(),
+                            AVAILABLE_URI
+                        )
+                    )
+                    : "";
         }
     }
 
     /// @notice Returns the total supply of the collection
     function totalSupply() public view returns (uint256) {
         return supply.current();
+    }
+
+    /**
+     * @dev Base URI for computing {tokenURI}. If set, the resulting URI for each
+     * token will be the concatenation of the `baseURI` and the `tokenId`. Empty
+     * by default, can be overridden in child contracts.
+     */
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _baseUri;
     }
 }
