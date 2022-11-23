@@ -21,6 +21,12 @@ interface IFreeClaim {
     /// Free Claim has not started yet
     error FreeClaimNotStarted();
 
+    /// Free Claim has not ended yet
+    error FreeClaimNotEnded();
+
+    /// MAXX withdrawal failed
+    error MaxxWithdrawFailed();
+
     /// User cannot refer themselves
     error SelfReferral();
 
