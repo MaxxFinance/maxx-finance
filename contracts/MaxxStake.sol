@@ -308,8 +308,7 @@ contract MaxxStake is
         uint256 penaltyAmount;
         for (uint256 i = 0; i < stakeIds.length; i++) {
             StakeData memory tStake = stakes[stakeIds[i]];
-            uint256 daysServed = (((block.timestamp - tStake.startDate) *
-                _TEST_TIME_FACTOR) / 1 days);
+            uint256 daysServed = (block.timestamp - tStake.startDate) / 1 days;
             uint256 interestToDate = _calcInterestToDate(
                 tStake.shares,
                 daysServed,
