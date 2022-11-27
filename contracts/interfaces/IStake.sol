@@ -47,6 +47,9 @@ interface IStake is IERC721 {
     /// Current or proposed launch date has already passed
     error LaunchDatePassed();
 
+    /// Input cannot be the zero address;
+    error ZeroAddress();
+
     /// `_nft` does not support the IERC721 interface
     /// @param _nft the address of the NFT contract
     error InterfaceNotSupported(address _nft);
@@ -59,7 +62,7 @@ interface IStake is IERC721 {
     event Stake(
         uint256 indexed stakeId,
         address indexed user,
-        uint16 numDays,
+        uint256 numDays,
         uint256 amount
     );
 
@@ -120,13 +123,13 @@ interface IStake is IERC721 {
 
     function freeClaimStake(
         address owner,
-        uint16 numDays,
+        uint256 numDays,
         uint256 amount
     ) external returns (uint256 stakeId, uint256 shares);
 
     function amplifierStake(
         address owner,
-        uint16 numDays,
+        uint256 numDays,
         uint256 amount
     ) external returns (uint256 stakeId, uint256 shares);
 }
