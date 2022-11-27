@@ -16,7 +16,7 @@ import {IMAXXBoost} from "../interfaces/IMAXXBoost.sol";
 contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
     using ERC165Checker for address;
 
-    uint16 private constant _TEST_TIME_FACTOR = 336; // Test contract runs 336x faster (1 hour = 2 weeks)
+    uint16 private constant _TEST_TIME_FACTOR = 672; // Test contract runs 336x faster (1 hour = 2 weeks)
 
     uint256[] private _maxxDailyAllocation = new uint256[](AMPLIFIER_PERIOD);
     uint256[] private _effectiveMaticDailyDeposits =
@@ -153,7 +153,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             participantsByDay[day].push(msg.sender);
         }
 
-        userDailyDeposits[msg.sender][day] += amount;
+        userDailyDeposits[msg.sender][day] += originalAmount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
         _maticDailyDeposits[day] += amount;
@@ -238,7 +238,7 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
             participantsByDay[day].push(msg.sender);
         }
 
-        userDailyDeposits[msg.sender][day] += amount;
+        userDailyDeposits[msg.sender][day] += originalAmount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
         _maticDailyDeposits[day] += amount;
@@ -409,8 +409,8 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         if (
             block.timestamp <=
             stake.launchDate() +
-                (CLAIM_PERIOD * 1 days) +
-                (MAX_LATE_DAYS * 1 days)
+                (((CLAIM_PERIOD * 1 days) + (MAX_LATE_DAYS * 1 days)) /
+                    _TEST_TIME_FACTOR)
         ) {
             revert AmplifierNotComplete();
         }
@@ -419,16 +419,6 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         if (!success) {
             revert MaxxTransferFailed();
         }
-    }
-
-    /// @notice Get how many days have passed since `launchDate`
-    /// @return day How many days have passed since `launchDate`
-    function getDay() public view returns (uint256 day) {
-        if (block.timestamp < launchDate) {
-            revert AmplifierNotStarted();
-        }
-        day = ((block.timestamp - launchDate) * _TEST_TIME_FACTOR) / 1 days;
-        return day;
     }
 
     /// @notice This function will return all liquidity amplifier participants
@@ -525,6 +515,16 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         returns (uint256[] memory)
     {
         return userAmpReferral[_user];
+    }
+
+    /// @notice Get how many days have passed since `launchDate`
+    /// @return day How many days have passed since `launchDate`
+    function getDay() public view returns (uint256 day) {
+        if (block.timestamp < launchDate) {
+            revert AmplifierNotStarted();
+        }
+        day = ((block.timestamp - launchDate) * _TEST_TIME_FACTOR) / 1 days;
+        return day;
     }
 
     function _mintMaxxGenesis(string memory code) internal {
