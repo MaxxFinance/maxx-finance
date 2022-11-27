@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -27,6 +28,7 @@ contract MaxxStakeTest is
 {
     using ERC165Checker for address;
     using Counters for Counters.Counter;
+    using Strings for uint256;
 
     /// mapping of accepted NFTs
     mapping(address => bool) public isAcceptedNft;
@@ -35,13 +37,13 @@ contract MaxxStakeTest is
     /// mapping of stake end times
     mapping(uint256 => uint256) public endTimes;
 
-    uint16 private constant _TEST_TIME_FACTOR = 336; // Test contract runs 336x faster (1 hour = 2 weeks)
+    uint256 private constant _TEST_TIME_FACTOR = 672; // Test contract runs 336x faster (1 hour = 2 weeks)
 
     // Calculation variables
-    uint8 public constant LATE_DAYS = 14;
-    uint8 public constant MIN_STAKE_DAYS = 7;
-    uint16 public constant MAX_STAKE_DAYS = 3333;
-    uint16 public constant DAYS_IN_YEAR = 365;
+    uint256 public constant LATE_DAYS = 14;
+    uint256 public constant MIN_STAKE_DAYS = 7;
+    uint256 public constant MAX_STAKE_DAYS = 3333;
+    uint256 public constant DAYS_IN_YEAR = 365;
     uint256 public constant BASE_INFLATION = 18_185; // 18.185%
     uint256 public constant BASE_INFLATION_FACTOR = 100_000;
     uint256 public constant PERCENT_FACTOR = 1e10;
@@ -64,6 +66,8 @@ contract MaxxStakeTest is
 
     /// @notice amount of shares all time
     uint256 public totalShares;
+    /// @notice amount of maxx currently staked
+    uint256 public totalStaked;
     /// @notice Stake Counter
     Counters.Counter public idCounter;
     /// @notice alltime stakes
@@ -80,25 +84,34 @@ contract MaxxStakeTest is
     string private _baseUri;
     uint256 private _lastMigrationValue;
 
-    /// @dev Sets the `maxxVault` and `maxx` addresses and the `launchDate`
-    constructor(
-        address _maxxVault,
-        address _maxx,
-        uint256 _launchDate
-    ) ERC721("MaxxStake", "SMAXX") {
-        maxxVault = _maxxVault;
-        maxx = IMaxxFinance(_maxx);
-        launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date
+    constructor() ERC721("MaxxStake", "SMAXX") {
         // start stake ID at 1
         idCounter.increment();
         stakes.push(StakeData("", address(0), 0, 0, 0, 0, false)); // index 0 is null stake;
+    }
+
+    /// @notice Sets the `maxxVault` and `maxx` addresses and the `launchDate`
+    /// @param _maxxVault Maxx Finance Vault address
+    /// @param _maxx Maxx Finance token address
+    /// @param _launchDate The launch date
+    function init(
+        address _maxxVault,
+        address _maxx,
+        uint256 _launchDate
+    ) external onlyOwner {
+        if (_maxxVault == address(0) || _maxx == address(0)) {
+            revert ZeroAddress();
+        }
+        maxxVault = _maxxVault;
+        maxx = IMaxxFinance(_maxx);
+        launchDate = _launchDate; // launch date needs to be after the liquidity amplifier ends
     }
 
     /// @notice Function to stake MAXX
     /// @dev User must approve MAXX before staking
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
-    function stake(uint16 _numDays, uint256 _amount) external {
+    function stake(uint256 _numDays, uint256 _amount) external {
         if (_amount < 5e22) {
             revert InvalidAmount();
         }
@@ -114,7 +127,7 @@ contract MaxxStakeTest is
     /// @param _tokenId The token Id of the nft to use
     /// @param _maxxNFT The address of the nft collection to use
     function stake(
-        uint16 _numDays,
+        uint256 _numDays,
         uint256 _amount,
         uint256 _tokenId,
         address _maxxNFT
@@ -141,7 +154,7 @@ contract MaxxStakeTest is
 
     /// @notice Function to unstake MAXX
     /// @param _stakeId The id of the stake to unstake
-    function unstake(uint256 _stakeId) external {
+    function unstake(uint256 _stakeId) external nonReentrant {
         StakeData memory tStake = stakes[_stakeId];
         if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
             revert NotAuthorized();
@@ -165,6 +178,9 @@ contract MaxxStakeTest is
             tStake.duration
         );
 
+        totalStaked -= tStake.amount;
+        maxx.mint(address(this), interestToDate); // mint the interest to this contract
+
         uint256 fullAmount = tStake.amount + interestToDate;
         if (daysServed < (tStake.duration / 1 days)) {
             // unstaking early
@@ -181,24 +197,25 @@ contract MaxxStakeTest is
             uint64 penaltyPercentage = uint64(
                 (PERCENT_FACTOR * daysLate) / DAYS_IN_YEAR
             );
-            withdrawableAmount =
-                ((tStake.amount + interestToDate) *
-                    (PERCENT_FACTOR - penaltyPercentage)) /
-                PERCENT_FACTOR;
+            if (penaltyPercentage > PERCENT_FACTOR) {
+                withdrawableAmount = 0;
+            } else {
+                withdrawableAmount =
+                    ((tStake.amount + interestToDate) *
+                        (PERCENT_FACTOR - penaltyPercentage)) /
+                    PERCENT_FACTOR;
+            }
         } else {
             // unstaking on time
             withdrawableAmount = tStake.amount + interestToDate;
         }
         penaltyAmount = fullAmount - withdrawableAmount;
-        uint256 maxxBalance = maxx.balanceOf(address(this));
 
-        if (fullAmount > maxxBalance) {
-            maxx.mint(address(this), fullAmount - maxxBalance); // mint additional tokens to this contract
-        }
-
-        if (!maxx.transfer(msg.sender, withdrawableAmount)) {
-            // transfer the withdrawable amount to the user
-            revert TransferFailed();
+        if (withdrawableAmount > 0) {
+            if (!maxx.transfer(msg.sender, withdrawableAmount)) {
+                // transfer the withdrawable amount to the user
+                revert TransferFailed();
+            }
         }
         if (penaltyAmount > 0) {
             if (!maxx.transfer(maxxVault, penaltyAmount / 2)) {
@@ -209,83 +226,6 @@ contract MaxxStakeTest is
         }
 
         emit Unstake(_stakeId, msg.sender, withdrawableAmount);
-    }
-
-    /// @notice Function to change stake to maximum duration without penalties
-    /// @param _stakeId The id of the stake to change
-    function maxShare(uint256 _stakeId) external {
-        StakeData memory tStake = stakes[_stakeId];
-        address stakeOwner = ownerOf(_stakeId);
-        if (tStake.duration >= uint256(MAX_STAKE_DAYS) * 1 days) {
-            revert AlreadyMaxDuration();
-        }
-
-        if (
-            msg.sender != stakeOwner &&
-            !isApprovedForAll(stakeOwner, msg.sender)
-        ) {
-            revert NotAuthorized();
-        }
-        uint256 daysServed = (((block.timestamp - tStake.startDate) *
-            _TEST_TIME_FACTOR) / 1 days);
-        uint256 interestToDate = _calcInterestToDate(
-            tStake.shares,
-            daysServed,
-            tStake.duration
-        );
-        tStake.duration = uint256(MAX_STAKE_DAYS) * 1 days;
-        uint16 durationInDays = uint16(tStake.duration / 1 days);
-        totalShares -= tStake.shares;
-
-        tStake.amount += interestToDate;
-        tStake.shares = _calcShares(durationInDays, tStake.amount);
-        tStake.startDate = block.timestamp;
-
-        totalShares += tStake.shares;
-        stakes[_stakeId] = tStake; // Update the stake in storage
-        emit Stake(_stakeId, msg.sender, durationInDays, tStake.amount);
-    }
-
-    /// @notice Function to restake without penalties
-    /// @param _stakeId The id of the stake to restake
-    /// @param _topUpAmount The amount of MAXX to top up the stake
-    function restake(uint256 _stakeId, uint256 _topUpAmount)
-        external
-        nonReentrant
-    {
-        StakeData memory tStake = stakes[_stakeId];
-        if (!_isApprovedOrOwner(msg.sender, _stakeId)) {
-            revert NotAuthorized();
-        }
-        uint256 maturation = tStake.startDate + tStake.duration;
-        if (block.timestamp < maturation) {
-            revert StakeNotComplete();
-        }
-        if (_topUpAmount > maxx.balanceOf(msg.sender)) {
-            revert InsufficientMaxx();
-        }
-        uint256 daysServed = (((block.timestamp - tStake.startDate) *
-            _TEST_TIME_FACTOR) / 1 days);
-        uint256 interestToDate = _calcInterestToDate(
-            tStake.shares,
-            daysServed,
-            tStake.duration
-        );
-        tStake.amount += _topUpAmount + interestToDate;
-        tStake.startDate = block.timestamp;
-        uint16 durationInDays = uint16(tStake.duration / 1 days);
-        totalShares -= tStake.shares;
-        tStake.shares = _calcShares(durationInDays, tStake.amount);
-        tStake.startDate = block.timestamp;
-        totalShares += tStake.shares;
-        stakes[_stakeId] = tStake;
-
-        // transfer tokens to this contract
-        if (!maxx.transferFrom(msg.sender, address(this), _topUpAmount)) {
-            revert TransferFailed();
-        }
-
-        emit Stake(_stakeId, msg.sender, durationInDays, tStake.amount);
     }
 
     /// @notice Function to transfer stake ownership
@@ -322,7 +262,7 @@ contract MaxxStakeTest is
     /// @param _amount The amount of MAXX to stake
     function amplifierStake(
         address _owner,
-        uint16 _numDays,
+        uint256 _numDays,
         uint256 _amount
     ) external returns (uint256 stakeId, uint256 shares) {
         if (msg.sender != liquidityAmplifier) {
@@ -344,7 +284,7 @@ contract MaxxStakeTest is
     /// @param _amount The amount of MAXX to stake
     function freeClaimStake(
         address _owner,
-        uint16 _numDays,
+        uint256 _numDays,
         uint256 _amount
     ) external returns (uint256 stakeId, uint256 shares) {
         if (msg.sender != freeClaim) {
@@ -365,7 +305,10 @@ contract MaxxStakeTest is
             revert FreeClaimsAlreadyMigrated();
         }
         uint256[] memory claimIds = IFreeClaim(freeClaim)
-            .getUnstakedClaimsSlice(_lastMigrationValue, amount);
+            .getUnstakedClaimsSlice(
+                _lastMigrationValue,
+                _lastMigrationValue + amount
+            );
 
         for (uint256 i = 0; i < amount; i++) {
             IFreeClaim(freeClaim).stakeClaim(i, claimIds[i]);
@@ -373,7 +316,42 @@ contract MaxxStakeTest is
         _lastMigrationValue += amount;
     }
 
-    /// @notice Funciton to set liquidityAmplifier contract address
+    /// @notice Burn stakes that are over a year late
+    /// @param stakeIds The ids of the stakes to burn
+    function burnDeadStakes(uint256[] calldata stakeIds) external onlyOwner {
+        uint256 penaltyAmount;
+        uint256 principalAmount;
+        for (uint256 i = 0; i < stakeIds.length; i++) {
+            StakeData memory tStake = stakes[stakeIds[i]];
+            uint256 daysServed = (((block.timestamp - tStake.startDate) *
+                _TEST_TIME_FACTOR) / 1 days);
+            uint256 interestToDate = _calcInterestToDate(
+                tStake.shares,
+                daysServed,
+                tStake.duration
+            );
+            uint256 fullAmount = tStake.amount + interestToDate;
+            uint256 daysLate = daysServed - (tStake.duration / 1 days);
+            if (daysLate > DAYS_IN_YEAR) {
+                _burn(stakeIds[i]);
+                principalAmount += tStake.amount;
+                penaltyAmount += fullAmount;
+                emit Unstake(stakeIds[i], tStake.owner, 0);
+            }
+        }
+
+        if (penaltyAmount > 0) {
+            maxx.mint(address(this), penaltyAmount - principalAmount);
+            totalStaked -= principalAmount;
+            if (!maxx.transfer(maxxVault, penaltyAmount / 2)) {
+                // transfer half the penalty amount to the maxx vault
+                revert TransferFailed();
+            }
+            maxx.burn(penaltyAmount / 2); // burn the other half of the penalty amount
+        }
+    }
+
+    /// @notice Function to set liquidityAmplifier contract address
     /// @param _liquidityAmplifier The address of the liquidityAmplifier contract
     function setLiquidityAmplifier(address _liquidityAmplifier)
         external
@@ -472,9 +450,23 @@ contract MaxxStakeTest is
         return super.supportsInterface(interfaceId);
     }
 
-    /// @notice Returns the base URI for the token collection
-    function tokenURI(uint256) public view override returns (string memory) {
-        return _baseURI();
+    /// @notice Returns the token URI
+    /// @param stakeId The id of the stake
+    /// @return The token URI
+    function tokenURI(uint256 stakeId)
+        public
+        view
+        virtual
+        override
+        returns (string memory)
+    {
+        _requireMinted(stakeId);
+
+        string memory baseURI = _baseURI();
+        return
+            bytes(baseURI).length > 0
+                ? string(abi.encodePacked(baseURI, stakeId.toString()))
+                : "";
     }
 
     /// @return shareFactor The current share factor
@@ -491,7 +483,7 @@ contract MaxxStakeTest is
 
     function _stake(
         address _owner,
-        uint16 _numDays,
+        uint256 _numDays,
         uint256 _amount,
         uint256 _shares
     ) internal returns (uint256 stakeId) {
@@ -517,6 +509,7 @@ contract MaxxStakeTest is
         }
 
         totalShares += _shares;
+        totalStaked += _amount;
         totalStakesAlltime.increment();
         totalStakesActive.increment();
 
@@ -555,7 +548,7 @@ contract MaxxStakeTest is
 
     /// @dev Calculate shares using following formula: (amount / (2-SF)) + (((amount / (2-SF)) * (Duration-1)) / MN)
     /// @return shares The number of shares for the full-term stake
-    function _calcShares(uint16 duration, uint256 _amount)
+    function _calcShares(uint256 duration, uint256 _amount)
         internal
         view
         returns (uint256 shares)
