@@ -24,7 +24,7 @@ contract FreeClaimTest is IFreeClaim, Ownable, ReentrancyGuard {
         uint256 timestamp;
     }
 
-    uint16 private constant TEST_TIME_FACTOR = 336; // Test contract runs 336x faster (1 hour = 2 weeks)
+    uint16 private constant TEST_TIME_FACTOR = 672; // Test contract runs 336x faster (1 hour = 2 weeks)
 
     /// @notice Merkle root for the free claim whitelist
     bytes32 public merkleRoot;
@@ -190,6 +190,18 @@ contract FreeClaimTest is IFreeClaim, Ownable, ReentrancyGuard {
         delete unstakedClaims[_unstakedClaimId];
     }
 
+    function withdrawMaxx() external onlyOwner {
+        if (
+            block.timestamp <
+            launchDate + (FREE_CLAIM_DURATION / TEST_TIME_FACTOR)
+        ) {
+            revert FreeClaimNotEnded();
+        }
+        if (!maxx.transfer(msg.sender, maxx.balanceOf(address(this)))) {
+            revert MaxxWithdrawFailed();
+        }
+    }
+
     /// @notice Get the number of total claimers
     /// @return The number of total claimers
     function getTotalClaimers() external view returns (uint256) {
@@ -258,12 +270,15 @@ contract FreeClaimTest is IFreeClaim, Ownable, ReentrancyGuard {
         address _referrer,
         bool stake
     ) internal {
-        if (_amount <= remainingBalance) {
+        if (_amount < remainingBalance) {
             if (_referrer != address(0)) {
                 _referralClaim(_amount, _referrer, stake);
                 _amount += _amount / 10;
             }
-        } else {
+        }
+
+        // check again after adjusting for referral
+        if (_amount > remainingBalance) {
             _amount = remainingBalance;
         }
 
