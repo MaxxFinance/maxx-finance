@@ -11,3 +11,7 @@ cache
 artifacts
 snapshot
 
+*.csv
+*.py
+*.pyc
+.idea/
