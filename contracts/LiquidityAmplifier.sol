@@ -141,7 +141,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             participatedByDay[msg.sender][day] = true;
             participantsByDay[day].push(msg.sender);
         }
-        userDailyDeposits[msg.sender][day] += amount;
+        userDailyDeposits[msg.sender][day] += originalAmount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
         _maticDailyDeposits[day] += amount;
@@ -218,7 +218,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             participatedByDay[msg.sender][day] = true;
             participantsByDay[day].push(msg.sender);
         }
-        userDailyDeposits[msg.sender][day] += amount;
+        userDailyDeposits[msg.sender][day] += originalAmount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
         _maticDailyDeposits[day] += amount;
