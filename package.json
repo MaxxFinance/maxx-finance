@@ -58,7 +58,7 @@
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-solhint": "^2.0.1",
-    "@openzeppelin/contracts": "^4.7.1",
+    "@openzeppelin/contracts": "^4.7.3",
     "dotenv": "^10.0.0",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
