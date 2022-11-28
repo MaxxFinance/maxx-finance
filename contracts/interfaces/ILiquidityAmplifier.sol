@@ -36,6 +36,8 @@ interface ILiquidityAmplifier {
     error MaxxGenesisMintFailed();
     /// Maxx transfer failed
     error MaxxTransferFailed();
+    error ZeroAddress();
+    error PastLaunchDate();
 
     /// @notice Emitted when matic is 'deposited'
     /// @param user The user depositing matic into the liquidity amplifier
