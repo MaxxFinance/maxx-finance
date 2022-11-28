@@ -188,6 +188,15 @@ contract FreeClaim is IFreeClaim, Ownable, ReentrancyGuard {
         delete unstakedClaims[_unstakedClaimId];
     }
 
+    function withdrawMaxx() external onlyOwner {
+        if (block.timestamp < launchDate + FREE_CLAIM_DURATION) {
+            revert FreeClaimNotEnded();
+        }
+        if (!maxx.transfer(msg.sender, maxx.balanceOf(address(this)))) {
+            revert MaxxWithdrawFailed();
+        }
+    }
+
     /// @notice Get the number of total claimers
     /// @return The number of total claimers
     function getTotalClaimers() external view returns (uint256) {
@@ -256,12 +265,15 @@ contract FreeClaim is IFreeClaim, Ownable, ReentrancyGuard {
         address _referrer,
         bool stake
     ) internal {
-        if (_amount <= remainingBalance) {
+        if (_amount < remainingBalance) {
             if (_referrer != address(0)) {
                 _referralClaim(_amount, _referrer, stake);
                 _amount += _amount / 10;
             }
-        } else {
+        }
+
+        // check again after adjusting for referral
+        if (_amount > remainingBalance) {
             _amount = remainingBalance;
         }
 
