@@ -174,7 +174,10 @@ contract FreeClaimTest is IFreeClaim, Ownable, ReentrancyGuard {
         emit MerkleRootSet(_merkleRoot);
     }
 
-    function stakeClaim(uint256 _unstakedClaimId, uint256 _claimId) external {
+    function stakeClaim(uint256 _unstakedClaimId, uint256 _claimId)
+        external
+        nonReentrant
+    {
         if (msg.sender != address(maxxStake) || msg.sender == address(0)) {
             revert OnlyMaxxStake();
         }
