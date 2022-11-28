@@ -563,7 +563,9 @@ contract LiquidityAmplifierTest is ILiquidityAmplifier, Ownable {
         }
         amount -= claimedReferralAmount[msg.sender];
         claimedReferralAmount[msg.sender] += amount;
-        IMaxxFinance(maxx).transfer(msg.sender, amount);
+        if (!IMaxxFinance(maxx).transfer(msg.sender, amount)) {
+            revert MaxxTransferFailed();
+        }
         return amount;
     }
 
