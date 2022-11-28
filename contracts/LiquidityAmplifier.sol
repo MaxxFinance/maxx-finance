@@ -84,6 +84,12 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         if (initialized) {
             revert AlreadyInitialized();
         }
+        if (_maxxVault == address(0) || _maxx == address(0)) {
+            revert ZeroAddress();
+        }
+        if (_launchDate < block.timestamp) {
+            revert PastLaunchDate();
+        }
         maxxVault = _maxxVault;
         launchDate = _launchDate;
         maxx = _maxx;
@@ -316,6 +322,9 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice Function to set the Maxx Finance staking contract address
     /// @param _stake Address of the Maxx Finance staking contract
     function setStakeAddress(address _stake) external onlyOwner {
+        if (_stake == address(0)) {
+            revert ZeroAddress();
+        }
         stake = IStake(_stake);
         emit StakeAddressSet(_stake);
     }
@@ -323,6 +332,9 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     /// @notice Function to set the Maxx Genesis NFT contract address
     /// @param _maxxGenesis Address of the Maxx Genesis NFT contract
     function setMaxxGenesis(address _maxxGenesis) external onlyOwner {
+        if (_maxxGenesis == address(0)) {
+            revert ZeroAddress();
+        }
         maxxGenesis = _maxxGenesis;
         emit MaxxGenesisSet(_maxxGenesis);
     }
@@ -540,7 +552,9 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         }
         amount -= claimedReferralAmount[msg.sender];
         claimedReferralAmount[msg.sender] += amount;
-        IMaxxFinance(maxx).transfer(msg.sender, amount);
+        if (!IMaxxFinance(maxx).transfer(msg.sender, amount)) {
+            revert MaxxTransferFailed();
+        }
         return amount;
     }
 
