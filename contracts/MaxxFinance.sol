@@ -141,18 +141,18 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     }
 
     /// @notice identify an address as a liquidity pool
-    /// @param _address The pool address
-    function addPool(address _address) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_address == address(0)) {
+    /// @param _pool The pool address
+    function addPool(address _pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_pool == address(0)) {
             revert ZeroAddress();
         }
-        isPool[_address] = true;
-        isAllowed[_address] = true;
-        emit PoolAdded(_address);
+        isPool[_pool] = true;
+        isAllowed[_pool] = true;
+        emit PoolAdded(_pool);
     }
 
     /// @notice Remove an address from the pool list
-    /// @param _address The pool address
+    /// @param _pool The pool address
     function removePool(address _pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
         isPool[_pool] = false;
         isAllowed[_pool] = false;
