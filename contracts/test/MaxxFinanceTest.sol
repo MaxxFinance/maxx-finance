@@ -32,7 +32,7 @@ error ZeroAddress();
 /// @title Maxx Finance -- MAXX ERC20 token contract
 /// @author Alta Web3 Labs - SonOfMosiah
 contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
-    uint16 private constant TEST_TIME_FACTOR = 336; // Test contract runs 336x faster (1 hour = 2 weeks)
+    uint16 private constant TEST_TIME_FACTOR = 672; // Test contract runs 336x faster (1 hour = 2 weeks)
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     /// @notice The amount of MAXX tokens burned
@@ -91,6 +91,7 @@ contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
     mapping(uint32 => uint256) public dailyAmountSold;
 
     event PoolAdded(address indexed pool);
+    event PoolRemoved(address indexed pool);
     event MinTransferTaxUpdated(uint16 minTransferTax);
     event MaxTransferTaxUpdated(uint16 maxTransferTax);
     event MinTaxAmountUpdated(uint256 minTaxAmount);
@@ -106,7 +107,7 @@ contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
     event TaxExemptAdded(address indexed account);
     event TaxExemptRemoved(address indexed account);
 
-    constructor() ERC20("Maxx Finance", "MAXX") {
+    constructor() ERC20("TESTTOKEN", "TEST") {
         _grantRole(DEFAULT_ADMIN_ROLE, tx.origin);
         initialTimestamp = block.timestamp;
     }
@@ -149,6 +150,14 @@ contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
         isPool[_address] = true;
         isAllowed[_address] = true;
         emit PoolAdded(_address);
+    }
+
+    /// @notice Remove an address from the pool list
+    /// @param _address The pool address
+    function removePool(address _pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isPool[_pool] = false;
+        isAllowed[_pool] = false;
+        emit PoolRemoved(_pool);
     }
 
     /// @notice Set the blocks required between transfers
@@ -225,6 +234,8 @@ contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
         _unpause();
     }
 
+    /// @notice Add an address to the tax exempt list
+    /// @param _exempt The address to add to the tax exempt list
     function addTaxExempt(address _exempt)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -233,6 +244,8 @@ contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
         emit TaxExemptAdded(_exempt);
     }
 
+    /// @notice Remove an address from the tax exempt list
+    /// @param _exempt The address to remove from the tax exempt list
     function removeTaxExempt(address _exempt)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -368,8 +381,8 @@ contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
         ) {
             uint256 tax = _getTaxAmount(_amount);
             _amount -= tax;
-            require(super.transferFrom(msg.sender, maxxVault, tax / 2));
-            burn(tax / 2);
+            require(super.transferFrom(_from, maxxVault, tax / 2));
+            burnFrom(_from, tax / 2);
         }
         return super.transferFrom(_from, _to, _amount);
     }
@@ -404,10 +417,7 @@ contract MaxxFinanceTest is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @return day The current day since launch
     function getCurrentDay() public view returns (uint32 day) {
         day = uint32(
-            ((block.timestamp - initialTimestamp) * TEST_TIME_FACTOR) /
-                24 /
-                60 /
-                60
+            ((block.timestamp - initialTimestamp) * TEST_TIME_FACTOR) / 1 days
         );
         return day;
     }

@@ -90,6 +90,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     mapping(uint32 => uint256) public dailyAmountSold;
 
     event PoolAdded(address indexed pool);
+    event PoolRemoved(address indexed pool);
     event MinTransferTaxUpdated(uint16 minTransferTax);
     event MaxTransferTaxUpdated(uint16 maxTransferTax);
     event MinTaxAmountUpdated(uint256 minTaxAmount);
@@ -148,6 +149,14 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         isPool[_address] = true;
         isAllowed[_address] = true;
         emit PoolAdded(_address);
+    }
+
+    /// @notice Remove an address from the pool list
+    /// @param _address The pool address
+    function removePool(address _pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isPool[_pool] = false;
+        isAllowed[_pool] = false;
+        emit PoolRemoved(_pool);
     }
 
     /// @notice Set the blocks required between transfers
@@ -224,6 +233,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         _unpause();
     }
 
+    /// @notice Add an address to the tax exempt list
+    /// @param _exempt The address to add to the tax exempt list
     function addTaxExempt(address _exempt)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -232,6 +243,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         emit TaxExemptAdded(_exempt);
     }
 
+    /// @notice Remove an address from the tax exempt list
+    /// @param _exempt The address to remove from the tax exempt list
     function removeTaxExempt(address _exempt)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -367,8 +380,8 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
         ) {
             uint256 tax = _getTaxAmount(_amount);
             _amount -= tax;
-            require(super.transferFrom(msg.sender, maxxVault, tax / 2));
-            burn(tax / 2);
+            require(super.transferFrom(_from, maxxVault, tax / 2));
+            burnFrom(_from, tax / 2);
         }
         return super.transferFrom(_from, _to, _amount);
     }
@@ -402,7 +415,7 @@ contract MaxxFinance is ERC20, ERC20Burnable, AccessControl, Pausable {
     /// @notice This functions gets the current day since the initial timestamp
     /// @return day The current day since launch
     function getCurrentDay() public view returns (uint32 day) {
-        day = uint32((block.timestamp - initialTimestamp) / 24 / 60 / 60);
+        day = uint32((block.timestamp - initialTimestamp) / 1 days);
         return day;
     }
 
