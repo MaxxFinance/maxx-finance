@@ -53,8 +53,6 @@ contract MaxxStakeTest is
 
     uint256 public launchDate;
 
-    bool public freeClaimsMigrated;
-
     /// @notice Maxx Finance Vault address
     address public maxxVault;
     /// @notice address of the freeClaim contract
@@ -301,9 +299,6 @@ contract MaxxStakeTest is
     /// @notice Stake unstaked free claims in batches
     /// @param amount The amount of free claims to stake
     function migrateUnstakedFreeClaims(uint256 amount) external onlyOwner {
-        if (freeClaimsMigrated) {
-            revert FreeClaimsAlreadyMigrated();
-        }
         uint256[] memory claimIds = IFreeClaim(freeClaim)
             .getUnstakedClaimsSlice(
                 _lastMigrationValue,
