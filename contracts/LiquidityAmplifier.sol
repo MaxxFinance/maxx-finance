@@ -133,14 +133,17 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         uint256 referrerAmount = msg.value / 20; // 5% bonus for referrer
         uint256 effectiveDeposit = amount + referrerAmount;
         uint256 day = getDay();
+
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
             participants.push(msg.sender);
         }
+
         if (!participatedByDay[msg.sender][day]) {
             participatedByDay[msg.sender][day] = true;
             participantsByDay[day].push(msg.sender);
         }
+
         userDailyDeposits[msg.sender][day] += originalAmount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
@@ -209,6 +212,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
         uint256 referrerAmount = msg.value / 20; // 5% bonus for referrer
         uint256 effectiveDeposit = amount + referrerAmount;
         uint256 day = getDay();
+
         if (!participated[msg.sender]) {
             participated[msg.sender] = true;
             participants.push(msg.sender);
@@ -218,6 +222,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
             participatedByDay[msg.sender][day] = true;
             participantsByDay[day].push(msg.sender);
         }
+
         userDailyDeposits[msg.sender][day] += originalAmount;
         effectiveUserDailyDeposits[msg.sender][day] += amount;
         effectiveUserReferrals[_referrer][day] += referrerAmount;
