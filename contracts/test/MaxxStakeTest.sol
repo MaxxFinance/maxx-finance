@@ -306,7 +306,10 @@ contract MaxxStakeTest is
             );
 
         for (uint256 i = 0; i < amount; i++) {
-            IFreeClaim(freeClaim).stakeClaim(i, claimIds[i]);
+            IFreeClaim(freeClaim).stakeClaim(
+                _lastMigrationValue + i,
+                claimIds[i]
+            );
         }
         _lastMigrationValue += amount;
     }
