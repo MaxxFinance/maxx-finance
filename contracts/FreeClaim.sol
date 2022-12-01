@@ -172,6 +172,10 @@ contract FreeClaim is IFreeClaim, Ownable, ReentrancyGuard {
         emit MerkleRootSet(_merkleRoot);
     }
 
+    /// @notice Stake an unstaked claim
+    /// @dev Must be called by the maxxStake contract
+    /// @param _unstakedClaimId The index of the unstaked claim
+    /// @param _claimId The id of the claim
     function stakeClaim(uint256 _unstakedClaimId, uint256 _claimId)
         external
         nonReentrant
@@ -191,6 +195,7 @@ contract FreeClaim is IFreeClaim, Ownable, ReentrancyGuard {
         delete unstakedClaims[_unstakedClaimId];
     }
 
+    /// @notice Withdraw remaining MAXX from the contract
     function withdrawMaxx() external onlyOwner {
         if (block.timestamp < launchDate + FREE_CLAIM_DURATION) {
             revert FreeClaimNotEnded();
@@ -339,7 +344,7 @@ contract FreeClaim is IFreeClaim, Ownable, ReentrancyGuard {
         }
 
         Claim memory referralClaim = Claim({
-            user: msg.sender,
+            user: _referrer,
             amount: referralAmount,
             shares: shares,
             stakeId: stakeId,
