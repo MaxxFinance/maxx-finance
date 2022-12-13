@@ -330,7 +330,11 @@ contract MaxxStakeTest is
             );
             uint256 fullAmount = tStake.amount + interestToDate;
             uint256 daysLate = daysServed - (tStake.duration / 1 days);
-            if (daysLate > DAYS_IN_YEAR) {
+            if (daysLate > DAYS_IN_YEAR && !tStake.withdrawn) {
+                stakes[stakeIds[i]].withdrawn = true;
+                totalStakesWithdrawn.increment();
+                totalStakesActive.decrement();
+
                 _burn(stakeIds[i]);
                 principalAmount += tStake.amount;
                 penaltyAmount += fullAmount;
