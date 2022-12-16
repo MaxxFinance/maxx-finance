@@ -46,15 +46,15 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     uint16 public constant MAX_LATE_DAYS = 100;
     uint16 public constant CLAIM_PERIOD = 60;
-    uint16 public constant AMPLIFIER_PERIOD = 25;
+    uint16 public constant AMPLIFIER_PERIOD = 40;
     uint256 public constant MIN_GENESIS_AMOUNT = 5e19; // 50 matic
 
     /// @notice maps address to day (indexed at 0) to amount of tokens deposited
-    mapping(address => uint256[25]) public userDailyDeposits;
+    mapping(address => uint256[40]) public userDailyDeposits;
     /// @notice maps address to day (indexed at 0) to amount of effective tokens deposited adjusted for referral and nft bonuses
-    mapping(address => uint256[25]) public effectiveUserDailyDeposits;
+    mapping(address => uint256[40]) public effectiveUserDailyDeposits;
     /// @notice maps address to day (indexed at 0) to amount of effective tokens gained by referring users
-    mapping(address => uint256[25]) public effectiveUserReferrals;
+    mapping(address => uint256[40]) public effectiveUserReferrals;
     /// @notice tracks if address has participated in the amplifier
     mapping(address => bool) public participated;
     /// @notice tracks if address has claimed for a given day
@@ -65,7 +65,7 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
     mapping(address => uint256[]) public userAmpReferral;
 
     /// @notice
-    uint256[25] public dailyDepositors;
+    uint256[40] public dailyDepositors;
 
     constructor() {
         _transferOwnership(tx.origin);
@@ -341,8 +341,8 @@ contract LiquidityAmplifier is ILiquidityAmplifier, Ownable {
 
     /// @notice Function to initialize the daily allocations
     /// @dev Function can only be called once
-    /// @param _dailyAllocation Array of daily MAXX token allocations for 25 days
-    function setDailyAllocations(uint256[25] memory _dailyAllocation)
+    /// @param _dailyAllocation Array of daily MAXX token allocations for 40 days
+    function setDailyAllocations(uint256[40] memory _dailyAllocation)
         external
         onlyOwner
     {
