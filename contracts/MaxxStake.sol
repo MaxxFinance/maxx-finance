@@ -47,6 +47,7 @@ contract MaxxStake is
     uint256 public constant MAGIC_NUMBER = 1111;
     uint256 public constant BPB_FACTOR = 2e24;
     uint256 private constant _SHARE_FACTOR = 1e9;
+    uint256 private constant _MIN_STAKE_AMOUNT = 25_000 * (10**18);
 
     uint256 public launchDate;
 
@@ -96,7 +97,7 @@ contract MaxxStake is
     /// @param _numDays The number of days to stake (min 7, max 3333)
     /// @param _amount The amount of MAXX to stake
     function stake(uint256 _numDays, uint256 _amount) external {
-        if (_amount < 5e22) {
+        if (_amount < _MIN_STAKE_AMOUNT) {
             revert InvalidAmount();
         }
         uint256 shares = _calcShares(_numDays, _amount);
@@ -116,7 +117,7 @@ contract MaxxStake is
         uint256 _tokenId,
         address _maxxNFT
     ) external {
-        if (_amount < 5e22) {
+        if (_amount < _MIN_STAKE_AMOUNT) {
             revert InvalidAmount();
         }
         if (!isAcceptedNft[_maxxNFT]) {
