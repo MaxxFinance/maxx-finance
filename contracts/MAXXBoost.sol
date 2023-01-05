@@ -39,14 +39,9 @@ contract MAXXBoost is ERC721, Ownable {
 
     event BaseURISet(string _baseUri);
 
-    /// @notice Sets the MAXX Amplify Smart Contract Address, Name and Token for the Collection
-    /// @param  _amplifierContract the address of the Amplify Smart Contract
-    /// @param  _stakingContract the address of the Amplify Smart Contract
-    constructor(address _amplifierContract, address _stakingContract)
-        ERC721("MAXXBoost", "MAXXB")
-    {
-        amplifierContract = _amplifierContract;
-        stakingContract = _stakingContract;
+    /// @notice Sets the Name and Token for the Collection
+    constructor() ERC721("MAXXBoost", "MAXXB") {
+        _transferOwnership(tx.origin);
     }
 
     /// @notice Called by Owner to mint to a lucky winner that participated in the MAXX Liquidity Amplifier

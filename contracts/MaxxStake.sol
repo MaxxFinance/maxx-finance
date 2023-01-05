@@ -78,12 +78,22 @@ contract MaxxStake is
     string private _baseUri;
     uint256 private _lastMigrationValue;
 
+    bool public initialized;
+
+    constructor() ERC721("MaxxStake", "SMAXX") {
+        _transferOwnership(tx.origin);
+    }
+
     /// @dev Sets the `maxxVault` and `maxx` addresses and the `launchDate`
-    constructor(
+    function init(
         address _maxxVault,
         address _maxx,
         uint256 _launchDate
-    ) ERC721("MaxxStake", "SMAXX") {
+    ) external onlyOwner {
+        if (initialized) {
+            revert AlreadyInitialized();
+        }
+        initialized = true;
         maxxVault = _maxxVault;
         maxx = IMaxxFinance(_maxx);
         launchDate = _launchDate; // launch date needs to be at least 60 days after liquidity amplifier start date

@@ -42,11 +42,8 @@ contract MAXXGenesis is ERC721, Ownable {
     event BaseURISet(string _baseUri);
 
     /// @notice Sets the Name and Ticker for the Collection
-    constructor(address _amplifierContract, address _stakingContract)
-        ERC721("MAXXGenesis", "MAXXG")
-    {
-        amplifierContract = _amplifierContract;
-        stakingContract = _stakingContract;
+    constructor() ERC721("MAXXGenesis", "MAXXG") {
+        _transferOwnership(tx.origin);
     }
 
     /// @notice Called by MAXX Staking SC to mint a reward NFT to user that stake >= 10.000.000 MAXX for 3.333 days.
