@@ -50,6 +50,9 @@ interface IStake is IERC721 {
     /// Input cannot be the zero address;
     error ZeroAddress();
 
+    /// The contract is already initialized
+    error AlreadyInitialized();
+
     /// `_nft` does not support the IERC721 interface
     /// @param _nft the address of the NFT contract
     error InterfaceNotSupported(address _nft);
