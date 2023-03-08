@@ -2,6 +2,8 @@ import { StandardMerkleTree } from '@openzeppelin/merkle-tree';
 import fs from 'fs';
 import { ethers } from 'ethers';
 
+// npx hardhat run scripts/utils/merkleGenerator.ts
+
 interface Leaf {
     address: string;
     amount: string;

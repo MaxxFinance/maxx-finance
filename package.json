@@ -32,7 +32,8 @@
     "stakeDataMumbai": "npx hardhat run scripts/tx/stakeData.ts --network mumbai",
     "addLpMumbai": " npx hardhat run scripts/tx/addLp.ts --network mumbai",
     "maxxDataMumbai": " npx hardhat run scripts/tx/maxxData.ts --network mumbai",
-    "contractSetupMumbai": "npx hardhat run scripts/contractSetup.ts --network mumbai"
+    "contractSetupMumbai": "npx hardhat run scripts/contractSetup.ts --network mumbai",
+    "merkleGenerator": "npx hardhat run scripts/utils/merkleGenerator.ts"
   },
   "repository": {
     "type": "git",
